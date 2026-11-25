@@ -1,0 +1,352 @@
+[
+  {
+    "id": 1,
+    "name": "Hub",
+    "category": "Core",
+    "description": "gerenciamento central do aplicativo e módulos.",
+    "status": "prototype"
+  },
+  {
+    "id": 2,
+    "name": "Spotlight",
+    "category": "Core",
+    "description": "acesso rápido a ferramentas e comandos.",
+    "status": "planned"
+  },
+  {
+    "id": 3,
+    "name": "Health",
+    "category": "Core",
+    "description": "diagnóstico e monitoramento de recursos do próprio aplicativo.",
+    "status": "planned"
+  },
+  {
+    "id": 4,
+    "name": "Backup",
+    "category": "Core",
+    "description": "backup e restauração de informações.",
+    "status": "planned"
+  },
+  {
+    "id": 5,
+    "name": "Bridge",
+    "category": "Core",
+    "description": "comunicação autorizada entre módulos.",
+    "status": "planned"
+  },
+  {
+    "id": 6,
+    "name": "Focus",
+    "category": "Productivity",
+    "description": "concentração e produtividade.",
+    "status": "planned"
+  },
+  {
+    "id": 7,
+    "name": "Workspace",
+    "category": "Productivity",
+    "description": "organização de ambientes de trabalho.",
+    "status": "planned"
+  },
+  {
+    "id": 8,
+    "name": "Checklist",
+    "category": "Productivity",
+    "description": "listas de tarefas.",
+    "status": "planned"
+  },
+  {
+    "id": 9,
+    "name": "Reminder",
+    "category": "Productivity",
+    "description": "lembretes.",
+    "status": "planned"
+  },
+  {
+    "id": 10,
+    "name": "Routine",
+    "category": "Productivity",
+    "description": "organização de rotinas.",
+    "status": "planned"
+  },
+  {
+    "id": 11,
+    "name": "Vault",
+    "category": "Memory",
+    "description": "armazenamento seguro de informações e perfis personalizados.",
+    "status": "planned"
+  },
+  {
+    "id": 12,
+    "name": "Capture",
+    "category": "Memory",
+    "description": "captura voluntária de textos, códigos, links e anotações.",
+    "status": "planned"
+  },
+  {
+    "id": 13,
+    "name": "Timeline",
+    "category": "Memory",
+    "description": "histórico de informações salvas voluntariamente.",
+    "status": "planned"
+  },
+  {
+    "id": 14,
+    "name": "Ideas",
+    "category": "Memory",
+    "description": "registro e organização de ideias.",
+    "status": "planned"
+  },
+  {
+    "id": 15,
+    "name": "Bookmarks",
+    "category": "Memory",
+    "description": "organização de favoritos.",
+    "status": "planned"
+  },
+  {
+    "id": 16,
+    "name": "Autofill",
+    "category": "Quick Actions",
+    "description": "preenchimento autorizado de formulários usando perfis personalizados, com prévia e sem envio automático.",
+    "status": "planned"
+  },
+  {
+    "id": 17,
+    "name": "Clipboard",
+    "category": "Quick Actions",
+    "description": "gerenciamento opcional da área de transferência.",
+    "status": "planned"
+  },
+  {
+    "id": 18,
+    "name": "Snippets",
+    "category": "Quick Actions",
+    "description": "armazenamento de trechos reutilizáveis.",
+    "status": "planned"
+  },
+  {
+    "id": 19,
+    "name": "Expand",
+    "category": "Quick Actions",
+    "description": "expansão de abreviações e textos.",
+    "status": "planned"
+  },
+  {
+    "id": 20,
+    "name": "Convert",
+    "category": "Quick Actions",
+    "description": "conversões de unidades e formatos.",
+    "status": "planned"
+  },
+  {
+    "id": 21,
+    "name": "Translate",
+    "category": "Communication",
+    "description": "tradução de textos e, futuramente, áudio.",
+    "status": "planned"
+  },
+  {
+    "id": 22,
+    "name": "Voice",
+    "category": "Communication",
+    "description": "ferramentas de voz.",
+    "status": "planned"
+  },
+  {
+    "id": 23,
+    "name": "Text",
+    "category": "Communication",
+    "description": "auxílio na escrita e manipulação de textos.",
+    "status": "planned"
+  },
+  {
+    "id": 24,
+    "name": "Email",
+    "category": "Communication",
+    "description": "ferramentas auxiliares de comunicação por e-mail.",
+    "status": "planned"
+  },
+  {
+    "id": 25,
+    "name": "Meeting",
+    "category": "Communication",
+    "description": "assistência em reuniões, mediante autorização.",
+    "status": "planned"
+  },
+  {
+    "id": 26,
+    "name": "Learn",
+    "category": "Learning",
+    "description": "organização de estudos.",
+    "status": "planned"
+  },
+  {
+    "id": 27,
+    "name": "Research",
+    "category": "Learning",
+    "description": "auxílio em pesquisas.",
+    "status": "planned"
+  },
+  {
+    "id": 28,
+    "name": "Flashcards",
+    "category": "Learning",
+    "description": "cartões de revisão.",
+    "status": "planned"
+  },
+  {
+    "id": 29,
+    "name": "Pronounce",
+    "category": "Learning",
+    "description": "auxílio na pronúncia de idiomas.",
+    "status": "planned"
+  },
+  {
+    "id": 30,
+    "name": "Accessibility",
+    "category": "Learning",
+    "description": "ferramentas de acessibilidade.",
+    "status": "planned"
+  },
+  {
+    "id": 31,
+    "name": "Copilot",
+    "category": "Intelligence",
+    "description": "assistência inteligente sob demanda.",
+    "status": "planned"
+  },
+  {
+    "id": 32,
+    "name": "Context",
+    "category": "Intelligence",
+    "description": "análise de contexto autorizado.",
+    "status": "planned"
+  },
+  {
+    "id": 33,
+    "name": "Interview",
+    "category": "Intelligence",
+    "description": "preparação e simulação de entrevistas, com assistência em tempo real somente quando autorizada.",
+    "status": "planned"
+  },
+  {
+    "id": 34,
+    "name": "Search",
+    "category": "Intelligence",
+    "description": "pesquisa integrada.",
+    "status": "planned"
+  },
+  {
+    "id": 35,
+    "name": "Debug",
+    "category": "Intelligence",
+    "description": "auxílio na análise de erros e códigos.",
+    "status": "planned"
+  },
+  {
+    "id": 36,
+    "name": "Data",
+    "category": "Business",
+    "description": "manipulação e análise de dados.",
+    "status": "planned"
+  },
+  {
+    "id": 37,
+    "name": "Dashboard",
+    "category": "Business",
+    "description": "visualização de indicadores.",
+    "status": "planned"
+  },
+  {
+    "id": 38,
+    "name": "Report",
+    "category": "Business",
+    "description": "auxílio na elaboração de relatórios.",
+    "status": "planned"
+  },
+  {
+    "id": 39,
+    "name": "Calculator",
+    "category": "Business",
+    "description": "cálculos cotidianos e profissionais.",
+    "status": "planned"
+  },
+  {
+    "id": 40,
+    "name": "Decision",
+    "category": "Business",
+    "description": "ferramentas de apoio à decisão.",
+    "status": "planned"
+  },
+  {
+    "id": 41,
+    "name": "Documents",
+    "category": "Files",
+    "description": "ferramentas para documentos.",
+    "status": "planned"
+  },
+  {
+    "id": 42,
+    "name": "Organizer",
+    "category": "Files",
+    "description": "organização de arquivos.",
+    "status": "planned"
+  },
+  {
+    "id": 43,
+    "name": "Drop",
+    "category": "Files",
+    "description": "manipulação e transferência autorizada de arquivos.",
+    "status": "planned"
+  },
+  {
+    "id": 44,
+    "name": "Compare",
+    "category": "Files",
+    "description": "comparação de arquivos e conteúdos.",
+    "status": "planned"
+  },
+  {
+    "id": 45,
+    "name": "Lens",
+    "category": "Files",
+    "description": "reconhecimento de texto por OCR.",
+    "status": "planned"
+  },
+  {
+    "id": 46,
+    "name": "Privacy",
+    "category": "Security",
+    "description": "identificação e mascaramento de padrões de dados sensíveis.",
+    "status": "planned"
+  },
+  {
+    "id": 47,
+    "name": "Link",
+    "category": "Security",
+    "description": "análise de indicadores de risco em links, sem garantir sua segurança.",
+    "status": "planned"
+  },
+  {
+    "id": 48,
+    "name": "Verify",
+    "category": "Security",
+    "description": "verificação de integridade por hashes.",
+    "status": "planned"
+  },
+  {
+    "id": 49,
+    "name": "Permissions",
+    "category": "Security",
+    "description": "gerenciamento de permissões.",
+    "status": "planned"
+  },
+  {
+    "id": 50,
+    "name": "Metadata",
+    "category": "Security",
+    "description": "visualização e gerenciamento de metadados.",
+    "status": "planned"
+  }
+]

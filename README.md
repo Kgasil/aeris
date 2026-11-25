@@ -11,7 +11,7 @@
 
 O Aeris é um projeto da K&G Vision para criar ferramentas leves, discretas e úteis ao cotidiano. A proposta reúne um aplicativo desktop para Windows e uma extensão para navegadores Chromium, com módulos opcionais e processamento local sempre que possível.
 
-**Situação atual: planejamento.** Este repositório contém apenas o website provisório e seus arquivos visuais. Ainda não há aplicativo, extensão, instalador ou versão pública para download.
+**Situação atual: Foundation — pré-alpha.** A branch `develop` inclui o primeiro protótipo parcial do Hub em `desktop/`. Não há extensão, instalador ou versão pública de distribuição.
 
 ### Catálogo planejado
 
@@ -28,7 +28,7 @@ O Aeris é um projeto da K&G Vision para criar ferramentas leves, discretas e ú
 | Files | Documents, Organizer, Drop, Compare, Lens |
 | Security | Privacy, Link, Verify, Permissions, Metadata |
 
-As 50 ferramentas são propostas, não funcionalidades implementadas. O escopo será revisto conforme testes de viabilidade, desempenho e segurança.
+O Hub está parcialmente implementado em pré-alpha; as outras 49 ferramentas permanecem planejadas. O escopo será revisto conforme testes de viabilidade, desempenho e segurança.
 
 ### Princípios de desenvolvimento
 
@@ -42,7 +42,7 @@ As 50 ferramentas são propostas, não funcionalidades implementadas. O escopo s
 
 Aeris is a proposed lightweight Windows desktop app and Chromium browser extension by K&G Vision. It aims to make everyday tasks simpler with optional modules, on-demand execution, local-first processing where feasible and explicit permissions.
 
-The planned catalog comprises 50 tools in 10 categories, listed above. **All features remain planned.** The repository currently contains only the presentation website and visual assets; no working application, extension or release is available.
+The planned catalog comprises 50 tools in 10 categories, listed above. **Foundation pre-alpha:** the `develop` branch includes a partial Hub prototype in `desktop/`. The other 49 tools remain planned; no extension, installer or distribution release is available.
 
 Initial free local features, no ads and no mandatory account are design intentions, not current product claims. Performance, security, compatibility and licensing must be evaluated before any preview release.
 
@@ -52,7 +52,7 @@ Initial free local features, no ads and no mandatory account are design intentio
 - `assets/aeris-symbol.svg` — Aeris wind symbol.
 - `assets/brand-banner.svg` — brand banner.
 
-Open `index.html` in a browser. No build step or backend is needed. The website uses GitHub Pages from `main` at `/ (root)`. The future product source code will be maintained separately.
+Open `index.html` in a browser. No build step or backend is needed. The website uses GitHub Pages from `main` at `/ (root)`. Product development is organized in `desktop/` on `develop`, with technical decisions in `docs/`. See [desktop setup](desktop/README.md).
 
 ## Ecosystem / Ecossistema
 
