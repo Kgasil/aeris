@@ -2,7 +2,9 @@
 
 # Project Aeris — Discreto e Eficiente.
 
-**Light · Modular · Privacy-conscious**  
+**Discreet & Efficient · Discreto e Eficiente**  
+*Less friction. More focus.*  
+Light · Modular · Privacy-conscious  
 *by K&G Vision*
 
 [Website](https://kgasil.github.io/aeris/) · [Português](#português) · [English](#english)
@@ -40,7 +42,7 @@ As 50 ferramentas são propostas, não funcionalidades implementadas. O escopo s
 
 ## English
 
-Aeris is a proposed lightweight Windows desktop app and Chromium browser extension by K&G Vision. It aims to make everyday tasks simpler with optional modules, on-demand execution, local-first processing where feasible and explicit permissions.
+Aeris is designed around one principle: technology should work for you, not interrupt you. Our proposed lightweight Windows desktop app and Chromium extension aim to make everyday productivity feel effortless. It aims to make everyday tasks simpler with optional modules, on-demand execution, local-first processing where feasible and explicit permissions.
 
 The planned catalog comprises 50 tools in 10 categories, listed above. **All features remain planned.** The repository currently contains only the presentation website and visual assets; no working application, extension or release is available.
 
@@ -59,10 +61,10 @@ Open `index.html` in a browser. No build step or backend is needed. The website 
 | Project | Website | Repository | Current stage / Etapa atual |
 | --- | --- | --- | --- |
 | K&G Vision | [Institutional](https://kgasil.github.io/) | [Source](https://github.com/Kgasil/kgasil.github.io) | Independent initiative / Iniciativa independente |
-| Project Genesis | [Sabedoria e Aplicação](https://kgasil.github.io/genesis/) | [Source](https://github.com/Kgasil/genesis) | Independent studies; 10 review guides planned, none published / Estudos independentes; 10 guias previstos, nenhum publicado |
+| Project Genesis | [Wisdom & Application / Sabedoria e Aplicação](https://kgasil.github.io/genesis/) | [Source](https://github.com/Kgasil/genesis) | Independent studies; 10 review guides planned, none published / Estudos independentes; 10 guias previstos, nenhum publicado |
 | Project Vision | [Security & Efficiency](https://kgasil.github.io/vision/) | [Source](https://github.com/Kgasil/vision) | Local demonstration lab / Laboratório demonstrativo local |
 | Project Aeris | [Discreet & Efficient. / Discreto e Eficiente.](https://kgasil.github.io/aeris/) | [Source](https://github.com/Kgasil/aeris) | Product concept; no downloadable release / Conceito de produto; sem versão para download |
-| Project Lilium | [Strategy & Intelligence.](https://kgasil.github.io/lilium/) | [Source](https://github.com/Kgasil/lilium) | Local metrics prototype; business suite planned / Protótipo local de indicadores; aplicação empresarial em planejamento |
+| Project Lilium | [Strategy & Growth / Estratégia e Crescimento](https://kgasil.github.io/lilium/) | [Source](https://github.com/Kgasil/lilium) | Local metrics prototype; business suite planned / Protótipo local de indicadores; aplicação empresarial em planejamento |
 
 **Learn · Build · Simplify · Transform / Aprender · Construir · Simplificar · Transformar**
 
