@@ -1,8 +1,8 @@
 <p align="center"><a href="https://kgasil.github.io/aeris/"><img src="assets/readme-cover.svg" alt="Project Aeris — official project identity" width="760"></a></p>
 
-# Project Aeris — Discreto e Eficiente.
+# Project Aeris — Naturalmente bom.
 
-**Discreet & Efficient · Discreto e Eficiente**  
+**Naturally good. · Naturalmente bom.**  
 *Less friction. More focus.*  
 Light · Modular · Privacy-conscious  
 *by K&G Vision*
@@ -13,9 +13,13 @@ Light · Modular · Privacy-conscious
 
 O Aeris é um projeto da K&G Vision para criar ferramentas leves, discretas e úteis ao cotidiano. A proposta reúne um aplicativo desktop para Windows e uma extensão para navegadores Chromium, com módulos opcionais e processamento local sempre que possível.
 
-**Situação atual: planejamento.** Este repositório contém apenas o website provisório e seus arquivos visuais. Ainda não há aplicativo, extensão, instalador ou versão pública para download.
+**Situação atual: pré-alpha.** 50 protótipos desktop foram construídos localmente. O website oferece seis demonstrações interativas; a branch `develop` ainda contém a versão inicial 0.1.0a4. O instalador final e a publicação do pacote completo permanecem pendentes.
 
-### Catálogo planejado
+[Experimente no navegador](https://kgasil.github.io/aeris/demo.html) · [Instalação e downloads](https://kgasil.github.io/aeris/#instalacao)
+
+Edição única gratuita, incluindo o AI Companion opcional (Ollama instalado separadamente).
+
+### Catálogo de protótipos
 
 | Categoria | Ferramentas previstas |
 | --- | --- |
@@ -30,7 +34,7 @@ O Aeris é um projeto da K&G Vision para criar ferramentas leves, discretas e ú
 | Files | Documents, Organizer, Drop, Compare, Lens |
 | Security | Privacy, Link, Verify, Permissions, Metadata |
 
-As 50 ferramentas são propostas, não funcionalidades implementadas. O escopo será revisto conforme testes de viabilidade, desempenho e segurança.
+Os 50 protótipos locais ainda estão em consolidação. Não são uma versão final validada.
 
 ### Princípios de desenvolvimento
 
@@ -44,9 +48,9 @@ As 50 ferramentas são propostas, não funcionalidades implementadas. O escopo s
 
 Aeris is designed around one principle: technology should work for you, not interrupt you. Our proposed lightweight Windows desktop app and Chromium extension aim to make everyday productivity feel effortless. It aims to make everyday tasks simpler with optional modules, on-demand execution, local-first processing where feasible and explicit permissions.
 
-The planned catalog comprises 50 tools in 10 categories, listed above. **All features remain planned.** The repository currently contains only the presentation website and visual assets; no working application, extension or release is available.
+The catalog comprises 50 desktop prototypes built locally. The site includes six simplified interactive demos. The published develop branch still contains the early 0.1.0a4 source; the complete package and final installer are not yet published.
 
-Initial free local features, no ads and no mandatory account are design intentions, not current product claims. Performance, security, compatibility and licensing must be evaluated before any preview release.
+One free edition, including optional AI, with no ads or mandatory Aeris account, is the project policy. Performance, security, compatibility and licensing must be evaluated before any preview release.
 
 ## Repository
 
@@ -54,7 +58,7 @@ Initial free local features, no ads and no mandatory account are design intentio
 - `assets/aeris-symbol.svg` — Aeris wind symbol.
 - `assets/brand-banner.svg` — brand banner.
 
-Open `index.html` in a browser. No build step or backend is needed. The website uses GitHub Pages from `main` at `/ (root)`. The future product source code will be maintained separately.
+Open `index.html` in a browser. No build step or backend is needed. The website uses GitHub Pages from `main` at `/ (root)`. The early desktop source is in `develop`; `demo.html` and `assets/web-lab.js` power the browser lab.
 
 ## Ecosystem / Ecossistema
 
@@ -63,7 +67,7 @@ Open `index.html` in a browser. No build step or backend is needed. The website 
 | K&G Vision | [Institutional](https://kgasil.github.io/) | [Source](https://github.com/Kgasil/kgasil.github.io) | Independent initiative / Iniciativa independente |
 | Project Genesis | [Wisdom & Application / Sabedoria e Aplicação](https://kgasil.github.io/genesis/) | [Source](https://github.com/Kgasil/genesis) | 75 private study PDFs; [interactive public library](https://kgasil.github.io/genesis/biblioteca.html) / 75 PDFs de estudo privados; [biblioteca pública interativa](https://kgasil.github.io/genesis/biblioteca.html) |
 | Project Vision | [Security & Efficiency](https://kgasil.github.io/vision/) | [Source](https://github.com/Kgasil/vision) | Local demonstration lab / Laboratório demonstrativo local |
-| Project Aeris | [Discreet & Efficient. / Discreto e Eficiente.](https://kgasil.github.io/aeris/) | [Source](https://github.com/Kgasil/aeris) | Product concept; no downloadable release / Conceito de produto; sem versão para download |
+| Project Aeris | [Discreet & Efficient. / Naturalmente bom.](https://kgasil.github.io/aeris/) | [Source](https://github.com/Kgasil/aeris) | Desktop pre-alpha; web lab / Desktop pré-alpha; laboratório web |
 | Project Lilium | [Strategy & Growth / Estratégia e Crescimento](https://kgasil.github.io/lilium/) | [Source](https://github.com/Kgasil/lilium) | Local metrics prototype; business suite planned / Protótipo local de indicadores; aplicação empresarial em planejamento |
 
 **Learn · Build · Simplify · Transform / Aprender · Construir · Simplificar · Transformar**
