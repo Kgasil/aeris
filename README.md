@@ -1,8 +1,8 @@
 <p align="center"><a href="https://kgasil.github.io/aeris/"><img src="assets/readme-cover.svg" alt="Project Aeris — official project identity" width="760"></a></p>
 
-# Project Aeris — Naturalmente bom.
+# Project Aeris — Discreto e Eficiente.
 
-**Naturally good. · Naturalmente bom.**  
+**Discreet & Efficient. · Discreto e Eficiente.**  
 *Less friction. More focus.*  
 Light · Modular · Privacy-conscious  
 *by K&G Vision*
@@ -67,7 +67,7 @@ Open `index.html` in a browser. No build step or backend is needed. The website 
 | K&G Vision | [Institutional](https://kgasil.github.io/) | [Source](https://github.com/Kgasil/kgasil.github.io) | Independent initiative / Iniciativa independente |
 | Project Genesis | [Wisdom & Application / Sabedoria e Aplicação](https://kgasil.github.io/genesis/) | [Source](https://github.com/Kgasil/genesis) | 75 private study PDFs; [interactive public library](https://kgasil.github.io/genesis/biblioteca.html) / 75 PDFs de estudo privados; [biblioteca pública interativa](https://kgasil.github.io/genesis/biblioteca.html) |
 | Project Vision | [Security & Efficiency](https://kgasil.github.io/vision/) | [Source](https://github.com/Kgasil/vision) | Local demonstration lab / Laboratório demonstrativo local |
-| Project Aeris | [Naturally good. / Naturalmente bom.](https://kgasil.github.io/aeris/) | [Source](https://github.com/Kgasil/aeris) | Desktop pre-alpha; web lab / Desktop pré-alpha; laboratório web |
+| Project Aeris | [Discreet & Efficient. / Discreto e Eficiente.](https://kgasil.github.io/aeris/) | [Source](https://github.com/Kgasil/aeris) | Desktop pre-alpha; web lab / Desktop pré-alpha; laboratório web |
 | Project Lilium | [Strategy & Growth / Estratégia e Crescimento](https://kgasil.github.io/lilium/) | [Source](https://github.com/Kgasil/lilium) | Interactive browser lab and local Workspace v0.14 preview; Windows validation pending / Laboratório interativo e prévia local do Workspace v0.14; validação Windows pendente |
 
 **Learn · Build · Simplify · Transform / Aprender · Construir · Simplificar · Transformar**
