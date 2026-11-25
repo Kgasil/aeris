@@ -52,13 +52,17 @@ Initial free local features, no ads and no mandatory account are design intentio
 - `assets/aeris-symbol.svg` — Aeris wind symbol.
 - `assets/brand-banner.svg` — brand banner.
 
-Open `index.html` in a browser. No build step or backend is needed. The future product source code will be maintained separately.
+Open `index.html` in a browser. No build step or backend is needed. The website uses GitHub Pages from `main` at `/ (root)`. The future product source code will be maintained separately.
 
-## Ecosystem
+## Ecosystem / Ecossistema
 
-- [K&G Vision](https://kgasil.github.io/) — institutional website.
-- [Project Vision](https://kgasil.github.io/vision/) — AI research and engineering.
-- [Project Genesis](https://kgasil.github.io/genesis/) — independent studies and knowledge sharing.
-- Project Aeris — planned everyday tools.
+| Project | Website | Repository | Current stage / Etapa atual |
+| --- | --- | --- | --- |
+| K&G Vision | [Institutional](https://kgasil.github.io/) | [Source](https://github.com/Kgasil/kgasil.github.io) | Independent initiative / Iniciativa independente |
+| Project Genesis | [O Princípio](https://kgasil.github.io/genesis/) | [Source](https://github.com/Kgasil/genesis) | Independent studies; 10 review guides planned, none published / Estudos independentes; 10 guias previstos, nenhum publicado |
+| Project Vision | [Beyond Boundaries](https://kgasil.github.io/vision/) | [Source](https://github.com/Kgasil/vision) | Local demonstration lab / Laboratório demonstrativo local |
+| Project Aeris | [Naturally / Naturalmente](https://kgasil.github.io/aeris/) | [Source](https://github.com/Kgasil/aeris) | Product concept; no downloadable release / Conceito de produto; sem versão para download |
+
+**Learn · Build · Simplify / Aprender · Construir · Simplificar**
 
 License terms are not yet specified. Public visibility does not grant permission to redistribute code or assets.
