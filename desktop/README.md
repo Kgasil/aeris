@@ -1,6 +1,6 @@
 # Aeris Desktop — Naturalmente bom.
 
-Pré-alpha 0.1.0a2 · by K&G Vision. Hub e Capture em protótipo, 48 ferramentas planejadas.
+Pré-alpha 0.1.0a3 · by K&G Vision. Hub e Capture em protótipo, 48 ferramentas planejadas.
 Não é uma versão de distribuição.
 
 ## Windows
@@ -20,10 +20,20 @@ Sem dependências externas do Python.
     py -3 -m tests.smoke_gui
 
 O filtro interno do catálogo não é Aeris Search. Selecione Capture no catálogo, ative-o e abra a ferramenta. Crie, edite e exclua notas fictícias. As notas ficam apenas em memória e desaparecem ao encerrar ou desativar o módulo. A preferência de ativação (booleano) fica em %LOCALAPPDATA%/Aeris/settings.json no Windows. Não há instalação de módulos, serviços residentes, rede, captura automática ou persistência de dados pessoais.
-Os testes da versão a1 foram executados em Linux. A versão a2 inclui testes adicionais ainda não executados; Windows, acessibilidade e desempenho requerem validação.
+Os testes da versão a1 foram executados em Linux. As versões a2 e a3 incluem testes adicionais ainda não executados; Windows, acessibilidade e desempenho requerem validação.
 
 ## Aprender fazendo
 
 Leia main.py, aeris/registry.py e aeris/hub.py nessa ordem. Observe a separação entre catálogo declarativo, regras de filtro e eventos da interface. Experimente escrever um teste para dois termos de pesquisa.
 
 Consulte ../docs/architecture.md para as decisões e os próximos passos.
+
+## Aparência e acesso rápido (a3)
+
+No Hub, abra Configurações para editar posição relativa ao Hub, tamanho inicial do painel,
+opacidade (quando suportada), tamanho previsto do ícone e ativação do acesso rápido.
+Salve ou restaure os padrões. A prévia não é um overlay do Windows.
+O painel rápido abre pelo botão Acesso rápido e lista Capture quando ativado.
+Escape fecha o painel. A geometria é limitada à tela primária neste protótipo.
+Preferências antigas são lidas pelo esquema 2 sem perder a ativação de Capture.
+Ícone global, integração contextual, monitores múltiplos, favoritos, tema e detecção de tela cheia são pendentes.

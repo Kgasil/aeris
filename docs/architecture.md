@@ -16,3 +16,10 @@
 3. Snippets: modelo de dados e gerenciamento local.
 4. Search: pesquisa de conteúdo autorizado.
 5. Spotlight: atalhos explícitos e autorizados.
+
+## Atualização a3 — experiência compacta
+
+- Preferências de aparência em esquema 2, migração de leitura do esquema 1 e gravação por substituição atômica.
+- Editor com prévia, restauração e persistência; painel rápido relativo ao Hub sob demanda.
+- Ícone mostrado apenas na prévia. Sem integração global, sem captura de cliques.
+- Próximos: Snippets, Search, Spotlight nativo e integração. Testes novos ainda não executados.

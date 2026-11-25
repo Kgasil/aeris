@@ -15,6 +15,8 @@ class Hub:
         self.settings = settings if settings is not None else Settings()
         self.capture_store = None
         self.capture_window = None
+        self.quick_panel = None
+        self.appearance_window = None
         self.visible: tuple[Module, ...] = ()
         self.query = tk.StringVar(root)
         self.category = tk.StringVar(root, 'Todas')
@@ -29,6 +31,7 @@ class Hub:
         self.query.trace_add('write', self.refresh)
         self.category.trace_add('write', self.refresh)
         self.refresh()
+        self.apply_appearance()
         root.protocol('WM_DELETE_WINDOW', self.close)
         if self.settings.warning:
             self.root.after_idle(lambda: messagebox.showwarning('Aeris', self.settings.warning, parent=self.root))
@@ -56,6 +59,9 @@ class Hub:
         self.capture_button.pack(fill='x', padx=15, pady=5)
         for name in ('Snippets', 'Search', 'Spotlight'):
             self.label(side, f'  {name} · planejado', 10, 'soft').pack(anchor='w', padx=15, pady=5)
+        self.quick_button = ttk.Button(side, text='Acesso rápido', command=self.toggle_quick_panel)
+        self.quick_button.pack(fill='x', padx=15, pady=(16, 4))
+        ttk.Button(side, text='Configurações', command=self.open_appearance).pack(fill='x', padx=15, pady=4)
         self.label(side, f'Pré-alpha {__version__}', 9, 'soft').pack(side='bottom', anchor='w', padx=20, pady=15)
         body = tk.Frame(self.root, bg=COLORS['air'])
         body.pack(fill='both', expand=True, padx=24, pady=22)
@@ -145,6 +151,32 @@ class Hub:
                 self.capture_store.clear()
             self.capture_window = self.capture_store = None
         self.show_selected()
+        self.close_quick_panel()
+
+    def close_quick_panel(self):
+        if self.quick_panel and self.quick_panel.window.winfo_exists():
+            self.quick_panel.window.destroy()
+        self.quick_panel = None
+
+    def apply_appearance(self):
+        self.close_quick_panel()
+        self.quick_button.configure(state='normal' if self.settings.appearance.quick_enabled else 'disabled')
+
+    def toggle_quick_panel(self):
+        if not self.settings.appearance.quick_enabled:
+            return
+        if self.quick_panel and self.quick_panel.window.winfo_exists():
+            self.close_quick_panel()
+            return
+        from aeris.quick_panel import QuickPanel
+        self.quick_panel = QuickPanel(self)
+
+    def open_appearance(self):
+        if self.appearance_window and self.appearance_window.window.winfo_exists():
+            self.appearance_window.window.lift()
+            return
+        from aeris.appearance_ui import AppearanceWindow
+        self.appearance_window = AppearanceWindow(self)
 
     def open_capture(self):
         if not self.settings.capture_enabled:

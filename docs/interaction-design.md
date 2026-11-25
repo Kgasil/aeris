@@ -37,3 +37,7 @@ Settings must include a live preview, save/reset controls, and non-sensitive loc
 4. Validate mouse and keyboard use, resizing, bounds, multi-monitor/DPI, fullscreen behavior, idle resource usage and privacy. Test using fictitious profiles.
 
 No performance, compatibility or feature-completion claim follows from this design document.
+
+## Implementation status — a3
+
+The Hub includes an appearance editor, a preview and an on-demand quick panel. The saved icon size affects the preview only. Position is relative to the Hub, clamped to primary-screen dimensions; opacity depends on window-manager support. The native floating icon, contextual autofill, custom sizes, themes, favorites, fullscreen detection and multi-monitor handling are not implemented yet. New tests are present but not executed.
