@@ -1,6 +1,6 @@
 # Aeris Desktop — Naturalmente bom.
 
-Pré-alpha 0.1.0a1 · by K&G Vision. Hub parcial, 49 ferramentas planejadas.
+Pré-alpha 0.1.0a2 · by K&G Vision. Hub e Capture em protótipo, 48 ferramentas planejadas.
 Não é uma versão de distribuição.
 
 ## Windows
@@ -19,8 +19,8 @@ Sem dependências externas do Python.
     py -3 -m unittest discover -v
     py -3 -m tests.smoke_gui
 
-O filtro interno do catálogo não é Aeris Search. Não há instalação ou ativação de módulos, serviços residentes, rede, captura automática ou persistência de dados pessoais.
-Os testes do protótipo foram executados em Linux com display virtual; Windows, acessibilidade e desempenho ainda requerem validação.
+O filtro interno do catálogo não é Aeris Search. Selecione Capture no catálogo, ative-o e abra a ferramenta. Crie, edite e exclua notas fictícias. As notas ficam apenas em memória e desaparecem ao encerrar ou desativar o módulo. A preferência de ativação (booleano) fica em %LOCALAPPDATA%/Aeris/settings.json no Windows. Não há instalação de módulos, serviços residentes, rede, captura automática ou persistência de dados pessoais.
+Os testes da versão a1 foram executados em Linux. A versão a2 inclui testes adicionais ainda não executados; Windows, acessibilidade e desempenho requerem validação.
 
 ## Aprender fazendo
 
