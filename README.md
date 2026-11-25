@@ -1,6 +1,6 @@
-<p align="center"><a href="https://kgasil.github.io/aeris/"><img src="assets/brand-banner.svg" alt="Project Aeris — Naturalmente." width="100%"></a></p>
+<p align="center"><a href="https://kgasil.github.io/aeris/"><img src="assets/brand-banner.svg" alt="Project Aeris — Naturalmente bom." width="100%"></a></p>
 
-# Project Aeris — Naturalmente.
+# Project Aeris — Naturalmente bom.
 
 **Light · Modular · Privacy-conscious**  
 *by K&G Vision*
@@ -61,7 +61,7 @@ Open `index.html` in a browser. No build step or backend is needed. The website 
 | K&G Vision | [Institutional](https://kgasil.github.io/) | [Source](https://github.com/Kgasil/kgasil.github.io) | Independent initiative / Iniciativa independente |
 | Project Genesis | [O Princípio](https://kgasil.github.io/genesis/) | [Source](https://github.com/Kgasil/genesis) | Independent studies; 10 review guides planned, none published / Estudos independentes; 10 guias previstos, nenhum publicado |
 | Project Vision | [Beyond Boundaries](https://kgasil.github.io/vision/) | [Source](https://github.com/Kgasil/vision) | Local demonstration lab / Laboratório demonstrativo local |
-| Project Aeris | [Naturally / Naturalmente](https://kgasil.github.io/aeris/) | [Source](https://github.com/Kgasil/aeris) | Product concept; no downloadable release / Conceito de produto; sem versão para download |
+| Project Aeris | [Naturally good. / Naturalmente bom.](https://kgasil.github.io/aeris/) | [Source](https://github.com/Kgasil/aeris) | Product concept; no downloadable release / Conceito de produto; sem versão para download |
 
 **Learn · Build · Simplify / Aprender · Construir · Simplificar**
 
