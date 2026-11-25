@@ -11,9 +11,9 @@ class CatalogTests(unittest.TestCase):
         self.assertEqual(len({m.name for m in self.modules}), 50)
         self.assertEqual(sorted(Counter(m.category for m in self.modules).values()), [5]*10)
 
-    def test_hub_and_capture_are_prototypes(self):
-        self.assertEqual([m.name for m in self.modules if m.status == 'prototype'], ['Hub', 'Capture'])
-        self.assertEqual(sum(m.status == 'planned' for m in self.modules), 48)
+    def test_foundation_prototypes(self):
+        self.assertEqual([m.name for m in self.modules if m.status == 'prototype'], ['Hub', 'Capture', 'Snippets'])
+        self.assertEqual(sum(m.status == 'planned' for m in self.modules), 47)
 
     def test_case_insensitive(self):
         self.assertIn('Snippets', [m.name for m in filter_catalog(self.modules, 'SNIPPETS')])

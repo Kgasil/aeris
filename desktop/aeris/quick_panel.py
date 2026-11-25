@@ -39,14 +39,20 @@ class QuickPanel:
         ttk.Label(frame, text='Acesso rápido · ferramentas ativas').pack(anchor='w', pady=(0, 12))
         if hub.settings.capture_enabled:
             ttk.Button(frame, text='Capture', command=self.open_capture).pack(fill='x', pady=4)
-        else:
-            ttk.Label(frame, text='Ative Capture no Hub para usar aqui.', wraplength=max(140,w-45)).pack(anchor='w')
+        if hub.settings.snippets_enabled:
+            ttk.Button(frame, text='Snippets', command=self.open_snippets).pack(fill='x', pady=4)
+        if not (hub.settings.capture_enabled or hub.settings.snippets_enabled):
+            ttk.Label(frame, text='Ative Capture ou Snippets no Hub para usar aqui.', wraplength=max(140,w-45)).pack(anchor='w')
         ttk.Button(frame, text='Voltar ao Hub', command=self.window.destroy).pack(fill='x', pady=4)
         ttk.Button(frame, text='Configurações', command=self.open_settings).pack(fill='x', pady=4)
 
     def open_capture(self):
         self.window.destroy()
         self.hub.open_capture()
+
+    def open_snippets(self):
+        self.window.destroy()
+        self.hub.open_snippets()
 
     def open_settings(self):
         self.window.destroy()

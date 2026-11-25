@@ -41,3 +41,7 @@ No performance, compatibility or feature-completion claim follows from this desi
 ## Implementation status — a3
 
 The Hub includes an appearance editor, a preview and an on-demand quick panel. The saved icon size affects the preview only. Position is relative to the Hub, clamped to primary-screen dimensions; opacity depends on window-manager support. The native floating icon, contextual autofill, custom sizes, themes, favorites, fullscreen detection and multi-monitor handling are not implemented yet. New tests are present but not executed.
+
+## Implementation status — a4
+
+Snippets is an opt-in module reachable from Hub and quick panel. The editor supports user-created session-only snippets, category labels, search, editing and deletion. Copying saved text to the system clipboard requires explicit confirmation; no automated paste or monitoring. Global floating/contextual controls and permanent protected storage remain pending.

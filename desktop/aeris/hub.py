@@ -15,6 +15,8 @@ class Hub:
         self.settings = settings if settings is not None else Settings()
         self.capture_store = None
         self.capture_window = None
+        self.snippets_store = None
+        self.snippets_window = None
         self.quick_panel = None
         self.appearance_window = None
         self.visible: tuple[Module, ...] = ()
@@ -57,7 +59,9 @@ class Hub:
         self.label(side, 'FOUNDATION', 9, 'soft').pack(anchor='w', padx=20, pady=(24,5))
         self.capture_button = ttk.Button(side, text='Capture', command=self.open_capture)
         self.capture_button.pack(fill='x', padx=15, pady=5)
-        for name in ('Snippets', 'Search', 'Spotlight'):
+        self.snippets_button = ttk.Button(side, text='Snippets', command=self.open_snippets)
+        self.snippets_button.pack(fill='x', padx=15, pady=5)
+        for name in ('Search', 'Spotlight'):
             self.label(side, f'  {name} · planejado', 10, 'soft').pack(anchor='w', padx=15, pady=5)
         self.quick_button = ttk.Button(side, text='Acesso rápido', command=self.toggle_quick_panel)
         self.quick_button.pack(fill='x', padx=15, pady=(16, 4))
@@ -115,6 +119,7 @@ class Hub:
         self.toggle.pack_forget()
         self.launch.pack_forget()
         self.capture_button.configure(state='normal' if self.settings.capture_enabled else 'disabled')
+        self.snippets_button.configure(state='normal' if self.settings.snippets_enabled else 'disabled')
         selection = self.listbox.curselection()
         if not selection:
             self.detail_name.configure(text='Nenhum resultado')
@@ -125,12 +130,16 @@ class Hub:
         status = 'Protótipo disponível' if module.status == 'prototype' else 'Planejado · não implementado'
         self.detail_name.configure(text=module.name)
         self.detail_status.configure(text=f'{module.category} · {status}')
-        if module.name == 'Capture':
-            self.detail_status.configure(text='Memory · Protótipo ' + ('ativado' if self.settings.capture_enabled else 'desativado'))
+        if module.name in ('Capture', 'Snippets'):
+            capture = module.name == 'Capture'
+            enabled = self.settings.capture_enabled if capture else self.settings.snippets_enabled
+            self.detail_status.configure(text=f'{module.category} · Protótipo ' + ('ativado' if enabled else 'desativado'))
+            self.toggle.configure(command=self.toggle_capture if capture else self.toggle_snippets)
+            self.launch.configure(text=f'Abrir {module.name}', command=self.open_capture if capture else self.open_snippets)
             self.detail_desc.configure(text=module.description + '\n\nSomente na sessão. Use dados fictícios.')
-            self.toggle.configure(text='Desativar' if self.settings.capture_enabled else 'Ativar')
+            self.toggle.configure(text='Desativar' if enabled else 'Ativar')
             self.toggle.pack(fill='x', padx=15, pady=(18, 4))
-            if self.settings.capture_enabled:
+            if enabled:
                 self.launch.pack(fill='x', padx=15, pady=4)
         else:
             self.detail_desc.configure(text=module.description + ('\n\nVocê está usando o protótipo do Hub.' if module.status == 'prototype' else '\n\nA ferramenta ainda não pode ser executada.'))
@@ -152,6 +161,37 @@ class Hub:
             self.capture_window = self.capture_store = None
         self.show_selected()
         self.close_quick_panel()
+
+    def toggle_snippets(self):
+        enabled = not self.settings.snippets_enabled
+        if not enabled and not messagebox.askyesno('Desativar Snippets?', 'Textos e edições da sessão serão descartados. Cópias anteriores no clipboard podem permanecer.', parent=self.root):
+            return
+        try:
+            self.settings.set_snippets(enabled)
+        except OSError:
+            messagebox.showerror('Aeris', 'Não foi possível salvar a preferência.', parent=self.root)
+            return
+        if not enabled:
+            if self.snippets_window and self.snippets_window.window.winfo_exists():
+                self.snippets_window.window.destroy()
+            if self.snippets_store:
+                self.snippets_store.clear()
+            self.snippets_window = self.snippets_store = None
+        self.show_selected()
+        self.close_quick_panel()
+
+    def open_snippets(self):
+        if not self.settings.snippets_enabled:
+            return
+        if self.snippets_window and self.snippets_window.window.winfo_exists():
+            self.snippets_window.window.lift()
+            self.snippets_window.window.focus_set()
+            return
+        from aeris.snippets import SnippetStore
+        from aeris.snippets_ui import SnippetsWindow
+        if self.snippets_store is None:
+            self.snippets_store = SnippetStore()
+        self.snippets_window = SnippetsWindow(self.root, self.snippets_store)
 
     def close_quick_panel(self):
         if self.quick_panel and self.quick_panel.window.winfo_exists():
@@ -193,7 +233,10 @@ class Hub:
     def close(self):
         has_notes = self.capture_store is not None and bool(self.capture_store.list())
         has_draft = self.capture_window is not None and self.capture_window.window.winfo_exists() and self.capture_window.dirty()
-        if (has_notes or has_draft) and not messagebox.askyesno('Encerrar Aeris?', 'Anotações e edições da sessão serão descartadas.', parent=self.root):
+        has_snippets = self.snippets_store is not None and bool(self.snippets_store.list())
+        has_snippet_draft = self.snippets_window is not None and self.snippets_window.window.winfo_exists() and self.snippets_window.dirty()
+        has_appearance_draft = self.appearance_window is not None and self.appearance_window.window.winfo_exists() and self.appearance_window.values() != self.settings.appearance
+        if (has_notes or has_draft or has_snippets or has_snippet_draft or has_appearance_draft) and not messagebox.askyesno('Encerrar Aeris?', 'Textos da sessão e alterações não salvas serão descartados. Cópias anteriores no clipboard podem permanecer.', parent=self.root):
             return
         self.root.destroy()
 

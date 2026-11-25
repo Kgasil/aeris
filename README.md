@@ -11,7 +11,7 @@
 
 O Aeris é um projeto da K&G Vision para criar ferramentas leves, discretas e úteis ao cotidiano. A proposta reúne um aplicativo desktop para Windows e uma extensão para navegadores Chromium, com módulos opcionais e processamento local sempre que possível.
 
-**Situação atual: Foundation — pré-alpha.** A branch `develop` inclui os protótipos do Hub e Capture em `desktop/`. Não há extensão, instalador ou versão pública de distribuição.
+**Situação atual: Foundation — pré-alpha.** A branch `develop` inclui os protótipos do Hub, Capture e Snippets em `desktop/`. Não há extensão, instalador ou versão pública de distribuição.
 
 ### Catálogo planejado
 
@@ -28,7 +28,7 @@ O Aeris é um projeto da K&G Vision para criar ferramentas leves, discretas e ú
 | Files | Documents, Organizer, Drop, Compare, Lens |
 | Security | Privacy, Link, Verify, Permissions, Metadata |
 
-Hub e Capture estão em pré-alpha; as outras 48 ferramentas permanecem planejadas. O escopo será revisto conforme testes de viabilidade, desempenho e segurança.
+Hub, Capture e Snippets estão em pré-alpha; as outras 47 ferramentas permanecem planejadas. O escopo será revisto conforme testes de viabilidade, desempenho e segurança.
 
 ### Princípios de desenvolvimento
 
@@ -42,7 +42,7 @@ Hub e Capture estão em pré-alpha; as outras 48 ferramentas permanecem planejad
 
 Aeris is a proposed lightweight Windows desktop app and Chromium browser extension by K&G Vision. It aims to make everyday tasks simpler with optional modules, on-demand execution, local-first processing where feasible and explicit permissions.
 
-The planned catalog comprises 50 tools in 10 categories, listed above. **Foundation pre-alpha:** the `develop` branch includes Hub and Capture prototypes in `desktop/`. The other 48 tools remain planned; no extension, installer or distribution release is available.
+The planned catalog comprises 50 tools in 10 categories, listed above. **Foundation pre-alpha:** the `develop` branch includes Hub, Capture and Snippets prototypes in `desktop/`. The other 47 tools remain planned; no extension, installer or distribution release is available.
 
 Initial free local features, no ads and no mandatory account are design intentions, not current product claims. Performance, security, compatibility and licensing must be evaluated before any preview release.
 
