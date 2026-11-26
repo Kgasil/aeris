@@ -8,6 +8,15 @@ PALETTES = {
 }
 
 
+# Legacy Hub widgets are created before the shared theme is applied.
+LEGACY_BACKGROUNDS={'#f6faf7':'air','#dcefe3':'soft','#cfdfd5':'muted','#ffffff':'field'}
+
+def background_role(value):
+    color=value.lower()
+    for role in ('air','soft','muted','field'):
+        if color==PALETTES['Claro'][role].lower(): return role
+    return LEGACY_BACKGROUNDS.get(color,'air')
+
 def configure(root, name):
     p = PALETTES[name]
     style = ttk.Style(root)
@@ -59,7 +68,7 @@ def apply_tree(widget, name):
         # Preserva as funções cromáticas existentes do Hub ao alternar temas.
         if not hasattr(widget, '_aeris_bg_role'):
             old = widget.cget('bg').lower()
-            widget._aeris_bg_role = next((k for k in ('air','soft','muted','field') if old == PALETTES['Claro'][k].lower()), 'air')
+            widget._aeris_bg_role = background_role(old)
         if not isinstance(widget, tk.Canvas) or getattr(widget,'_aeris_logo',False) or getattr(widget,'_aeris_scroll',False):
             widget.configure(bg=p[widget._aeris_bg_role])
         if isinstance(widget, tk.Label): widget.configure(fg=p['deep'])
