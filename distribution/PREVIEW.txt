@@ -1,0 +1,23 @@
+Project Aeris - Discreto e Eficiente.
+by K&G Vision
+
+PREVIEW / CANDIDATO DE CODIGO-FONTE: use somente dados ficticios / use sample data only.
+O aplicativo e o instalador nao sao assinados digitalmente.
+Nao desative protecoes do Windows para executar arquivos desconhecidos.
+
+O instalador e por usuario, sem administrador por padrao.
+Dados do Aeris ficam em %LOCALAPPDATA%\Aeris, separados do programa.
+A desinstalacao preserva esses dados. Remova-os apenas voluntariamente.
+Feche o Aeris antes de instalar, atualizar ou desinstalar.
+
+AI: Ollama e modelo local opcionais, instalados separadamente.
+Lens: Tesseract e dados de idioma opcionais, instalados separadamente.
+Translate: guia de frases incluido; Argos experimental apenas via codigo-fonte.
+Sem conta obrigatoria, sem assinatura, sem anuncios.
+
+Validacao nativa e revisao das licencas de distribuicao ainda pendentes.
+
+RC5 EXPERIMENTAL - integrated regression candidate, not a public release.
+Close Aeris before upgrading. Keep a protected backup of %LOCALAPPDATA%\Aeris.
+Do not automatically downgrade or bypass Windows protections.
+This candidate keeps the existing data schema. No automatic updates.

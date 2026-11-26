@@ -1,0 +1,11 @@
+# Aeris Link — v0.5.0a2
+
+Ative Link no catálogo e abra pelo Hub, painel rápido ou Spotlight. Digite ou cole manualmente uma URL HTTP/HTTPS completa (até 4096 caracteres) e clique em Analisar estrutura. O relatório apresenta o host interpretado localmente e o protocolo, sem reproduzir credenciais, caminho, consulta ou fragmento. Editar a entrada invalida o relatório. Limpar, fechar, desativar ou limpar a sessão descarta a entrada e o relatório; isso não apaga memória residual ou clipboard do sistema.
+
+Indicadores: HTTP, informação de usuário antes de @, IP literal (inclusive não global), host de um único nível ou numérico não canônico, domínio internacionalizado (IDNA Python, não necessariamente idêntico a navegadores), muitos níveis de domínio, ponto final, porta não padrão, caminho com escapes percentuais e nomes selecionados de parâmetros associados a credenciais. Cada indicador pode ocorrer em URLs legítimas. Estruturas inválidas ou ambíguas são recusadas (por exemplo, caracteres de controle/invisíveis, barras invertidas, autoridade percent-encoded, múltiplos @, porta inválida, autoridade IPv6 malformada). Não há pontuação de risco ou selo de segurança.
+
+Sem rede, DNS, abertura de navegador, download, reputação, lista de phishing, inspeção de certificado, redirecionamentos ou conteúdo. Não é um parser WHATWG de navegador, não valida a propriedade do domínio nem usa a Public Suffix List. A ausência de alertas não comprova segurança; o host apresentado é interpretação local, não confirmação do destino real. Não cole tokens, senhas, URLs privadas ou dados pessoais reais. Não há nova permissão de sessão pois o módulo analisa apenas a entrada explícita sem acesso externo. A cópia manual por seleção depende do sistema, não do controle do Aeris.
+
+Preferências: esquema 21, migrando esquemas 1–20; Link desativado em instalações novas e migradas. Nenhuma dependência Python adicional.
+
+Validação: 124 testes unitários aprovados, 3 ignorados por exigirem Windows; 20 scripts gráficos aprovados no Linux/Xvfb. Inclui casos de autoridade enganosa, IPv6, IDNA, parâmetros sensíveis, rejeição de ambiguidades, migração e invalidação de relatório. Windows e auditoria independente pendentes.

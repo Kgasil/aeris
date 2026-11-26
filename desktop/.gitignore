@@ -1,0 +1,14 @@
+__pycache__/
+*.py[cod]
+.venv/
+.env
+*.db
+*.sqlite*
+build/
+dist/
+.vscode/
+vault.bin
+vault.lock
+.vault-*
+bookmarks.bin
+bookmarks.lock

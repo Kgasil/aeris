@@ -1,0 +1,12 @@
+# Aeris Verify — v0.5.0a3
+
+## Uso
+Ative Verify no Hub. Conceda Verify → Ler arquivo em Permissões (negada por padrão; apenas sessão). Escolha um arquivo local fictício. Selecione SHA-256 ou SHA-512 e, opcionalmente, cole o hash hexadecimal publicado por uma fonte confiável. Clique em Calcular / comparar e confirme a leitura. O resultado mostra algoritmo, tamanho, digest e comparação quando informada. Não há exportação automática, histórico ou gravação pelo módulo. O texto selecionável pode ser copiado por meios nativos do sistema.
+
+## Arquitetura e limites
+`verify.py` usa hashlib, leitura somente em modo binário e blocos de 1 MiB, sem carregar o arquivo inteiro. `verify_ui.py` usa uma thread daemon por janela em operação, evento de cancelamento, fila de resultado e polling Tk na thread principal somente durante a operação. O cancelamento é cooperativo entre leituras; uma leitura bloqueada pode demorar. Fechar, desativar, revogar ou limpar cancela e descarta resultados. A revogação não apaga cópias nativas do clipboard.
+
+Arquivos não regulares e links simbólicos finais são recusados. No Windows há verificações preliminares de unidade fixa, caminho UNC/dispositivo, fluxos alternativos e pontos de nova análise no caminho. Essas verificações não são uma sandbox; mudanças concorrentes no caminho e comportamento do sistema de arquivos podem contorná-las. O seletor nativo pode mostrar locais de rede; a aplicação não realiza consultas de rede intencionais. A leitura pode alterar metadados de acesso do SO. A comparação de metadados antes e depois detecta certas alterações concorrentes, não garante snapshot atômico nem detecta todas as manipulações. Não execute arquivos suspeitos para verificá-los. Igualdade de hashes comprova correspondência ao digest fornecido, não origem, assinatura digital, reputação, segurança ou ausência de malware. Não há antivírus ou consulta externa. Não use informações reais nesta pré-alpha.
+
+## Validação
+130 testes unitários executáveis e 21 smoke tests gráficos passaram em Linux/Xvfb. Três testes específicos de Windows de módulos anteriores foram ignorados. Testes incluem SHA-256/512, comparação, entrada inválida, arquivo vazio, leitura em blocos, cancelamento, alteração concorrente, arquivo não regular, migração e permissão de leitura na GUI. Windows 10/11, verificações de caminhos Windows, comportamento de arquivos grandes e desempenho real ainda não foram validados. Próximo: Metadata.

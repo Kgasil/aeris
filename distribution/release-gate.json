@@ -1,0 +1,15 @@
+{
+  "version": "1.0.0rc5",
+  "purpose": "Registro de evidências; não é uma certificação. Todos os itens pendentes bloqueiam o lançamento binário.",
+  "checks": {
+    "windows_build_x64": {"status": "pending", "evidence": ""},
+    "windows_10_clean_vm": {"status": "pending", "evidence": ""},
+    "windows_11_clean_vm": {"status": "pending", "evidence": ""},
+    "installer_upgrade_uninstall_data": {"status": "pending", "evidence": ""},
+    "native_dpapi_mutex": {"status": "pending", "evidence": ""},
+    "real_ollama_audio_ocr": {"status": "pending", "evidence": ""},
+    "performance_accessibility": {"status": "pending", "evidence": ""},
+    "license_and_trust_review": {"status": "pending", "evidence": ""},
+    "published_artifacts_and_hashes": {"status": "pending", "evidence": ""}
+  }
+}

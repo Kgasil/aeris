@@ -1,0 +1,70 @@
+"""Preferências com prévia local e aplicação explícita."""
+import tkinter as tk
+from aeris.window_lifecycle import trace_window
+from tkinter import ttk,messagebox
+from aeris.settings import Appearance,CORNERS,SIZES,FAVORITES,THEMES
+from aeris.theme import PALETTES
+
+class AppearanceWindow:
+    def __init__(self,hub):
+        self.hub=hub; self.window=tk.Toplevel(hub.root); self.window.title('Aeris · Aparência')
+        self.window.transient(hub.root); self.window.geometry('560x620'); self.window.minsize(450,570)
+        self.window.protocol('WM_DELETE_WINDOW',self.close); self.window.bind('<Escape>',lambda _:self.close())
+        p=hub.settings.appearance
+        self.corner=tk.StringVar(self.window,p.corner); self.panel=tk.StringVar(self.window,p.panel_size)
+        self.icon=tk.IntVar(self.window,p.icon_size); self.opacity=tk.IntVar(self.window,p.opacity)
+        self.enabled=tk.BooleanVar(self.window,p.quick_enabled); self.floating=tk.BooleanVar(self.window,p.floating_enabled); self.topmost=tk.BooleanVar(self.window,p.floating_topmost)
+        self.theme=tk.StringVar(self.window,p.theme)
+        self.favorites_only=tk.BooleanVar(self.window,p.favorites_only)
+        self.favorites={name:tk.BooleanVar(self.window,name in p.favorites) for name in FAVORITES}
+        frame=ttk.Frame(self.window,padding=14); frame.pack(fill='both',expand=True)
+        ttk.Label(frame,text='Seu Aeris, do seu jeito.',font=('Segoe UI',18)).pack(anchor='w')
+        for text,var in [('Painel rápido no Hub',self.enabled),('Ícone flutuante Spotlight',self.floating),('Manter sobre outras janelas (oculte antes de jogar)',self.topmost)]:
+            ttk.Checkbutton(frame,text=text,variable=var).pack(anchor='w',pady=2)
+        for text,var,options in [('Canto',self.corner,CORNERS),('Tamanho do painel',self.panel,tuple(SIZES))]:
+            ttk.Label(frame,text=text).pack(anchor='w',pady=(5,0)); ttk.Combobox(frame,textvariable=var,values=options,state='readonly').pack(fill='x')
+        scales=ttk.Frame(frame); scales.pack(fill='x',pady=4)
+        for text,var,low,high in [('Ícone (px)',self.icon,24,64),('Opacidade do painel (%)',self.opacity,80,100)]:
+            cell=ttk.Frame(scales); cell.pack(side='left',fill='x',expand=True,padx=2)
+            ttk.Label(cell,text=text).pack(anchor='w'); tk.Scale(cell,variable=var,from_=low,to=high,orient='horizontal',highlightthickness=0).pack(fill='x')
+        ttk.Label(frame,text='Tema').pack(anchor='w'); ttk.Combobox(frame,textvariable=self.theme,values=THEMES,state='readonly').pack(fill='x')
+        row=ttk.Frame(frame); row.pack(fill='x',pady=4)
+        for i,(name,var) in enumerate(self.favorites.items()): ttk.Checkbutton(row,text=name,variable=var).grid(row=i//3,column=i%3,sticky='w',padx=3)
+        ttk.Checkbutton(frame,text='Mostrar somente favoritos ativos',variable=self.favorites_only).pack(anchor='w')
+        ttk.Label(frame,text='Prévia · posição e tamanho aproximados').pack(anchor='w')
+        self.canvas=tk.Canvas(frame,bg='#E7F0EA',height=100,highlightthickness=0); self.canvas.pack(fill='both',expand=True)
+        self.canvas.bind('<Configure>',self.preview)
+        for v in (self.corner,self.panel,self.icon,self.opacity,self.enabled,self.floating,self.topmost,self.theme): trace_window(self.window, v, self.preview)
+        buttons=ttk.Frame(frame); buttons.pack(fill='x',pady=(8,0))
+        ttk.Button(buttons,text='Restaurar padrões',command=self.reset).pack(side='left')
+        ttk.Button(buttons,text='Cancelar',command=self.close).pack(side='right')
+        ttk.Button(buttons,text='Salvar',command=self.save).pack(side='right',padx=6)
+    def values(self): return Appearance(self.corner.get(),self.icon.get(),self.panel.get(),self.opacity.get(),self.enabled.get(),self.floating.get(),self.topmost.get(),self.theme.get(),tuple(name for name,var in self.favorites.items() if var.get()),self.favorites_only.get())
+    def preview(self,*_):
+        c=self.canvas; c.delete('all'); w,h=c.winfo_width(),c.winfo_height()
+        if min(w,h)<30: return
+        p=self.values(); palette=PALETTES[p.theme]; c.configure(bg=palette['soft'])
+        c.create_rectangle(10,10,w-10,h-10,fill=palette['field'],outline=palette['muted'])
+        right=p.corner.endswith('direito'); bottom=p.corner.startswith('Inferior'); r=p.icon_size/3
+        cx=w-18-r if right else 18+r; cy=h-18-r if bottom else 18+r
+        if p.quick_enabled or p.floating_enabled:
+            pw,ph=SIZES[p.panel_size]; pw=min(w*.42,pw*.32); ph=min(h-24,ph*.23)
+            x=w-18-pw if right else 18; y=max(12,cy-r-ph-4) if bottom else min(h-ph-12,cy+r+4)
+            a=p.opacity/100; color='#'+''.join(f'{round(a*int(palette["air"][i:i+2],16)+(1-a)*int(palette["field"][i:i+2],16)):02x}' for i in (1,3,5))
+            c.create_rectangle(x,y,x+pw,y+ph,fill=color,outline=palette['forest']); c.create_text(x+8,y+12,text='aeris.',anchor='w',fill=palette['deep'])
+        if p.floating_enabled:
+            c.create_oval(cx-r,cy-r,cx+r,cy+r,fill='#285640',outline='')
+            for dy in (-.35,0,.35): c.create_line(cx-r*.6,cy+r*dy,cx,cy+r*(dy-.25),cx+r*.6,cy+r*dy,smooth=True,fill='#DCEFE3',width=2)
+    def reset(self):
+        p=Appearance()
+        for var,v in zip((self.corner,self.icon,self.panel,self.opacity,self.enabled,self.floating,self.topmost),(p.corner,p.icon_size,p.panel_size,p.opacity,p.quick_enabled,p.floating_enabled,p.floating_topmost)): var.set(v)
+        self.theme.set(p.theme); self.favorites_only.set(p.favorites_only)
+        for name,var in self.favorites.items(): var.set(name in p.favorites)
+    def close(self):
+        if self.values()==self.hub.settings.appearance or messagebox.askyesno('Descartar?','Descartar mudanças não salvas?',parent=self.window): self.window.destroy()
+    def save(self):
+        previous=self.hub.settings.appearance
+        try: self.hub.settings.set_appearance(self.values())
+        except (OSError,ValueError): messagebox.showerror('Aeris','Não foi possível salvar preferências.',parent=self.window); return
+        if not previous.floating_enabled and self.hub.settings.appearance.floating_enabled: self.hub.spotlight_hidden=False
+        self.hub.apply_appearance(); self.window.destroy()

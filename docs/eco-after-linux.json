@@ -1,0 +1,49 @@
+{
+  "version": "0.11.0a7",
+  "platform": "linux",
+  "python": "3.13.5",
+  "samples": [
+    {
+      "stage": "Hub",
+      "seconds": 2.0,
+      "cpu_percent_one_core": 0.013,
+      "resident_bytes": 114384896,
+      "companion_poll_callbacks": 0
+    },
+    {
+      "stage": "Hub",
+      "seconds": 2.0,
+      "cpu_percent_one_core": 0.015,
+      "resident_bytes": 114384896,
+      "companion_poll_callbacks": 0
+    },
+    {
+      "stage": "Hub",
+      "seconds": 2.0,
+      "cpu_percent_one_core": 0.014,
+      "resident_bytes": 114384896,
+      "companion_poll_callbacks": 0
+    },
+    {
+      "stage": "Hub + Copilot + Companion idle",
+      "seconds": 2.0,
+      "cpu_percent_one_core": 0.015,
+      "resident_bytes": 114782208,
+      "companion_poll_callbacks": 0
+    },
+    {
+      "stage": "Hub + Copilot + Companion idle",
+      "seconds": 2.0,
+      "cpu_percent_one_core": 0.021,
+      "resident_bytes": 114782208,
+      "companion_poll_callbacks": 0
+    },
+    {
+      "stage": "Hub + Copilot + Companion idle",
+      "seconds": 2.0,
+      "cpu_percent_one_core": 0.015,
+      "resident_bytes": 114782208,
+      "companion_poll_callbacks": 0
+    }
+  ]
+}

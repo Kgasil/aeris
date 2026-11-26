@@ -1,0 +1,352 @@
+[
+  {
+    "id": 1,
+    "name": "Hub",
+    "category": "Core",
+    "description": "gerenciamento central do aplicativo e módulos.",
+    "status": "prototype"
+  },
+  {
+    "id": 2,
+    "name": "Spotlight",
+    "category": "Core",
+    "description": "acesso rápido a ferramentas e comandos.",
+    "status": "prototype"
+  },
+  {
+    "id": 3,
+    "name": "Health",
+    "category": "Core",
+    "description": "diagnóstico sob demanda de CPU e memória do próprio processo.",
+    "status": "prototype"
+  },
+  {
+    "id": 4,
+    "name": "Backup",
+    "category": "Core",
+    "description": "backup e restauração de informações.",
+    "status": "prototype"
+  },
+  {
+    "id": 5,
+    "name": "Bridge",
+    "category": "Core",
+    "description": "comunicação autorizada entre módulos.",
+    "status": "prototype"
+  },
+  {
+    "id": 6,
+    "name": "Focus",
+    "category": "Productivity",
+    "description": "concentração e produtividade.",
+    "status": "prototype"
+  },
+  {
+    "id": 7,
+    "name": "Workspace",
+    "category": "Productivity",
+    "description": "organização de ambientes de trabalho.",
+    "status": "prototype"
+  },
+  {
+    "id": 8,
+    "name": "Checklist",
+    "category": "Productivity",
+    "description": "listas de tarefas.",
+    "status": "prototype"
+  },
+  {
+    "id": 9,
+    "name": "Reminder",
+    "category": "Productivity",
+    "description": "lembretes.",
+    "status": "prototype"
+  },
+  {
+    "id": 10,
+    "name": "Routine",
+    "category": "Productivity",
+    "description": "organização de rotinas.",
+    "status": "prototype"
+  },
+  {
+    "id": 11,
+    "name": "Vault",
+    "category": "Memory",
+    "description": "armazenamento seguro de informações e perfis personalizados.",
+    "status": "prototype"
+  },
+  {
+    "id": 12,
+    "name": "Capture",
+    "category": "Memory",
+    "description": "captura voluntária de textos, códigos, links e anotações.",
+    "status": "prototype"
+  },
+  {
+    "id": 13,
+    "name": "Timeline",
+    "category": "Memory",
+    "description": "histórico de informações salvas voluntariamente.",
+    "status": "prototype"
+  },
+  {
+    "id": 14,
+    "name": "Ideas",
+    "category": "Memory",
+    "description": "registro e organização de ideias.",
+    "status": "prototype"
+  },
+  {
+    "id": 15,
+    "name": "Bookmarks",
+    "category": "Memory",
+    "description": "organização de favoritos.",
+    "status": "prototype"
+  },
+  {
+    "id": 16,
+    "name": "Autofill",
+    "category": "Quick Actions",
+    "description": "preenchimento autorizado de formulários usando perfis personalizados, com prévia e sem envio automático.",
+    "status": "prototype"
+  },
+  {
+    "id": 17,
+    "name": "Clipboard",
+    "category": "Quick Actions",
+    "description": "gerenciamento opcional da área de transferência.",
+    "status": "prototype"
+  },
+  {
+    "id": 18,
+    "name": "Snippets",
+    "category": "Quick Actions",
+    "description": "armazenamento de trechos reutilizáveis.",
+    "status": "prototype"
+  },
+  {
+    "id": 19,
+    "name": "Expand",
+    "category": "Quick Actions",
+    "description": "expansão de abreviações e textos.",
+    "status": "prototype"
+  },
+  {
+    "id": 20,
+    "name": "Convert",
+    "category": "Quick Actions",
+    "description": "conversão local de unidades físicas e digitais.",
+    "status": "prototype"
+  },
+  {
+    "id": 21,
+    "name": "Translate",
+    "category": "Communication",
+    "description": "tradução de textos e, futuramente, áudio.",
+    "status": "prototype"
+  },
+  {
+    "id": 22,
+    "name": "Voice",
+    "category": "Communication",
+    "description": "leitura de textos em voz alta com vozes instaladas no Windows.",
+    "status": "prototype"
+  },
+  {
+    "id": 23,
+    "name": "Text",
+    "category": "Communication",
+    "description": "auxílio na escrita e manipulação de textos.",
+    "status": "prototype"
+  },
+  {
+    "id": 24,
+    "name": "Email",
+    "category": "Communication",
+    "description": "ferramentas auxiliares de comunicação por e-mail.",
+    "status": "prototype"
+  },
+  {
+    "id": 25,
+    "name": "Meeting",
+    "category": "Communication",
+    "description": "organização manual de reuniões, pautas, decisões e planos de ação.",
+    "status": "prototype"
+  },
+  {
+    "id": 26,
+    "name": "Learn",
+    "category": "Learning",
+    "description": "organização de estudos.",
+    "status": "prototype"
+  },
+  {
+    "id": 27,
+    "name": "Research",
+    "category": "Learning",
+    "description": "organizador de referências e anotações de pesquisa.",
+    "status": "prototype"
+  },
+  {
+    "id": 28,
+    "name": "Flashcards",
+    "category": "Learning",
+    "description": "cartões de revisão.",
+    "status": "prototype"
+  },
+  {
+    "id": 29,
+    "name": "Pronounce",
+    "category": "Learning",
+    "description": "auxílio na pronúncia de idiomas.",
+    "status": "prototype"
+  },
+  {
+    "id": 30,
+    "name": "Accessibility",
+    "category": "Learning",
+    "description": "leitor local com ampliação, contraste, espaçamento e guia de leitura.",
+    "status": "prototype"
+  },
+  {
+    "id": 31,
+    "name": "Copilot",
+    "category": "Intelligence",
+    "description": "comandos textuais locais com prévia, confirmação e execução autorizada.",
+    "status": "prototype"
+  },
+  {
+    "id": 32,
+    "name": "Context",
+    "category": "Intelligence",
+    "description": "registros manuais com seleção individual e prévia local autorizada.",
+    "status": "prototype"
+  },
+  {
+    "id": 33,
+    "name": "Interview",
+    "category": "Intelligence",
+    "description": "treinamento individual com perguntas, orientações e autoavaliação local, sem assistência oculta.",
+    "status": "prototype"
+  },
+  {
+    "id": 34,
+    "name": "Search",
+    "category": "Intelligence",
+    "description": "pesquisa integrada.",
+    "status": "prototype"
+  },
+  {
+    "id": 35,
+    "name": "Debug",
+    "category": "Intelligence",
+    "description": "análise estática local de Python e avisos de código.",
+    "status": "prototype"
+  },
+  {
+    "id": 36,
+    "name": "Data",
+    "category": "Business",
+    "description": "perfil de qualidade e estatísticas de CSV local.",
+    "status": "prototype"
+  },
+  {
+    "id": 37,
+    "name": "Dashboard",
+    "category": "Business",
+    "description": "visualização de indicadores.",
+    "status": "prototype"
+  },
+  {
+    "id": 38,
+    "name": "Report",
+    "category": "Business",
+    "description": "relatórios textuais locais de qualidade e agregação de CSV.",
+    "status": "prototype"
+  },
+  {
+    "id": 39,
+    "name": "Calculator",
+    "category": "Business",
+    "description": "cálculos cotidianos e profissionais.",
+    "status": "prototype"
+  },
+  {
+    "id": 40,
+    "name": "Decision",
+    "category": "Business",
+    "description": "Matriz de decisão com critérios ponderados e ranking local.",
+    "status": "prototype"
+  },
+  {
+    "id": 41,
+    "name": "Documents",
+    "category": "Files",
+    "description": "ferramentas para documentos.",
+    "status": "prototype"
+  },
+  {
+    "id": 42,
+    "name": "Organizer",
+    "category": "Files",
+    "description": "organização de arquivos.",
+    "status": "prototype"
+  },
+  {
+    "id": 43,
+    "name": "Drop",
+    "category": "Files",
+    "description": "prateleira temporária de referências a arquivos locais, sem mover ou copiar originais.",
+    "status": "prototype"
+  },
+  {
+    "id": 44,
+    "name": "Compare",
+    "category": "Files",
+    "description": "comparação de arquivos e conteúdos.",
+    "status": "prototype"
+  },
+  {
+    "id": 45,
+    "name": "Lens",
+    "category": "Files",
+    "description": "reconhecimento de texto por OCR.",
+    "status": "prototype"
+  },
+  {
+    "id": 46,
+    "name": "Privacy",
+    "category": "Security",
+    "description": "central de privacidade, permissões, inventário local e mascaramento de padrões de dados sensíveis.",
+    "status": "prototype"
+  },
+  {
+    "id": 47,
+    "name": "Link",
+    "category": "Security",
+    "description": "análise de indicadores de risco em links, sem garantir sua segurança.",
+    "status": "prototype"
+  },
+  {
+    "id": 48,
+    "name": "Verify",
+    "category": "Security",
+    "description": "verificação de integridade por hashes.",
+    "status": "prototype"
+  },
+  {
+    "id": 49,
+    "name": "Permissions",
+    "category": "Security",
+    "description": "gerenciamento de permissões.",
+    "status": "prototype"
+  },
+  {
+    "id": 50,
+    "name": "Metadata",
+    "category": "Security",
+    "description": "visualização e gerenciamento de metadados.",
+    "status": "prototype"
+  }
+]

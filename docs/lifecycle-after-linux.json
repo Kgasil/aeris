@@ -1,0 +1,107 @@
+[
+  {
+    "version": "0.11.0a8",
+    "platform": "linux",
+    "python": "3.13.5",
+    "tools": [
+      "Capture",
+      "Snippets",
+      "Search",
+      "Text",
+      "Calculator",
+      "Convert",
+      "Decision",
+      "Email",
+      "Link",
+      "Clipboard",
+      "Translate",
+      "Copilot"
+    ],
+    "cycles": 5,
+    "windows": 65,
+    "retained_objects": 0,
+    "closed_hub_references": 0,
+    "rss_initial_bytes": 114462720,
+    "rss_after_bytes": 116805632,
+    "initial_aeris_modules": [
+      "aeris.health",
+      "aeris.hub",
+      "aeris.permissions",
+      "aeris.registry",
+      "aeris.scroll_area",
+      "aeris.settings",
+      "aeris.theme",
+      "aeris.window_lifecycle"
+    ]
+  },
+  {
+    "version": "0.11.0a8",
+    "platform": "linux",
+    "python": "3.13.5",
+    "tools": [
+      "Capture",
+      "Snippets",
+      "Search",
+      "Text",
+      "Calculator",
+      "Convert",
+      "Decision",
+      "Email",
+      "Link",
+      "Clipboard",
+      "Translate",
+      "Copilot"
+    ],
+    "cycles": 5,
+    "windows": 65,
+    "retained_objects": 0,
+    "closed_hub_references": 0,
+    "rss_initial_bytes": 114556928,
+    "rss_after_bytes": 116887552,
+    "initial_aeris_modules": [
+      "aeris.health",
+      "aeris.hub",
+      "aeris.permissions",
+      "aeris.registry",
+      "aeris.scroll_area",
+      "aeris.settings",
+      "aeris.theme",
+      "aeris.window_lifecycle"
+    ]
+  },
+  {
+    "version": "0.11.0a8",
+    "platform": "linux",
+    "python": "3.13.5",
+    "tools": [
+      "Capture",
+      "Snippets",
+      "Search",
+      "Text",
+      "Calculator",
+      "Convert",
+      "Decision",
+      "Email",
+      "Link",
+      "Clipboard",
+      "Translate",
+      "Copilot"
+    ],
+    "cycles": 5,
+    "windows": 65,
+    "retained_objects": 0,
+    "closed_hub_references": 0,
+    "rss_initial_bytes": 114466816,
+    "rss_after_bytes": 116355072,
+    "initial_aeris_modules": [
+      "aeris.health",
+      "aeris.hub",
+      "aeris.permissions",
+      "aeris.registry",
+      "aeris.scroll_area",
+      "aeris.settings",
+      "aeris.theme",
+      "aeris.window_lifecycle"
+    ]
+  }
+]

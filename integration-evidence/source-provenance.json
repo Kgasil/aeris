@@ -1,0 +1,11 @@
+{
+  "version": "1.0.0rc5",
+  "source_sha256": "fe393db2e8903ae9c181d23639729204bad96fefcbdc60de4c7cec2170debc18",
+  "historical_source_sha256": "22e8843c3f823d4358766ad44905d5e13265cb47ab36dc10dbb42fc3760c9153",
+  "workflow_commit": "2918be32bcf1d2221890baa8ff0cb57a97b60cc8",
+  "reviewed_security_run": 45862942949,
+  "reviewed_files": 54,
+  "source_manifest_sha256": "5cd25579bc1e3c6f2acb4711754237a7d4eefcab124bcc2605b6e5b041c2c265",
+  "scope": "Consolidated RC5 source reconstructed from permanent repository inputs; no expiring RC4 artifact required; no assertion of identical executable rebuilds",
+  "release_approved": false
+}

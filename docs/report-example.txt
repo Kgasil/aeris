@@ -1,0 +1,34 @@
+AERIS REPORT — Análise descritiva de CSV
+
+1. Resumo da base
+Registros: 5 | Colunas: 4
+Células ausentes: 2 | Duplicatas exatas adicionais: 1
+Ausentes = campos vazios ou somente espaços. Duplicatas mantidas nos cálculos.
+
+2. Qualidade e estatísticas por coluna
+1. Mês | Texto/mista | Ausentes: 0 | Distintos: 4
+2. Projetos | Numérica | Ausentes: 0 | Distintos: 4
+   Mínimo: 120 | Máximo: 162 | Média: 143.4
+3. Concluídos | Numérica | Ausentes: 0 | Distintos: 4
+   Mínimo: 108 | Máximo: 155 | Média: 133.4
+4. Custo | Numérica | Ausentes: 2 | Distintos: 3
+   Mínimo: 1500.50 | Máximo: 1800.00 | Média: 1640.25
+
+3. Indicadores por categoria
+Categoria: Mês | Agregação: Soma
+Métrica: Projetos
+Registros usados: 5 | Ignorados: 0 | Categorias: 4
+Total global: 717
+- Março: 300 (2 registros)
+- Abril: 162 (1 registros)
+- Fevereiro: 135 (1 registros)
+- Janeiro: 120 (1 registros)
+
+4. Pontos de revisão
+- Revise os campos ausentes antes de utilizar os indicadores.
+- Investigue as duplicatas; nem toda repetição é um erro.
+- Confira tipos inferidos, identificadores numéricos e separadores.
+- Números exibidos com até 12 algarismos significativos; rótulos longos abreviados.
+- Relatório descritivo determinístico; não é auditoria nem recomendação de negócio.
+
+Aeris · K&G Vision

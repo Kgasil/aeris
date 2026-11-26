@@ -1,0 +1,30 @@
+# Aeris Text — 0.3.0a3
+
+Transformações determinísticas locais, com prévia separada e preservação da entrada original. Operações: caixa alta/baixa, espaços horizontais excedentes, linhas vazias, linhas duplicadas exatas (preserva primeira ocorrência) e quebras de linha LF. Até 20.000 caracteres na entrada e saída. Estatísticas: caracteres Unicode (pontos de código), palavras separadas por whitespace, linhas via splitlines. As transformações podem afetar indentação de código e formatação; revisar antes de copiar. Não é corretor gramatical ou reescrita por IA.
+
+Ativação opcional, sem persistência de texto, sem rede e sem indexação pelo Search. Copiar resultado exige permissão Text → Clipboard na sessão e confirmação; revogar desabilita o botão. Fechar, desativar ou limpar sessão elimina a interface e seus textos, não garante apagamento seguro de memória nem do clipboard. Esquema 13 de preferências, leitura de esquemas anteriores. Windows 10/11 é plataforma-alvo, validação nativa pendente.
+
+## Requisito atualizado (v0.4.0a1) — correção automática
+
+Aeris Text deve oferecer auxílio de escrita com detecção automática de erros ortográficos e gramaticais durante a edição, sugestões contextuais e aplicação de correções simples em modo automático opt-in. Modos previstos: desligado, sugerir, corrigir automaticamente. Correções ambíguas (sentido, estilo, terminologia técnica) devem exigir confirmação; preservar texto original, permitir desfazer e ignorar palavras e desativar por aplicativo/site. Português como prioridade, inglês e espanhol planejados. No navegador, usar apenas campos autorizados; no desktop, inicialmente dentro da própria ferramenta. Sem monitoramento global da digitação, sem campos de senha, sem envio de textos a terceiros por padrão; eventual serviço remoto requer consentimento específico. Estado histórico: a implementação do corretor estava pendente nesta etapa. Não classificar transformações determinísticas existentes como correção gramatical.
+
+
+## Implementação v0.11.0a4 — Intelligent Text I
+
+Motor de regras próprio, sem dependências externas. 37 substituições ortográficas e 6 regras de concordância ilustrativas, distribuídas em Português (BR), English e Español. Preserva capitalização simples e espaçamento existente fora dos trechos substituídos. Ignora padrões comuns de URLs, emails, caminhos, identificadores e blocos/trechos de código delimitados; essas heurísticas não são uma garantia de reconhecimento de conteúdo técnico. Não analisa o significado, não compreende contexto gramatical e não realiza correção geral de pontuação. Revisar nomes próprios, citações, código e termos técnicos. Não use dados reais durante a pré-alpha.
+
+- Desligado (padrão): correção somente com Revisar agora.
+- Sugerir: prévia automática após 450 ms sem edição; não altera o original.
+- Automático: aplica substituições ortográficas predefinidas em palavras completas (última palavra sem separador não é alterada), mantém concordância como sugestão. Seleção explícita e temporária; pode revisar também texto já presente ao ativar.
+- Aplicar revisão exige prévia ainda atual; Desfazer revisão recupera a última substituição enquanto o texto estiver igual ao resultado e desliga o modo automático. Para edições anteriores, desligue o automático e use Ctrl+Z. O cursor é reposicionado de acordo com alterações de comprimento. Não há histórico permanente.
+- Limite de 20.000 caracteres na entrada e saída. Prévia é invalidada ao editar, trocar idioma ou selecionar operação de transformação. Fechar ou limpar a sessão cancela o temporizador e elimina os textos da janela. Botão de cópia preserva as permissões existentes.
+
+Validação: oito novos testes unitários e um smoke gráfico, abrangendo idiomas, preservação de layout, proteção heurística, limites, modo automático, prévia, desfazer e limpeza. Pendentes: motor linguístico abrangente, pontuação contextual, dicionário pessoal, integração autorizada com navegador/outros apps e avaliação com corpus representativo, Windows nativo e revisão de segurança. Não se trata de LanguageTool, nem de corretor por IA. AI Companion permanece separado, incluído na edição única gratuita.
+
+## Implementação v0.11.0a10 — Intelligent Text II
+
+Ampliação para 61 substituições (25 PT-BR, 19 EN, 17 ES) e manutenção das seis regras gramaticais. O dicionário de exclusão é editado explicitamente, até 100 palavras por idioma, sem persistência; comparação casefold exata, inclusive em regras de frases. Ele vale apenas para o motor determinístico e desaparece ao fechar a janela. Não é um dicionário ortográfico completo.
+
+A revisão por IA tem permissão Text → Revisão por IA local, separada de Companion → IA local. Solicita o modelo instalado e confirmação de envio do conteúdo inteiro do editor. Não inclui histórico, dicionário nem outros módulos. O endpoint HTTP é fixo em 127.0.0.1:11434, sem proxy ou redirecionamento; o operador deve desativar a nuvem no Ollama (OLLAMA_NO_CLOUD=1) e usar um modelo local. Não é possível garantir o comportamento de um servidor local substituído ou configurado incorretamente. Texto de até 1.200 caracteres, com bloqueio heurístico de URLs, emails, caminhos e código delimitado; não é detector de todos os dados sensíveis. Saída JSON com chave texto, até 2.400 caracteres, validada antes de montar a prévia. A IA é não confiável e pode alterar conteúdo; não promete preservar significado. Não há execução de comandos. A prévia destaca remoções e inserções; aplicação manual, desfazer e nenhuma aplicação automática por IA.
+
+Consulta em thread, com polling de fila somente enquanto em andamento. Alteração, limpeza, mudança de idioma/modo, revogação ou fechamento invalidam o resultado. Uma consulta já enviada não é desfeita e pode continuar até o timeout HTTP. Nenhuma gravação de textos ou dicionário em disco pelo Aeris. Sete novos testes unitários e um gráfico com modelo simulado; 359 unitários e 57 gráficos passaram em Linux. Validação real do modelo, Windows, avaliação de corpus linguístico, integração externa e persistência protegida do dicionário ainda pendentes.

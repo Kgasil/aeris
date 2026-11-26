@@ -1,0 +1,104 @@
+[
+  {
+    "version": "0.11.0a7",
+    "platform": "linux",
+    "python": "3.13.5",
+    "tools": [
+      "Capture",
+      "Snippets",
+      "Search",
+      "Text",
+      "Calculator",
+      "Convert",
+      "Decision",
+      "Email",
+      "Link",
+      "Clipboard",
+      "Translate",
+      "Copilot"
+    ],
+    "cycles": 5,
+    "windows": 65,
+    "retained_objects": 61,
+    "closed_hub_references": 12,
+    "rss_initial_bytes": 114483200,
+    "rss_after_bytes": 116760576,
+    "initial_aeris_modules": [
+      "aeris.health",
+      "aeris.hub",
+      "aeris.permissions",
+      "aeris.registry",
+      "aeris.scroll_area",
+      "aeris.settings",
+      "aeris.theme"
+    ]
+  },
+  {
+    "version": "0.11.0a7",
+    "platform": "linux",
+    "python": "3.13.5",
+    "tools": [
+      "Capture",
+      "Snippets",
+      "Search",
+      "Text",
+      "Calculator",
+      "Convert",
+      "Decision",
+      "Email",
+      "Link",
+      "Clipboard",
+      "Translate",
+      "Copilot"
+    ],
+    "cycles": 5,
+    "windows": 65,
+    "retained_objects": 61,
+    "closed_hub_references": 12,
+    "rss_initial_bytes": 114475008,
+    "rss_after_bytes": 116826112,
+    "initial_aeris_modules": [
+      "aeris.health",
+      "aeris.hub",
+      "aeris.permissions",
+      "aeris.registry",
+      "aeris.scroll_area",
+      "aeris.settings",
+      "aeris.theme"
+    ]
+  },
+  {
+    "version": "0.11.0a7",
+    "platform": "linux",
+    "python": "3.13.5",
+    "tools": [
+      "Capture",
+      "Snippets",
+      "Search",
+      "Text",
+      "Calculator",
+      "Convert",
+      "Decision",
+      "Email",
+      "Link",
+      "Clipboard",
+      "Translate",
+      "Copilot"
+    ],
+    "cycles": 5,
+    "windows": 65,
+    "retained_objects": 61,
+    "closed_hub_references": 12,
+    "rss_initial_bytes": 114475008,
+    "rss_after_bytes": 116809728,
+    "initial_aeris_modules": [
+      "aeris.health",
+      "aeris.hub",
+      "aeris.permissions",
+      "aeris.registry",
+      "aeris.scroll_area",
+      "aeris.settings",
+      "aeris.theme"
+    ]
+  }
+]

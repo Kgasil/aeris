@@ -1,0 +1,42 @@
+{
+  "platform": "linux",
+  "python": "3.13.5",
+  "samples": [
+    {
+      "stage": "Hub",
+      "seconds": 2.004,
+      "cpu_percent_one_core": 0.184,
+      "resident_bytes": 27791360
+    },
+    {
+      "stage": "Hub",
+      "seconds": 2.002,
+      "cpu_percent_one_core": 0.111,
+      "resident_bytes": 27815936
+    },
+    {
+      "stage": "Hub",
+      "seconds": 2.002,
+      "cpu_percent_one_core": 0.121,
+      "resident_bytes": 27815936
+    },
+    {
+      "stage": "Hub + Health",
+      "seconds": 2.002,
+      "cpu_percent_one_core": 0.105,
+      "resident_bytes": 27840512
+    },
+    {
+      "stage": "Hub + Health",
+      "seconds": 2.002,
+      "cpu_percent_one_core": 0.084,
+      "resident_bytes": 27840512
+    },
+    {
+      "stage": "Hub + Health",
+      "seconds": 2.003,
+      "cpu_percent_one_core": 0.151,
+      "resident_bytes": 27840512
+    }
+  ]
+}
