@@ -54,5 +54,12 @@
     "anonymous_download_sha256_verified": true,
     "scope": "owner-requested experimental evaluation only",
     "stable_approved": false
+  },
+  "defender_diagnostic": {
+    "run": 45867805450,
+    "evidence": "rc5-defender-diagnostic-evidence.json",
+    "result": "NO_THREATS_DETECTED",
+    "positive_control": "PASS",
+    "scope": "On-demand diagnostic only; real-time protection inactive; client validation pending"
   }
 }
