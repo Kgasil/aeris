@@ -10,6 +10,8 @@ Scope: Desktop 1.0.0rc1, Windows x64. Extension 1.0.0 is a separate distribution
 
 ## Clean Windows 10/11 validation (manual)
 
+See the [client Windows test kit](windows-client/README.md), [evidence template](windows-client/result-template.json), and [latest independently verified Server 2022 evidence](../downloads/windows-inno674-notices-evidence.json). The kit has not been executed on client Windows.
+
 Use separate disposable x64 VMs with supported Windows editions/builds, clean snapshots, ordinary user accounts and no preinstalled Python or Aeris. Record OS build, installer SHA-256, timestamp and each result. Do not disable Defender or bypass SmartScreen to make a test pass.
 
 | Check | Pass criterion |
