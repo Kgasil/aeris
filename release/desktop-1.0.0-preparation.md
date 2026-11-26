@@ -7,7 +7,7 @@
 | --- | --- | --- |
 | Compilação integrada RC3 | PASS | [413 testes, 409 aprovados, quatro skips](../downloads/windows-integrated-rc3-evidence.json) |
 | Integridade e origem do código | PASS RC3 | ZIP de 352 arquivos, 91 hashes do manifesto, 71 binários e 17 avisos |
-| Revisão dos quatro skips e desempenho exato RC3 | Em andamento | [CI de revisão](../.github/workflows/aeris-rc3-final-review.yml) |
+| Revisão dos quatro skips e desempenho exato RC3 | PASS | [Evidência complementar](../downloads/rc3-final-review-evidence.json): quatro testes em Ubuntu; desempenho RC3 aprovado |
 | Direitos de distribuição | Pendente | Confirmar autoria/licenças de código, imagens e marca; resolver obrigações de terceiros e proveniência Microsoft |
 | Antimalware | Pendente | Executar [procedimento de scan](../validation/installer/SCAN.md) no candidato exato, com proteção ativa |
 | Assinatura digital | Pendente | Definir processo de Authenticode e verificar assinatura; não afirmar certificação. RC3 unsigned |
