@@ -82,8 +82,10 @@ class DashboardWindow(DataWindow):
     def draw(self):
         if not hasattr(self,'canvas'): return
         c=self.canvas; c.delete('all'); p=PALETTES[self.hub.settings.appearance.theme]; c.configure(bg=p['field'])
+        # Invalidating the dataset must leave no canvas items, even on resize.
+        if self.dataset is None: return
         if self.summary is None or not self.summary.groups:
-            c.create_text(max(c.winfo_width(),200)/2,max(c.winfo_height(),100)/2,text='Selecione e analise um CSV para visualizar os indicadores.' if self.dataset is None else 'Nenhum grupo para exibir.',width=max(180,c.winfo_width()-30),justify='center',fill=p['deep'],font=('Segoe UI',10))
+            c.create_text(max(c.winfo_width(),200)/2,max(c.winfo_height(),100)/2,text='Nenhum grupo para exibir.',width=max(180,c.winfo_width()-30),justify='center',fill=p['deep'],font=('Segoe UI',10))
             return
         groups=self.summary.groups[:DISPLAY_GROUPS]; w=max(c.winfo_width(),500); h=max(c.winfo_height(),260)
         left=150; right=w-105; top=24; row=(h-top-8)/len(groups)
