@@ -99,9 +99,34 @@
     "malware_scan": "NOT_TESTED"
   },
   "followup_reviews": {
-    "upgrade_run": 45864700604,
-    "clamav_run": 45864693947,
-    "conclusions": "pending"
+    "upgrade": {
+      "run": 45864700604,
+      "artifact_id": 15139129107,
+      "artifact_sha256": "21863a74c1d19860ff6192f0ccd7df5444a0ebbc0881f8075cbfa4e542e60dcd",
+      "independent_digest": "PASS",
+      "status": "PASS",
+      "synthetic_profile_manifests_verified": 8,
+      "profile_sha256": "adfc62e1fa3829ee95f0ab1683cd0f0154e76c22e3f3a6c1a5860db5405ac1f9",
+      "obsolete_runtime_files_remaining": 0,
+      "rollback": "PASS",
+      "backup_restore_copy": "PASS",
+      "interrupted_install": "NOT_TESTED"
+    },
+    "clamav": {
+      "run": 45864693947,
+      "artifact_id": 15140196295,
+      "artifact_sha256": "c51e27532a68bfffef70094869561bb9e3522e0aeafeddb1594e28c1503a6755",
+      "independent_digest": "PASS",
+      "integrity": "PASS",
+      "engine": "1.5.4",
+      "daily_version": 28194,
+      "daily_build_utc": "2026-11-25T06:26:00Z",
+      "signature_verification": "PASS",
+      "definition_age_seconds": 124817,
+      "maximum_age_seconds": 86400,
+      "freshness": "FAIL",
+      "scan": "NOT_TESTED"
+    }
   },
   "client_windows": "NOT_TESTED",
   "redistribution_approved": false,
