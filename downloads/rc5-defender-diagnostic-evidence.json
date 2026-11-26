@@ -1,0 +1,55 @@
+{
+  "date": "2026-11-26",
+  "run": 45867805450,
+  "workflow_commit": "46f410525c34f8014e7765e64bb266557d99f2b6",
+  "artifact_id": 15140024720,
+  "artifact_sha256": "79b63d0ea9c41c24f9936b1281f81bfd1ce987536857c417cff40f257ff5d293",
+  "independent_integrity": "PASS",
+  "scanner": "Microsoft Defender Antivirus",
+  "platform": "4.18.26100.4",
+  "engine": "1.1.26100.4",
+  "signature_version": "1.463.481.0",
+  "signature_utc": "2026-11-26T10:27:27Z",
+  "mode": "documented diagnostic custom scan (DisableRemediation), Windows Server 2022; explicitly includes normally excluded paths and archives; no settings changed, no target executed; real-time protection off on runner",
+  "reference": "https://learn.microsoft.com/en-us/defender-endpoint/command-line-arguments-microsoft-defender-antivirus",
+  "positive_control": {
+    "type": "inert EICAR standard test file",
+    "detected": true,
+    "exit": 2,
+    "deleted": true
+  },
+  "results": {
+    "setup": {
+      "sha256": "f5499cc2383e4d3a0acee8a0d84e173fa1a44a098ac0ba478c1febbcfe4e774b",
+      "exit": 0,
+      "result": "NO_THREATS_DETECTED"
+    },
+    "portable": {
+      "sha256": "ffbda95354b563e1d6a1b8f90fc43184a197585488c3da8609ac6970ffee9701",
+      "exit": 0,
+      "result": "NO_THREATS_DETECTED"
+    },
+    "extracted": {
+      "manifest_files": 47,
+      "exit": 0,
+      "result": "NO_THREATS_DETECTED"
+    }
+  },
+  "post_scan_hashes": "PASS",
+  "standard_scan_attempts": [
+    {
+      "run": 45867601695,
+      "artifact_id": 15140454186,
+      "artifact_sha256": "1076ce23e08d657d899711b6d5a623484a31ace0c33164bf7f196bbe5b67c0aa",
+      "reason": "Runner policy excluded C: and D: and disabled archive scan"
+    },
+    {
+      "run": 45867730561,
+      "artifact_id": 15141327405,
+      "artifact_sha256": "ddcdfda8bcde3dc1c8373b70bebea25c2000bfa9422787921db1783a43ca191a",
+      "reason": "Same runner policy"
+    }
+  ],
+  "limitations": "Point-in-time detection result, not a guarantee of safety; no digital signature, active real-time client scan, Windows client interactive validation or stable release approval.",
+  "release_approved": false
+}
