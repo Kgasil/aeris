@@ -1,0 +1,1 @@
+Initial DNS-only probe request; no distribution authorization.
