@@ -2,14 +2,41 @@
   "version": "1.1.0rc1",
   "purpose": "Registro de evidências; não é uma certificação. Todos os itens pendentes bloqueiam o lançamento binário.",
   "checks": {
-    "windows_build_x64": {"status": "pending", "evidence": ""},
-    "windows_10_clean_vm": {"status": "pending", "evidence": ""},
-    "windows_11_clean_vm": {"status": "pending", "evidence": ""},
-    "installer_upgrade_uninstall_data": {"status": "pending", "evidence": ""},
-    "native_dpapi_mutex": {"status": "pending", "evidence": ""},
-    "real_ollama_audio_ocr": {"status": "pending", "evidence": ""},
-    "performance_accessibility": {"status": "pending", "evidence": ""},
-    "license_and_trust_review": {"status": "pending", "evidence": ""},
-    "published_artifacts_and_hashes": {"status": "pending", "evidence": ""}
+    "windows_build_x64": {
+      "status": "passed",
+      "evidence": "Candidate commit 87b5b4554c4271f7a4fee7ffc355a76abc55f1d4; Windows x64 build and packaged self-test passed; https://github.com/Kgasil/aeris/actions/runs/45885673966; evidence artifact 15148339853 (SHA-256 43a953a2c3e484ab0dc903cfa1b114c2a4be4585d2d3985a3aff4ab0cae4cdb7). Only historical candidate, not authorization for release."
+    },
+    "windows_10_clean_vm": {
+      "status": "pending",
+      "evidence": ""
+    },
+    "windows_11_clean_vm": {
+      "status": "pending",
+      "evidence": ""
+    },
+    "installer_upgrade_uninstall_data": {
+      "status": "pending",
+      "evidence": ""
+    },
+    "native_dpapi_mutex": {
+      "status": "passed",
+      "evidence": "Source-level Windows native DPAPI/mutex tests including same-account recovery, invalid ciphertext, cross-process lock and abrupt exit, backup recovery and real Windows DPAPI passed in job 140136023731 at candidate commit 87b5b4554c4271f7a4fee7ffc355a76abc55f1d4; https://github.com/Kgasil/aeris/actions/runs/45885673966/job/140136023731. Hosted Server runner; not clean client VM or installed binary security audit."
+    },
+    "real_ollama_audio_ocr": {
+      "status": "pending",
+      "evidence": ""
+    },
+    "performance_accessibility": {
+      "status": "pending",
+      "evidence": ""
+    },
+    "license_and_trust_review": {
+      "status": "pending",
+      "evidence": ""
+    },
+    "published_artifacts_and_hashes": {
+      "status": "pending",
+      "evidence": ""
+    }
   }
 }
