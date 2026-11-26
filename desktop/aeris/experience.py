@@ -79,17 +79,27 @@ class Conversation(CompanionWindow):
         ttk.Label(top,text='Olá. Como posso ajudar?',style='Experience.Title.TLabel').pack(side='left')
         ttk.Button(top,text='Nova conversa',command=self.reset_chat).pack(side='right')
         ttk.Label(w,text='Seu espaço de trabalho com IA local.',style='Experience.Muted.TLabel').pack(anchor='w',pady=(2,8))
-        modelrow=ttk.Frame(w); modelrow.pack(fill='x',pady=(0,8))
+        ai_header=ttk.Frame(w); ai_header.pack(fill='x',pady=(0,8))
+        self.ai_state=tk.StringVar(w,'IA local · escolha um modelo')
+        ttk.Label(ai_header,textvariable=self.ai_state,style='Experience.Muted.TLabel').pack(side='left')
+        self.ai_toggle=ttk.Button(ai_header,text='Configurar IA',command=self.toggle_ai_settings)
+        self.ai_toggle.pack(side='right')
+        self.ai_settings= modelrow=ttk.Frame(w)
+        self.ai_header=ai_header
+        self.ai_open=False
         ttk.Label(modelrow,text='Modelo local').pack(side='left')
         self.model=tk.StringVar(w,'')
         self.model_entry=ttk.Combobox(modelrow,textvariable=self.model,width=19); self.model_entry.pack(side='left',padx=6)
         self.detect_button=ttk.Button(modelrow,text='Detectar modelos',command=self.detect_models); self.detect_button.pack(side='left')
         ttk.Button(modelrow,text='Ajuda',command=self.configure_ai).pack(side='left',padx=4)
         trace_window(w,self.model,self.model_changed)
-        panes=ttk.Frame(w); panes.pack(fill='both',expand=True)
-        panes.columnconfigure(0,weight=3,uniform='work'); panes.columnconfigure(1,weight=2,uniform='work'); panes.rowconfigure(0,weight=1)
-        left=ttk.Frame(panes,padding=(0,0,8,0)); right=ttk.Frame(panes,padding=(8,0,0,0)); left.grid(row=0,column=0,sticky='nsew'); right.grid(row=0,column=1,sticky='nsew')
-        ttk.Label(left,text='CONVERSA',style='Experience.Section.TLabel').pack(anchor='w',pady=(0,8))
+        self.panes=panes=ttk.Frame(w); panes.pack(fill='both',expand=True)
+        panes.columnconfigure(0,weight=3); panes.columnconfigure(1,weight=0); panes.rowconfigure(0,weight=1)
+        left=ttk.Frame(panes,padding=(0,0,8,0)); right=ttk.Frame(panes,padding=(8,0,0,0)); left.grid(row=0,column=0,sticky='nsew'); right.grid(row=0,column=1,sticky='nsew'); self.context_panel=right; right.grid_remove(); self.context_open=False
+        chathead=ttk.Frame(left); chathead.pack(fill='x',pady=(0,8))
+        ttk.Label(chathead,text='CONVERSA',style='Experience.Section.TLabel').pack(side='left')
+        self.context_toggle=ttk.Button(chathead,text='Mostrar contexto',command=self.toggle_context)
+        self.context_toggle.pack(side='right')
         chatbox=ttk.Frame(left); chatbox.pack(fill='both',expand=True)
         self.transcript=tk.Text(chatbox,wrap='word',height=5,state='disabled',font=('Segoe UI',11),padx=16,pady=14,relief='flat',highlightthickness=1)
         self.transcript.pack(side='left',fill='both',expand=True)
@@ -105,9 +115,9 @@ class Conversation(CompanionWindow):
         self.input.bind('<<Modified>>',self.input_changed); self.input.edit_modified(False)
         self.input.bind('<Control-Return>',self.keyboard_send)
         row=ttk.Frame(left); row.pack(fill='x',pady=6)
-        self.send_button=ttk.Button(row,text='Enviar',style='Experience.Primary.TButton',command=self.send); self.send_button.pack(side='left')
-        self.mic_button=ttk.Button(row,text='Microfone',command=self.listen); self.mic_button.pack(side='left',padx=4)
-        self.stop_button=ttk.Button(row,text='Parar',command=self.stop); self.stop_button.pack(side='right')
+        self.send_button=ttk.Button(row,text='Enviar',style='Experience.Primary.TButton',command=self.send); self.send_button.pack(side='right')
+        self.mic_button=ttk.Button(row,text='Microfone',command=self.listen); self.mic_button.pack(side='left')
+        self.stop_button=ttk.Button(row,text='Parar',command=self.stop); self.stop_button.pack(side='left',padx=4)
         row=ttk.Frame(left); row.pack(fill='x')
         self.speak_button=ttk.Button(row,text='Ouvir resposta',command=self.speak); self.speak_button.pack(side='left')
         self.advanced_open=False
@@ -150,6 +160,23 @@ class Conversation(CompanionWindow):
         self.status=tk.StringVar(w,'Pronto. Microfone e tela desligados.')
         ttk.Label(w,textvariable=self.status,style='Experience.Muted.TLabel',wraplength=800).pack(fill='x',pady=(12,0))
         self.draw(); self.permissions_changed()
+    def toggle_ai_settings(self):
+        self.ai_open=not self.ai_open
+        if self.ai_open:
+            self.ai_settings.pack(fill='x',pady=(0,8),before=self.panes)
+        else:
+            self.ai_settings.pack_forget()
+        self.ai_toggle.configure(text='Fechar configuração' if self.ai_open else 'Configurar IA')
+    def set_context(self,visible):
+        self.context_open=bool(visible)
+        self.panes.columnconfigure(1,weight=2 if visible else 0)
+        if visible:
+            self.context_panel.grid()
+        else:
+            self.context_panel.grid_remove()
+        self.context_toggle.configure(text='Ocultar contexto' if visible else 'Mostrar contexto')
+    def toggle_context(self):
+        self.set_context(not self.context_open)
     def authorize(self,cap,label):
         permissions=self.hub.permissions
         if permissions.allowed(cap): return True
@@ -162,6 +189,7 @@ class Conversation(CompanionWindow):
         return self.hub.enabled(name)
     def model_changed(self,*args):
         self.session.cancel(); self.action_input=None; self.preview.set(''); super().model_changed(*args)
+        self.ai_state.set('IA local · '+self.model.get().strip()[:48] if self.model.get().strip() else 'IA local · escolha um modelo')
     def detect_models(self):
         if self.busy or self.meeting_active: return
         if not self.authorize(COMPANION_CHAT,'Consultar os nomes dos modelos instalados no Ollama local? Nenhuma mensagem ou arquivo será enviado.'): return
@@ -174,7 +202,9 @@ class Conversation(CompanionWindow):
         try: parse_command(self.input.get('1.0','end-1c'))
         except ValueError: pass
         else: self.prepare_action(); return
-        if not self.model.get().strip(): self.configure_ai(); return
+        if not self.model.get().strip():
+            if not self.ai_open: self.toggle_ai_settings()
+            self.configure_ai(); return
         if self.ensure_tool('Copilot') and self.authorize(COMPANION_CHAT,'Enviar a mensagem e o histórico ao Ollama local? Nenhum outro arquivo será enviado.'):
             super().send()
     def listen(self):
@@ -256,7 +286,9 @@ class Conversation(CompanionWindow):
         if self.meeting_active and not self.hub.permissions.allowed(COMPANION_MIC): self.stop_meeting()
         super().permissions_changed()
     def suggest(self):
-        if not self.model.get().strip(): self.configure_ai(); return
+        if not self.model.get().strip():
+            if not self.ai_open: self.toggle_ai_settings()
+            self.configure_ai(); return
         if self.ensure_tool('Copilot') and self.authorize(COMPANION_CHAT,'Enviar apenas seu pedido ao modelo local?') and self.authorize(COPILOT_RUN,'Permitir preparar ações locais para sua confirmação?'):
             super().suggest()
     def accept_candidate(self):
@@ -305,7 +337,9 @@ class Conversation(CompanionWindow):
         self.refresh()
     def analyze(self):
         if self.busy or self.meeting_active or not self.screen: return
-        if not self.model.get().strip(): self.configure_ai(); return
+        if not self.model.get().strip():
+            if not self.ai_open: self.toggle_ai_settings()
+            self.configure_ai(); return
         if not self.authorize(COMPANION_CHAT,'Permitir comunicação com o modelo local?'): return
         raw=self.screen; model=self.model.get().strip(); question=self.input.get('1.0','end-1c').strip() or 'Explique o que aparece nesta imagem e como posso continuar.'
         try: validate_message(question)
@@ -506,6 +540,7 @@ class ExperienceHub(Hub):
         else:
             self.conversation.window.pack(fill='both',expand=True)
             if view in ('screen','notes','meeting'):
+                self.conversation.set_context(True)
                 self.conversation.context_tabs.select(('screen','notes','meeting').index(view))
         self.view=view
         active={'catalog':'Ferramentas','screen':'Tela','notes':'Anotações','meeting':'Reuniões'}.get(view,'Conversar')
@@ -552,7 +587,8 @@ class ExperienceHub(Hub):
         from aeris.theme import PALETTES
         p=PALETTES[self.settings.appearance.theme]; style=ttk.Style(self.root)
         style.configure('Experience.Goal.TRadiobutton',padding=(8,5),font=('Segoe UI',10))
-        style.configure('Experience.Title.TLabel',font=('Segoe UI',22,'bold'))
+        style.configure('Experience.Title.TLabel',font=('Segoe UI',21,'bold'))
+        style.configure('TNotebook.Tab',padding=(12,8),font=('Segoe UI',10))
         style.configure('Experience.Brand.TLabel',font=('Segoe UI',30,'bold'),background='#193D30',foreground='#FFFFFF')
         style.configure('Experience.Side.TFrame',background='#193D30')
         style.configure('Experience.Side.TLabel',background='#193D30',foreground='#D9E7DF',font=('Segoe UI',10))
