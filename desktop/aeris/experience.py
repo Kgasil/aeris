@@ -10,6 +10,7 @@ from aeris.hub import Hub, COLORS
 from aeris.experience_help import HELP
 from aeris.intelligence import recommend_tool
 from aeris.voice_session import VoiceSession, MAX_TURNS
+from aeris.vision_session import VisionSession, INTERVAL_MS, MAX_SECONDS, MAX_FRAMES
 from aeris.companion_ui import CompanionWindow
 from aeris.companion import chat,validate_message,speech_process,MAX_HISTORY
 from aeris.copilot import CopilotSession,parse_command
@@ -74,6 +75,7 @@ class Conversation(CompanionWindow):
         self.busy=False; self.process=None; self.timer=None; self.closed=False
         self.chat_allowed=False; self.kind=None; self.candidate=None
         self.voice=VoiceSession(); self.voice_timer=None
+        self.vision=VisionSession(); self.vision_timer=None; self.vision_expiry=None; self.vision_badge=None
         self.session=CopilotSession(hub); self.action_input=None; self.screen=None; self.photo=None
         self.capture_timer=None; self.screen_question=None; self.meeting_active=False
         self.meeting_timer=None; self.meeting_generation=0; self.meeting_chunks=[]
@@ -143,10 +145,14 @@ class Conversation(CompanionWindow):
         self.confirm_button=ttk.Button(row,text='Confirmar ação',command=self.confirm_action,style='Experience.Primary.TButton'); self.confirm_button.pack(side='left',padx=4)
         ttk.Label(right,text='CONTEXTO DE TRABALHO',style='Experience.Section.TLabel').pack(anchor='w',pady=(0,8))
         tabs=self.context_tabs=ttk.Notebook(right); tabs.pack(fill='both',expand=True)
+        tabs.bind('<<NotebookTabChanged>>',self.context_changed,add='+')
         screen=ttk.Frame(tabs,padding=9); tabs.add(screen,text='Tela')
-        ttk.Label(screen,text='Veja uma captura da tela principal',style='Experience.Subtitle.TLabel',wraplength=242).pack(anchor='w')
-        ttk.Label(screen,text='Captura pontual, nunca em segundo plano. Revise a imagem antes de enviá-la ao modelo local de visão.',wraplength=242,justify='left').pack(anchor='w',pady=5)
+        ttk.Label(screen,text='Acompanhe a tela principal',style='Experience.Subtitle.TLabel',wraplength=242).pack(anchor='w')
+        ttk.Label(screen,text='Capture uma imagem ou acompanhe a tela por até 5 minutos. Somente a última imagem fica na memória. Revise antes de enviar à IA.',wraplength=242,justify='left').pack(anchor='w',pady=5)
         self.image_label=ttk.Label(screen,text='Nenhuma captura',anchor='center',style='Experience.Card.TLabel'); self.image_label.pack(fill='both',expand=True,pady=5)
+        self.vision_state=tk.StringVar(w,'Acompanhamento desligado')
+        ttk.Label(screen,textvariable=self.vision_state,style='Experience.Section.TLabel',wraplength=242).pack(anchor='w',pady=4)
+        self.monitor_button=ttk.Button(screen,text='Acompanhar tela',command=self.toggle_vision,style='Experience.Primary.TButton'); self.monitor_button.pack(fill='x',pady=3)
         self.capture_button=ttk.Button(screen,text='Capturar tela',command=self.capture); self.capture_button.pack(fill='x',pady=3)
         self.analyze_button=ttk.Button(screen,text='Analisar captura com IA',command=self.analyze); self.analyze_button.pack(fill='x',pady=3)
         ttk.Button(screen,text='Descartar captura',command=self.discard_screen).pack(fill='x',pady=3)
@@ -175,6 +181,7 @@ class Conversation(CompanionWindow):
             self.ai_settings.pack_forget()
         self.ai_toggle.configure(text='Fechar configuração' if self.ai_open else 'Configurar IA')
     def set_context(self,visible):
+        if not visible and self.vision.active: self.stop_vision()
         self.context_open=bool(visible)
         self.panes.columnconfigure(1,weight=2 if visible else 0)
         if visible:
@@ -204,7 +211,7 @@ class Conversation(CompanionWindow):
     def configure_ai(self):
         messagebox.showinfo('IA local','Instale o Ollama e um modelo local, com OLLAMA_NO_CLOUD=1. Em seguida clique Detectar modelos ou digite o nome exato. Para imagens, use um modelo compatível com visão. Aeris não instala modelos nem envia dados para uma API de nuvem.',parent=self.hub.root)
     def send(self):
-        if self.meeting_active or self.busy or self.voice.active: return
+        if self.meeting_active or self.busy or self.voice.active or self.vision.active: return
         # Recognized local commands use the same reviewed action path, without a model.
         try: parse_command(self.input.get('1.0','end-1c'))
         except ValueError: pass
@@ -312,7 +319,9 @@ class Conversation(CompanionWindow):
         if self.candidate or self.session.pending:
             if not self.proposal_panel.winfo_manager(): self.proposal_panel.pack(fill='x',pady=4)
         else: self.proposal_panel.pack_forget()
-        free=not self.busy and not self.meeting_active and self.capture_timer is None and not self.voice.active
+        free=not self.busy and not self.meeting_active and self.capture_timer is None and not self.voice.active and not self.vision.active
+        self.monitor_button.configure(text='Parar acompanhamento' if self.vision.active else 'Acompanhar tela',state='normal' if free or self.vision.active else 'disabled')
+        self.vision_state.set(f'TELA ATIVA · {self.vision.frames}/{MAX_FRAMES} capturas' if self.vision.active else 'Acompanhamento desligado')
         self.voice_button.configure(text='Parar voz' if self.voice.active else 'Conversar por voz',state='normal' if free or self.voice.active else 'disabled')
         self.voice_indicator.set({'listen':'VOZ · Ouvindo','chat':'VOZ · Pensando (microfone desligado)','speak':'VOZ · Respondendo (microfone desligado)'}.get(self.voice.phase,'Voz desligada'))
         self.input.configure(state='disabled' if self.voice.active else 'normal')
@@ -323,7 +332,7 @@ class Conversation(CompanionWindow):
         self.speak_button.configure(state='normal' if free and self.history else 'disabled')
         self.stop_button.configure(state='normal' if not free else 'disabled')
         self.meeting_stop.configure(state='normal' if self.meeting_active else 'disabled')
-        self.analyze_button.configure(state='normal' if free and self.screen else 'disabled')
+        self.analyze_button.configure(state='normal' if (free or (self.vision.active and not self.busy)) and self.screen else 'disabled')
         self.accept_button.configure(state='normal' if free and self.candidate and self.hub.permissions.allowed(COPILOT_RUN) and self.hub.permissions.allowed(COMPANION_CHAT) else 'disabled')
         self.confirm_button.configure(state='normal' if free and self.session.pending else 'disabled')
         self.auto_button.configure(state='normal' if self.hub.permissions.allowed(COMPANION_SPEAK) else 'disabled')
@@ -443,8 +452,70 @@ class Conversation(CompanionWindow):
         try: result=self.session.confirm()
         except (ValueError,PermissionError,KeyError) as e: result=str(e)
         self.preview.set(''); self.status.set(result); self.refresh()
+    def context_changed(self,_=None):
+        if self.vision.active and self.context_tabs.index('current')!=0: self.stop_vision()
+    def toggle_vision(self):
+        if self.vision.active:
+            self.stop_vision(); return
+        if self.closed or self.busy or self.voice.active or self.meeting_active or self.capture_timer is not None: return
+        revision=self.hub.permissions.revision
+        if not messagebox.askyesno('Acompanhar tela principal?', 'O Aeris fará capturas periódicas da tela principal a cada 15 segundos, por até 5 minutos ou 20 imagens. Apenas a última captura fica na memória. Nenhuma imagem será enviada automaticamente à IA. Um aviso flutuante permite parar, inclusive enquanto você trabalha em outros aplicativos. Evite abrir dados sensíveis.',parent=self.hub.root): return
+        if self.closed or revision!=self.hub.permissions.revision: return
+        if not self.authorize(COMPANION_SCREEN,'Autorizar captura de tela nesta sessão?'): return
+        if self.closed or self.busy or self.voice.active or self.meeting_active or self.capture_timer is not None or self.vision.active or not self.hub.permissions.allowed(COMPANION_SCREEN): return
+        self.discard_screen()
+        badge=tk.Toplevel(self.hub.root); self.vision_badge=badge
+        badge.title('Aeris · Tela'); badge.attributes('-topmost',True); badge.resizable(False,False)
+        badge.protocol('WM_DELETE_WINDOW',self.stop_vision)
+        panel=ttk.Frame(badge,padding=10); panel.pack(fill='both',expand=True)
+        ttk.Label(panel,text='AERIS VISION · Captura autorizada',font=('Segoe UI',10,'bold')).pack(anchor='w')
+        ttk.Button(panel,text='Parar acompanhamento',command=self.stop_vision).pack(fill='x',pady=(5,0))
+        badge.update_idletasks()
+        badge.geometry(f'+{max(0,badge.winfo_screenwidth()-badge.winfo_reqwidth()-30)}+32')
+        self.vision.begin()
+        self.vision_expiry=self.window.after(MAX_SECONDS*1000,self.vision_expired)
+        self.vision_next()
+    def vision_expired(self):
+        if self.vision_expiry is not None:
+            self.window.after_cancel(self.vision_expiry); self.vision_expiry=None
+        self.stop_vision('Limite de acompanhamento atingido. Última captura disponível para revisão.')
+    def stop_vision(self,message='Acompanhamento encerrado. Última captura disponível para revisão.'):
+        self.vision.stop()
+        for attr in ('vision_timer','vision_expiry'):
+            timer=getattr(self,attr)
+            if timer is not None:
+                self.window.after_cancel(timer); setattr(self,attr,None)
+        if self.vision_badge is not None:
+            badge=self.vision_badge; self.vision_badge=None
+            if badge.winfo_exists(): badge.destroy()
+        if self.busy and self.kind=='monitor_screen': super().stop()
+        self.status.set(message); self.refresh()
+    def vision_next(self):
+        self.vision_timer=None
+        if not self.vision.active: return
+        if not self.vision.allowed() or not self.hub.permissions.allowed(COMPANION_SCREEN) or self.closed:
+            self.stop_vision(); return
+        if self.vision_badge is None or not self.vision_badge.winfo_viewable():
+            self.stop_vision('Acompanhamento encerrado: indicador não visível.'); return
+        if self.busy or worker_for(self.hub).busy:
+            self.vision_timer=self.window.after(1000,self.vision_next); return
+        try:
+            p=capture_process(); self.process=p
+            if not self.start(COMPANION_SCREEN,lambda:read_capture(p),kind='monitor_screen'):
+                p.kill()
+                try: p.communicate(timeout=2)
+                except (OSError,subprocess.TimeoutExpired): pass
+                self.process=None; self.stop_vision('Não foi possível iniciar a captura.'); return
+        except (OSError,PermissionError):
+            self.stop_vision('Captura periódica indisponível.'); return
+        self.status.set('TELA ATIVA · atualizando captura local.')
+    def show_capture(self,result):
+        image=tk.PhotoImage(data=base64.b64encode(result).decode('ascii'))
+        factor=max(1,(image.width()+229)//230,(image.height()+259)//260)
+        self.photo=image.subsample(factor,factor); self.screen=result
+        self.image_label.configure(image=self.photo,text='')
     def capture(self):
-        if self.busy or self.meeting_active or self.capture_timer is not None: return
+        if self.busy or self.meeting_active or self.voice.active or self.vision.active or self.capture_timer is not None: return
         if not self.authorize(COMPANION_SCREEN,'Capturar uma imagem da tela principal? A imagem fica na memória até você descartar ou fechar. Ela não será enviada automaticamente.'): return
         self.discard_screen(); self.hub.root.withdraw()
         self.status.set('Capturando uma imagem da tela principal…')
@@ -458,6 +529,7 @@ class Conversation(CompanionWindow):
             if not self.start(COMPANION_SCREEN,lambda:read_capture(p),kind='screen'): p.kill(); self.process=None; self.hub.root.deiconify()
         except (OSError,PermissionError): self.hub.root.deiconify(); self.status.set('Captura indisponível.'); self.refresh()
     def discard_screen(self):
+        if self.vision.active: self.stop_vision()
         self.screen=None; self.photo=None
         if hasattr(self,'image_label'): self.image_label.configure(image='',text='Nenhuma captura')
         if self.capture_timer is not None:
@@ -465,7 +537,8 @@ class Conversation(CompanionWindow):
         if self.busy and self.kind in ('screen','vision'): super().stop()
         self.refresh()
     def analyze(self):
-        if self.busy or self.meeting_active or not self.screen: return
+        if self.busy or self.meeting_active or self.voice.active or not self.screen: return
+        if self.vision.active: self.stop_vision('Acompanhamento pausado para revisar a captura.')
         if not self.model.get().strip():
             if not self.ai_open: self.toggle_ai_settings()
             self.configure_ai(); return
@@ -545,13 +618,14 @@ class Conversation(CompanionWindow):
         if self.hub.alive(self.hub.meeting_window): self.hub.meeting_window.render()
         self.status.set('Ata salva na sessão. Revise participantes e decisões em Reuniões.')
     def stop(self):
+        if self.vision.active: self.stop_vision()
         if self.voice.active: self.stop_voice()
         if self.meeting_active: self.stop_meeting()
         if self.capture_timer is not None: self.discard_screen()
         super().stop()
         if self.hub.root.state()=='withdrawn': self.hub.root.deiconify()
     def poll(self):
-        if self.kind not in ('screen','vision','meeting','models','route','voice_listen','voice_chat','voice_speak'): return super().poll()
+        if self.kind not in ('screen','vision','meeting','models','route','voice_listen','voice_chat','voice_speak','monitor_screen'): return super().poll()
         self.timer=None
         if self.closed: return
         try: job,ok,result=self.results.get_nowait()
@@ -578,13 +652,22 @@ class Conversation(CompanionWindow):
                 if len(result)==1 and not self.model.get().strip(): self.model.set(result[0])
                 self.status.set('Modelos locais encontrados. Escolha um modelo para conversar.')
             else: self.status.set('Nenhum modelo local encontrado. Abra Ajuda para configurar o Ollama.')
+        elif kind=='monitor_screen':
+            if valid and self.vision.allowed():
+                try:
+                    if not ok: raise ValueError('Falha na captura.')
+                    self.show_capture(result); self.vision.record()
+                except (tk.TclError,ValueError): self.stop_vision('Não foi possível atualizar a captura.')
+                else:
+                    if self.vision.allowed():
+                        self.vision_timer=self.window.after(INTERVAL_MS,self.vision_next)
+                        self.status.set('TELA ATIVA · última captura pronta; nenhuma imagem enviada.')
+                    else: self.vision_expired()
+            elif self.vision.active: self.stop_vision()
         elif valid and kind=='screen':
             if ok:
                 try:
-                    image=tk.PhotoImage(data=base64.b64encode(result).decode('ascii'))
-                    factor=max(1,(image.width()+319)//320,(image.height()+259)//260)
-                    self.photo=image.subsample(max(factor,(image.width()+229)//230),max(factor,(image.width()+229)//230)); self.screen=result
-                    self.image_label.configure(image=self.photo,text='')
+                    self.show_capture(result)
                     self.status.set('Captura pronta. Revise antes de enviar.')
                 except (tk.TclError,ValueError): self.status.set('Não foi possível mostrar a captura.')
             else: self.status.set('Captura indisponível.')
@@ -606,8 +689,12 @@ class Conversation(CompanionWindow):
         return super().dirty() or bool(self.screen or self.note.get('1.0','end-1c') or self.meeting_text.get('1.0','end-1c') or self.meeting_active)
     def destroyed(self,event):
         if event.widget is self.window:
-            self.voice.stop()
-            for timer in (self.meeting_timer,self.capture_timer,self.voice_timer):
+            self.voice.stop(); self.vision.stop()
+            if self.vision_badge is not None:
+                try: self.vision_badge.destroy()
+                except tk.TclError: pass
+                self.vision_badge=None
+            for timer in (self.meeting_timer,self.capture_timer,self.voice_timer,self.vision_timer,self.vision_expiry):
                 if timer is not None:
                     try: self.hub.root.after_cancel(timer)
                     except tk.TclError: pass
@@ -679,6 +766,7 @@ class ExperienceHub(Hub):
         self.category.set(next((key for key,value in CATEGORIES.items() if value==selected),'Todas'))
     def navigate(self,view):
         if view!='chat' and self.conversation.voice.active: self.conversation.stop_voice()
+        if view!='screen' and self.conversation.vision.active: self.conversation.stop_vision()
         self.catalog.pack_forget(); self.conversation.window.pack_forget()
         if view=='catalog': self.catalog.pack(fill='both',expand=True); self.search.focus_set()
         else:
