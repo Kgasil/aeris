@@ -17,7 +17,7 @@ Sem conta obrigatoria, sem assinatura, sem anuncios.
 
 Validacao nativa e revisao das licencas de distribuicao ainda pendentes.
 
-RC5 EXPERIMENTAL - integrated regression candidate, not a public release.
+1.1.0rc1 EXPERIMENTAL - integrated regression candidate, not a public release.
 Close Aeris before upgrading. Keep a protected backup of %LOCALAPPDATA%\Aeris.
 Do not automatically downgrade or bypass Windows protections.
 This candidate keeps the existing data schema. No automatic updates.
