@@ -1,0 +1,63 @@
+name: Aeris Windows preview validation
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/aeris-windows-preview.yml'
+      - 'downloads/Aeris-Desktop-v1.0.0rc1-codigo-fonte.zip'
+permissions:
+  contents: read
+concurrency:
+  group: aeris-windows-preview-${{ github.ref }}
+  cancel-in-progress: false
+jobs:
+  portable-preview:
+    runs-on: windows-2022
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065
+        with:
+          python-version: '3.12'
+          architecture: x64
+      - name: Verify and unpack source
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $zip = 'downloads/Aeris-Desktop-v1.0.0rc1-codigo-fonte.zip'
+          $expected = '719a258eb08c7a795ae70f4fd616c2fbb54f9736f86046a3a33a6e86e02424af'
+          if ((Get-FileHash -LiteralPath $zip -Algorithm SHA256).Hash.ToLowerInvariant() -ne $expected) { throw 'Source hash mismatch' }
+          Expand-Archive -LiteralPath $zip -DestinationPath source
+          py -3.12-64 -c "import tkinter, sys; assert sys.maxsize > 2**32"
+          if ($LASTEXITCODE -ne 0) { throw 'Python x64 verification failed' }
+      - name: Build portable preview and run native self-tests
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          & .\source\Aeris-Desktop-v1.0.0rc1\distribution\build.ps1 -PortableOnly
+      - name: Collect unsigned test artifacts
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $out = 'source/Aeris-Desktop-v1.0.0rc1/distribution/out'
+          $dirs = @(Get-ChildItem -LiteralPath $out -Directory)
+          if ($dirs.Count -ne 1) { throw 'Expected exactly one build' }
+          $stage = $dirs[0].FullName
+          $root = 'source/Aeris-Desktop-v1.0.0rc1'
+          $exe = Join-Path $stage 'dist/Aeris/Aeris.exe'
+          $hash = (Get-Content -LiteralPath (Join-Path $stage 'AERIS-EXE-SHA256.txt') -Raw).Trim()
+          $report = & "$root/distribution/validate-windows.ps1" -AerisExe $exe -ExpectedExeSha256 $hash -Mode Portable -ConfirmTestVM
+          New-Item -ItemType Directory -Path preview-evidence | Out-Null
+          $report | Set-Content -LiteralPath preview-evidence/windows-validation.json -Encoding utf8
+          foreach ($name in @('Aeris-1.0.0rc1-Windows-x64-portable.zip','SHA256SUMS.txt','AERIS-EXE-SHA256.txt','build-dependencies.txt')) {
+            Copy-Item -LiteralPath (Join-Path $stage $name) -Destination preview-evidence
+          }
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: aeris-unsigned-preview-not-a-release
+          path: preview-evidence/
+          if-no-files-found: error
+          retention-days: 7
