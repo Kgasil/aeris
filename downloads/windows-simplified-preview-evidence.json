@@ -1,0 +1,61 @@
+{
+  "scope": "Windows Server 2022 disposable runner; per-user install tested under administrative account; unsigned experimental build, not Windows 10/11 certification",
+  "run": 45844861678,
+  "commit": "3bab9b7197f191fb6c682122609a45fbfa997dd6",
+  "artifact_id": 15130517282,
+  "artifact_sha256": "71f3cc11b91040dfc42d5cab686851cabe4071d753937b2f875d86d4beea351b",
+  "artifact_expires": "2026-12-26T15:02:39Z",
+  "unit_tests": {
+    "total": 399,
+    "passed": 395,
+    "skipped": 4,
+    "failures": 0,
+    "errors": 0
+  },
+  "portable": {
+    "bytes": 13076362,
+    "sha256": "1e8f49f61ca2788f0d1d36647c4d71947fa142a267261800f45203fc9cba6149",
+    "manifest_files_verified": 1002,
+    "binaries": 68,
+    "notices": 6
+  },
+  "installer": {
+    "bytes": 11372298,
+    "sha256": "5a012a3648de01ee3fbab9612b82f7cdce6523ab940947fe6008db98e4ef5656",
+    "pe_certificate_table_present": false
+  },
+  "exe_sha256": "339ed69ee6f3304b09a0434153b246fca4ed974fb7a7f70100583f6f3eb0372c",
+  "checks": {
+    "portable_ui_self_test": "PASS",
+    "installed_ui_self_test": "PASS",
+    "reinstalled_ui_self_test": "PASS",
+    "install": "PASS",
+    "reinstall_same_version": "PASS",
+    "uninstall": "PASS",
+    "synthetic_data_preserved": "PASS",
+    "shortcut_targets": "PASS",
+    "shortcut_cleanup": "PASS",
+    "silent_no_launch": "PASS"
+  },
+  "comparison_to_artifact_15076935274": {
+    "added": [],
+    "removed": [],
+    "changed": [
+      "Aeris/Aeris.exe",
+      "Aeris/_internal/base_library.zip"
+    ]
+  },
+  "authenticode": "NotSigned",
+  "redistribution_approved": false,
+  "malware_scan": "NOT_TESTED",
+  "remaining": [
+    "Rights and third-party notices review",
+    "Malware scan and signing/trust decision",
+    "Interactive wizard validation on Windows 10/11 ordinary user",
+    "Cross-version upgrade",
+    "DPAPI and mutex",
+    "Real AI, audio and OCR",
+    "Performance and accessibility",
+    "Final release"
+  ]
+}
