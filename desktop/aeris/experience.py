@@ -13,6 +13,7 @@ from aeris.voice_session import VoiceSession, MAX_TURNS
 from aeris.vision_session import VisionSession, INTERVAL_MS, MAX_SECONDS, MAX_FRAMES
 from aeris.visual_question import VisualQuestion
 from aeris.ready import inspect_environment, model_selection, check_model
+from aeris.catalog_index import CatalogIndex
 from aeris.meeting_audio import available as loopback_available, model_path, start_loopback, read_loopback, BLOCK_SECONDS
 from aeris.meeting_intelligence import prepare_minutes
 from aeris.companion_ui import CompanionWindow
@@ -368,6 +369,7 @@ class Conversation(CompanionWindow):
         else: self.advanced.pack_forget()
         self.advanced_toggle.configure(text='Menos opções' if self.advanced_open else 'Mais opções')
     def refresh(self):
+        if self.closed: return
         if self.candidate or self.session.pending:
             if not self.proposal_panel.winfo_manager(): self.proposal_panel.pack(fill='x',pady=4)
         else: self.proposal_panel.pack_forget()
@@ -435,8 +437,8 @@ class Conversation(CompanionWindow):
         if self.dirty() and not messagebox.askyesno('Nova conversa?','Limpar conversa e rascunho? As anotações e a reunião permanecem.',parent=self.hub.root): return
         self.session.cancel(); self.action_input=None; self.preview.set(''); self.clear()
     def input_changed(self,event=None):
-        if self.input.edit_modified():
-            self.session.cancel(); self.action_input=None; self.preview.set('')
+        if self.closed or not self.input.edit_modified(): return
+        self.session.cancel(); self.action_input=None; self.preview.set('')
         if not self.input.get('1.0','end-1c').strip(): self.detach_question(completed=True)
         super().input_changed(event); self.update_hint(); self.refresh()
     def update_hint(self):
@@ -915,8 +917,9 @@ class Conversation(CompanionWindow):
         elif valid and kind=='meeting' and self.meeting_active:
             if ok:
                 current=self.meeting_text.get('1.0','end-1c')
-                if len(current)+len(result)+1>8000: self.stop_meeting(); self.status.set('Limite de transcrição atingido; revise e salve.'); self.refresh(); return
-                self.meeting_text.configure(state='normal'); self.meeting_text.insert('end',('\n' if current else '')+result); self.meeting_text.configure(state='disabled'); self.meeting_text.see('end')
+                if result.strip() and len(current)+len(result)+(1 if current else 0)>8000: self.stop_meeting(); self.status.set('Limite de transcrição atingido; revise e salve.'); self.refresh(); return
+                if result.strip():
+                    self.meeting_text.configure(state='normal'); self.meeting_text.insert('end',('\n' if current else '')+result); self.meeting_text.configure(state='disabled'); self.meeting_text.see('end')
                 self.meeting_chunks.append(result)
                 if len(self.meeting_chunks)<20: self.meeting_timer=self.window.after(350,self.meeting_next)
                 else: self.stop_meeting()
@@ -969,6 +972,7 @@ class ExperienceHub(Hub):
         self.conversation=Conversation(self,self.root)
         self.navigate('chat')
     def build_catalog(self):
+        self.catalog_index=CatalogIndex(self.modules,NAMES,CATEGORIES,HELP,GOALS)
         self.catalog=ttk.Frame(self.root,padding=18)
         f=self.catalog
         ttk.Label(f,text='O que você deseja fazer?',style='Experience.Title.TLabel').pack(anchor='w')
@@ -1041,11 +1045,8 @@ class ExperienceHub(Hub):
         old=self.listbox.curselection()
         selected=self.visible[old[0]].name if old and old[0]<len(self.visible) else None
         self.listbox.delete(0,'end')
-        from aeris.registry import normalize
         self.category_display.set(CATEGORIES.get(self.category.get(),'Todas'))
-        query=normalize(self.query.get()).split()
-        goal=self.goal.get() if hasattr(self,'goal') else 'Todas'
-        self.visible=tuple(m for m in self.modules if (goal=='Todas' or m.name in GOALS.get(goal,())) and (self.category.get()=='Todas' or m.category==self.category.get()) and all(q in normalize(' '.join((m.name,NAMES.get(m.name,m.name),m.description,m.category,CATEGORIES.get(m.category,m.category),*HELP.get(m.name,('',''))))) for q in query))
+        self.visible=self.catalog_index.search(self.query.get(),self.category.get(),self.goal.get())
         for m in self.visible: self.listbox.insert('end',f'  {NAMES.get(m.name,m.name)}')
         self.count.configure(text=f'{len(self.visible)} ferramentas encontradas')
         if self.visible:
