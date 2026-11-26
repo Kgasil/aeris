@@ -120,3 +120,7 @@ The [fourth run](https://github.com/Kgasil/aeris/actions/runs/45729575816) passe
 ### Windows installer preview — successful CI
 
 [Run 45730507059](https://github.com/Kgasil/aeris/actions/runs/45730507059) successfully built the experimental unsigned Setup.exe and passed installation, same-version reinstallation, uninstall, packaged UI self-tests, and synthetic-data preservation on Windows Server 2022. Downloaded artifacts were hash-verified. [Temporary installer and portable ZIP](https://github.com/Kgasil/aeris/actions/runs/45730507059/artifacts/15076935274) (expires December 3, 2026; GitHub login may be required). [Evidence and SHA-256 values](downloads/windows-preview-evidence.json). Not a stable release; Windows 10/11, actual AI/audio/OCR, performance, upgrade across versions and licensing remain pending.
+
+## Primeira prévia pública / First public preview
+
+**25/11/2026 · v1.0.0rc1.** [Notas de lançamento](release/rc1-notes.md) · [GitHub Releases](https://github.com/Kgasil/aeris/releases). Public source preview; experimental binaries remain temporary CI artifacts. Stable binary distribution is blocked pending validation and licensing review.

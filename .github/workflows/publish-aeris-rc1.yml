@@ -1,0 +1,62 @@
+name: Publish Aeris public source preview
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/publish-aeris-rc1.yml'
+permissions:
+  contents: read
+concurrency:
+  group: aeris-public-source-rc1
+  cancel-in-progress: false
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - name: Reconstruct reviewed source archive
+        shell: bash
+        run: |
+          set -euo pipefail
+          printf '%s\n' '22e8843c3f823d4358766ad44905d5e13265cb47ab36dc10dbb42fc3760c9153  downloads/Aeris-Desktop-v1.0.0rc1-fix1-codigo-fonte.zip' 'd54b0258a08369b29559a12275e9071098dd9c750a9d6e2802892691ba3b06ef  validation/test_verify.py' | sha256sum -c -
+          python3 - <<'PY'
+          import zipfile
+          from pathlib import Path
+          src=Path('source')
+          with zipfile.ZipFile('downloads/Aeris-Desktop-v1.0.0rc1-fix1-codigo-fonte.zip') as z:
+              assert z.testzip() is None
+              z.extractall(src)
+          root=src/'Aeris-Desktop-v1.0.0rc1-fix1'
+          (root/'desktop/tests/test_verify.py').write_bytes(Path('validation/test_verify.py').read_bytes())
+          p=root/'distribution/build.ps1'
+          original=p.read_text(encoding='utf-8')
+          old="'--add-data','aeris/catalog.json:aeris'"
+          new="'--add-data',((Join-Path $desktop 'aeris/catalog.json') + ':aeris')"
+          assert original.count(old)==1
+          p.write_text(original.replace(old,new),encoding='utf-8')
+          (root/'PUBLIC-PREVIEW.md').write_bytes(Path('release/rc1-notes.md').read_bytes())
+          out=Path('release-assets'); out.mkdir()
+          with zipfile.ZipFile(out/'Aeris-1.0.0rc1-source.zip','w',compression=zipfile.ZIP_DEFLATED) as z:
+              for f in sorted(root.rglob('*')):
+                  if f.is_file(): z.write(f,Path('Aeris-Desktop-v1.0.0rc1')/f.relative_to(root))
+          with zipfile.ZipFile(out/'Aeris-1.0.0rc1-source.zip') as z: assert z.testzip() is None
+          PY
+          cp downloads/windows-preview-evidence.json release-assets/
+          (cd release-assets && sha256sum Aeris-1.0.0rc1-source.zip windows-preview-evidence.json > SHA256SUMS.txt)
+      - name: Publish prerelease source assets only
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          if gh release view v1.0.0rc1 --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            echo 'Release exists; refusing to overwrite.'
+            exit 1
+          fi
+          gh release create v1.0.0rc1 release-assets/Aeris-1.0.0rc1-source.zip release-assets/SHA256SUMS.txt release-assets/windows-preview-evidence.json --repo "$GITHUB_REPOSITORY" --target cdb8163c4d7e2afb7969b0ae59c9f6641a77058f --title 'Project Aeris 1.0.0rc1 — Public Preview' --notes-file release/rc1-notes.md --prerelease --latest=false
