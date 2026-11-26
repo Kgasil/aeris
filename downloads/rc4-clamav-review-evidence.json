@@ -1,0 +1,15 @@
+{
+  "run": 45855478913,
+  "commit": "e3b75db8fcb5bb99768a451775e75dc0a6be2e75",
+  "artifact_id": 15134758154,
+  "artifact_sha256_reported_by_github": "300b4a64077f54f1bdc9ad57b5f2eb9a8c671777e79d0137d42976ee75deac7a",
+  "rc4_integrity_step": "PASS",
+  "engine": "ClamAV 1.5.4",
+  "daily_version": 28194,
+  "daily_build_utc": "2026-11-25T06:26:00Z",
+  "signature_verification": "PASS",
+  "definition_freshness": "FAIL",
+  "scan": "NOT_TESTED",
+  "scope": "Exact RC4 retrieved and verified; scanner step blocked before scan; no malware detection conclusion",
+  "release_approved": false
+}
