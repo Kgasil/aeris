@@ -14,6 +14,7 @@ from aeris.vision_session import VisionSession, INTERVAL_MS, MAX_SECONDS, MAX_FR
 from aeris.visual_question import VisualQuestion
 from aeris.ready import inspect_environment, model_selection, check_model
 from aeris.catalog_index import CatalogIndex
+from aeris.polish import compact_workspace
 from aeris.meeting_audio import available as loopback_available, model_path, start_loopback, read_loopback, BLOCK_SECONDS
 from aeris.meeting_intelligence import prepare_minutes
 from aeris.companion_ui import CompanionWindow
@@ -121,7 +122,7 @@ class Conversation(CompanionWindow):
         trace_window(w,self.model,self.model_changed)
         self.panes=panes=ttk.Frame(w); panes.pack(fill='both',expand=True)
         panes.columnconfigure(0,weight=3); panes.columnconfigure(1,weight=0); panes.rowconfigure(0,weight=1)
-        left=ttk.Frame(panes,padding=(0,0,8,0)); right=ttk.Frame(panes,padding=(8,0,0,0)); left.grid(row=0,column=0,sticky='nsew'); right.grid(row=0,column=1,sticky='nsew'); self.context_panel=right; right.grid_remove(); self.context_open=False
+        left=ttk.Frame(panes,padding=(0,0,8,0)); right=ttk.Frame(panes,padding=(8,0,0,0)); left.grid(row=0,column=0,sticky='nsew'); right.grid(row=0,column=1,sticky='nsew'); self.context_panel=right; self.chat_panel=left; right.grid_remove(); self.context_open=False; self.compact=False
         chathead=ttk.Frame(left); chathead.pack(fill='x',pady=(0,8))
         ttk.Label(chathead,text='CONVERSA',style='Experience.Section.TLabel').pack(side='left')
         self.context_toggle=ttk.Button(chathead,text='Mostrar contexto',command=self.toggle_context)
@@ -137,7 +138,9 @@ class Conversation(CompanionWindow):
         self.hint_button.pack(anchor='w',pady=(4,0))
         self.hint_name=None; self.ai_hint=None
         self.input=tk.Text(left,wrap='word',height=3,font=('Segoe UI',11),padx=12,pady=8,relief='flat',highlightthickness=1); self.input.pack(fill='x',pady=(12,3))
-        self.count=tk.StringVar(w,'0 / 4000 caracteres'); ttk.Label(left,textvariable=self.count,style='Experience.Muted.TLabel').pack(anchor='e')
+        self.count=tk.StringVar(w,'0 / 4000 caracteres'); editor_hint=ttk.Frame(left); editor_hint.pack(fill='x')
+        ttk.Label(editor_hint,text='Ctrl+Enter para enviar',style='Experience.Muted.TLabel').pack(side='left')
+        ttk.Label(editor_hint,textvariable=self.count,style='Experience.Muted.TLabel').pack(side='right')
         self.input.bind('<<Modified>>',self.input_changed); self.input.edit_modified(False)
         self.input.bind('<Control-Return>',self.keyboard_send)
         self.visual_notice=ttk.Frame(left,padding=6,style='Experience.Card.TFrame')
@@ -148,7 +151,7 @@ class Conversation(CompanionWindow):
         self.send_button=ttk.Button(row,text='Enviar',style='Experience.Primary.TButton',command=self.send); self.send_button.pack(side='right')
         self.mic_button=ttk.Button(row,text='Ditar',command=self.listen); self.mic_button.pack(side='left')
         self.voice_button=ttk.Button(row,text='Conversar por voz',command=self.toggle_voice,style='Experience.Primary.TButton'); self.voice_button.pack(side='left',padx=4)
-        self.stop_button=ttk.Button(row,text='Parar',command=self.stop); self.stop_button.pack(side='left',padx=4)
+        self.stop_button=ttk.Button(row,text='Parar',command=self.stop); self.stop_button.pack_forget()
         row=ttk.Frame(left); row.pack(fill='x')
         self.speak_button=ttk.Button(row,text='Ouvir resposta',command=self.speak); self.speak_button.pack(side='left')
         self.voice_indicator=tk.StringVar(w,'Voz desligada')
@@ -168,9 +171,12 @@ class Conversation(CompanionWindow):
         row=ttk.Frame(self.proposal_panel,style='Experience.Card.TFrame'); row.pack(fill='x')
         self.accept_button=ttk.Button(row,text='Usar sugestão',command=self.accept_candidate); self.accept_button.pack(side='left')
         self.confirm_button=ttk.Button(row,text='Confirmar ação',command=self.confirm_action,style='Experience.Primary.TButton'); self.confirm_button.pack(side='left',padx=4)
-        ttk.Label(right,text='CONTEXTO DE TRABALHO',style='Experience.Section.TLabel').pack(anchor='w',pady=(0,8))
+        contexthead=ttk.Frame(right); contexthead.pack(fill='x',pady=(0,8))
+        ttk.Label(contexthead,text='CONTEXTO DE TRABALHO',style='Experience.Section.TLabel').pack(side='left')
+        self.context_back=ttk.Button(contexthead,text='Voltar à conversa',command=self.toggle_context)
         tabs=self.context_tabs=ttk.Notebook(right); tabs.pack(fill='both',expand=True)
         tabs.bind('<<NotebookTabChanged>>',self.context_changed,add='+')
+        tabs.enable_traversal()
         screen=ttk.Frame(tabs,padding=9); tabs.add(screen,text='Tela')
         ttk.Label(screen,text='Acompanhe a tela principal',style='Experience.Subtitle.TLabel',wraplength=242).pack(anchor='w')
         ttk.Label(screen,text='Capture uma imagem ou acompanhe a tela por até 5 minutos. Somente a última imagem fica na memória. Revise antes de enviar à IA.',wraplength=242,justify='left').pack(anchor='w',pady=5)
@@ -199,6 +205,10 @@ class Conversation(CompanionWindow):
         self.meeting_stop=ttk.Button(meetings,text='Parar transcrição',command=self.stop_meeting); self.meeting_stop.pack(fill='x',pady=3)
         self.minutes_button=ttk.Button(meetings,text='Gerar ata e tarefas com IA',command=self.meeting_summary); self.minutes_button.pack(fill='x',pady=3)
         ttk.Button(meetings,text='Salvar ata na sessão',command=self.save_meeting).pack(fill='x',pady=3)
+        for editor in (self.input,self.transcript,self.note,self.meeting_text):
+            editor.bind('<Tab>',lambda e:self.traverse_editor(e.widget,1))
+            editor.bind('<Shift-Tab>',lambda e:self.traverse_editor(e.widget,-1))
+            editor.bind('<ISO_Left_Tab>',lambda e:self.traverse_editor(e.widget,-1))
         self.status=tk.StringVar(w,'Pronto. Microfone e tela desligados.')
         ttk.Label(w,textvariable=self.status,style='Experience.Muted.TLabel',wraplength=800).pack(fill='x',pady=(12,0))
         self.draw(); self.permissions_changed()
@@ -209,15 +219,33 @@ class Conversation(CompanionWindow):
         else:
             self.ai_settings.pack_forget()
         self.ai_toggle.configure(text='Fechar configuração' if self.ai_open else 'Configurar IA')
+    def traverse_editor(self,widget,direction):
+        target=widget.tk_focusNext() if direction==1 else widget.tk_focusPrev()
+        if target is not None: target.focus_set()
+        return 'break'
+    def resize_workspace(self,width):
+        compact=compact_workspace(width)
+        if compact!=self.compact:
+            self.compact=compact
+            self.layout_context()
+    def layout_context(self):
+        compact_context=self.compact and self.context_open
+        self.panes.columnconfigure(0,weight=0 if compact_context else 3)
+        self.panes.columnconfigure(1,weight=3 if compact_context else 2 if self.context_open else 0)
+        if compact_context:
+            self.chat_panel.grid_remove()
+            self.context_back.pack(side='right')
+        else:
+            self.chat_panel.grid()
+            self.context_back.pack_forget()
+        if self.context_open: self.context_panel.grid()
+        else: self.context_panel.grid_remove()
+        self.context_toggle.configure(text='Ocultar contexto' if self.context_open else 'Mostrar contexto')
     def set_context(self,visible):
         if not visible and self.vision.active: self.stop_vision()
         self.context_open=bool(visible)
-        self.panes.columnconfigure(1,weight=2 if visible else 0)
-        if visible:
-            self.context_panel.grid()
-        else:
-            self.context_panel.grid_remove()
-        self.context_toggle.configure(text='Ocultar contexto' if visible else 'Mostrar contexto')
+        self.layout_context()
+        if not visible and not self.voice.active: self.input.focus_set()
     def toggle_context(self):
         self.set_context(not self.context_open)
     def authorize(self,cap,label):
@@ -900,6 +928,7 @@ class Conversation(CompanionWindow):
                 except ValueError as exc: self.status.set(str(exc))
                 else:
                     self.screen_question=pending; self.visual_invalid=False; self.input.insert('1.0',draft)
+                    if self.compact: self.set_context(False)
                     self.visual_status.set('Pergunta vinculada à captura. Revise e envie.')
                     self.status.set('Revise a pergunta transcrita e clique Enviar ou Analisar captura com IA.')
             else: self.status.set('Não foi possível reconhecer a pergunta por voz.')
@@ -950,6 +979,20 @@ class ExperienceHub(Hub):
     def __init__(self,root,settings=None):
         super().__init__(root,settings)
         root.bind('<Control-f>',lambda _:self.navigate('catalog'))
+        root.bind('<Control-l>',self.focus_conversation)
+        root.bind('<Control-Shift-S>',self.stop_activity)
+        root.bind('<Configure>',self.workspace_configure,add='+')
+        self.conversation.resize_workspace(root.winfo_width() if root.winfo_width()>1 else root.winfo_reqwidth())
+    def workspace_configure(self,event):
+        if event.widget is self.root and not self.conversation.closed:
+            self.conversation.resize_workspace(event.width)
+    def focus_conversation(self,_=None):
+        if self.conversation.idle():
+            self.navigate('chat'); self.conversation.set_context(False); self.conversation.input.focus_set()
+        return 'break'
+    def stop_activity(self,_=None):
+        if not self.conversation.idle(): self.conversation.stop()
+        return 'break'
     def build(self):
         super().build()
         self.legacy_side,self.catalog=self.root.winfo_children()[:2]
@@ -1083,13 +1126,13 @@ class ExperienceHub(Hub):
         style.configure('Experience.Detail.TLabel',background=p['field'],foreground=p['deep'],font=('Segoe UI',17,'bold'))
         style.configure('Experience.Section.TLabel',font=('Segoe UI',10,'bold'),foreground=p['forest'])
         style.configure('Experience.Subtitle.TLabel',font=('Segoe UI',13,'bold'))
-        style.configure('Experience.Muted.TLabel',font=('Segoe UI',10),foreground=p['deep'])
+        style.configure('Experience.Muted.TLabel',font=('Segoe UI',10),foreground=p['secondary'])
         style.configure('Experience.Nav.TButton',padding=(12,8),anchor='w',background='#193D30',foreground='#FFFFFF',borderwidth=0,relief='flat')
-        style.map('Experience.Nav.TButton',background=[('active','#37614E'),('!disabled','#193D30')],foreground=[('!disabled','#FFFFFF')])
+        style.map('Experience.Nav.TButton',background=[('active','#37614E'),('!disabled','#193D30')],foreground=[('!disabled','#FFFFFF')],focuscolor=[('focus','#A5D7B4')])
         style.configure('Experience.Active.TButton',padding=(12,8),anchor='w',background='#DCEFE3',foreground='#193D30',borderwidth=0,relief='flat')
-        style.map('Experience.Active.TButton',background=[('active','#C9E6D4'),('!disabled','#DCEFE3')],foreground=[('!disabled','#193D30')])
+        style.map('Experience.Active.TButton',background=[('active','#C9E6D4'),('!disabled','#DCEFE3')],foreground=[('!disabled','#193D30')],focuscolor=[('focus','#193D30')])
         style.configure('Experience.Primary.TButton',padding=(16,8),background='#285640',foreground='#FFFFFF')
-        style.map('Experience.Primary.TButton',background=[('active','#397557'),('disabled',p['soft'])],foreground=[('disabled',p['deep']),('!disabled','#FFFFFF')])
+        style.map('Experience.Primary.TButton',background=[('disabled',p['soft']),('active','#397557')],foreground=[('disabled',p['deep']),('!disabled','#FFFFFF')],focuscolor=[('focus','#FFFFFF')])
     def permissions_changed(self):
         super().permissions_changed()
         if hasattr(self,'conversation'): self.conversation.permissions_changed()
