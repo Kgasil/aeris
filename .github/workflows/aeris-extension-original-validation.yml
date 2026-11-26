@@ -1,0 +1,25 @@
+name: Aeris Extension original package validation
+on:
+  push:
+    paths:
+      - 'downloads/Aeris-Extension-v1.0.0-*.zip'
+      - 'validation/verify-extension-original.py'
+      - '.github/workflows/aeris-extension-original-validation.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Verify original ZIPs
+        run: python3 validation/verify-extension-original.py "$RUNNER_TEMP/aeris-extension-original"
+      - name: Check runtime JavaScript syntax
+        run: find "$RUNNER_TEMP/aeris-extension-original/extension" -name '*.js' -print0 | xargs -0 -n1 node --check
+      - name: Run original Node tests
+        run: cd "$RUNNER_TEMP/aeris-extension-original" && node --test tests/core.test.mjs
