@@ -1,0 +1,110 @@
+{
+  "version": "1.0.0rc5",
+  "run": 45863779585,
+  "commit": "2918be32bcf1d2221890baa8ff0cb57a97b60cc8",
+  "conclusion": "success",
+  "artifact_id": 15138829732,
+  "artifact_sha256": "09aa2076cac6f9bc8a543869027fe2617f0590fd4509a6f18261def0e797ba9a",
+  "artifact_bytes": 26701152,
+  "artifact_expires": "2026-12-26T17:03:32Z",
+  "source_branch": "desktop-rc5-source",
+  "source_commit": "bfedb434358ce04d55827d7a057de3edf31c6728",
+  "source_persistence_run": 45864353294,
+  "source_files_verified": 362,
+  "reviewed_files_exact": 54,
+  "source_sha256": "fe393db2e8903ae9c181d23639729204bad96fefcbdc60de4c7cec2170debc18",
+  "functional_tests": {
+    "total": 477,
+    "windows_passed": 473,
+    "windows_skipped": 4,
+    "windows_failures": 0,
+    "windows_seconds": 38.32,
+    "ubuntu_complementary_passed": 4,
+    "distinct_passed": 477,
+    "refinement_tests": 64,
+    "smokes_passed": 60,
+    "tk_cleanup_retest": "PASS",
+    "security_retest_seconds": 2.386,
+    "scope": "source/Tk, synthetic fixtures and simulated dependencies where applicable"
+  },
+  "ubuntu": {
+    "artifact_id": 15139726871,
+    "artifact_sha256": "bbaec7f1a5cf17816e974262214ee4fec7c834bbdb37dd6d6d2e24f57aa4f4b4",
+    "seconds": 0.447,
+    "tesseract": "5.3.4-1build5",
+    "source_sha256": "fe393db2e8903ae9c181d23639729204bad96fefcbdc60de4c7cec2170debc18"
+  },
+  "setup": {
+    "bytes": 12792748,
+    "sha256": "54ab3ab65672a32dc944259bb291f5c66ed735d4c5d5876641725131c9915aa8",
+    "signed": false,
+    "compiler": "Inno Setup 6.7.4"
+  },
+  "portable": {
+    "bytes": 13766909,
+    "sha256": "ffbda95354b563e1d6a1b8f90fc43184a197585488c3da8609ac6970ffee9701",
+    "manifest_files_verified": 47,
+    "binaries_verified": 27,
+    "notices_verified": 17
+  },
+  "exe_sha256": "4cb9ed45a6e9cce9c1f86a9d71e6f915aba987ab3532e034e34bd9300b7d0025",
+  "exe_signed": false,
+  "checks": {
+    "independent_outer_source_asset_manifest_hashes": "PASS",
+    "packaged_full_self_test": "PASS",
+    "install": "PASS",
+    "same_version_reinstall": "PASS",
+    "uninstall": "PASS",
+    "synthetic_data_preserved": "PASS",
+    "shortcut_targets": "PASS",
+    "shortcut_cleanup": "PASS",
+    "silent_no_launch": "PASS",
+    "installed_notices": "PASS",
+    "runtime_reduction": "PASS"
+  },
+  "performance": {
+    "startup_seconds": [
+      0.37,
+      0.244,
+      0.233
+    ],
+    "peak_sampled_working_set_bytes": [
+      41394176,
+      41402368,
+      41512960
+    ],
+    "idle_cpu_percent_one_core": [
+      0,
+      0,
+      0
+    ],
+    "shutdown_seconds": [
+      0.053,
+      0.049,
+      0.065
+    ],
+    "status": "PASS",
+    "scope": "Windows Server 2022, three fresh process launches, sampled idle resource measurements; not client certification"
+  },
+  "runtime": {
+    "python": "3.14.10",
+    "openssl": "3.5.9",
+    "tcl": "9.0.4",
+    "remaining_microsoft_dlls": 2,
+    "remaining_microsoft_exact_python_match": true
+  },
+  "defender": {
+    "antivirus_enabled": true,
+    "realtime_protection_enabled": false,
+    "malware_scan": "NOT_TESTED"
+  },
+  "followup_reviews": {
+    "upgrade_run": 45864700604,
+    "clamav_run": 45864693947,
+    "conclusions": "pending"
+  },
+  "client_windows": "NOT_TESTED",
+  "redistribution_approved": false,
+  "release_approved": false,
+  "scope": "Integrated experimental RC5 source and package approved in CI only. No stable release, no client or malware certification."
+}
