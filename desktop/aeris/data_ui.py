@@ -12,19 +12,24 @@ from pathlib import Path
 class DataWindow:
     permission=DATA_READ
     title="Aeris Data"
-    description="Perfil de qualidade de CSV local. Cabeçalho obrigatório. Use exemplos fictícios."
+    display_title='Analisar dados'
+    description="Encontre valores ausentes, duplicatas e estatísticas de um CSV local com cabeçalho. Use dados fictícios."
     def parse(self,path,delimiter,decimal,cancelled):
         return profile_file(path,delimiter,decimal,cancelled=cancelled)
     def __init__(self,hub):
         self.hub=hub; self.job=None; self.timer=None; self.path=None; self.revision=0; self.request=None
-        self.window=tk.Toplevel(hub.root); self.window.title(self.title); self.window.geometry('680x520'); self.window.minsize(510,460)
+        self.window=tk.Toplevel(hub.root); self.window.title(self.display_title); self.window.geometry('740x600'); self.window.minsize(510,460)
         self.window.protocol('WM_DELETE_WINDOW',self.close); self.window.bind('<Escape>',lambda _:self.close())
         self.window.bind('<Destroy>',self.destroyed,add='+')
-        f=ttk.Frame(self.window,padding=14); f.pack(fill='both',expand=True)
-        ttk.Label(f,text=self.title,font=('Segoe UI',18)).pack(anchor='w')
+        f=ttk.Frame(self.window,padding=18); f.pack(fill='both',expand=True)
+        ttk.Label(f,text=self.display_title,font=('Segoe UI',21,'bold')).pack(anchor='w')
         ttk.Label(f,text=self.description,wraplength=460).pack(anchor='w',pady=5)
-        self.choose_button=ttk.Button(f,text='Selecionar CSV local',command=self.choose); self.choose_button.pack(fill='x')
+        ttk.Label(f,text='1. Escolha o arquivo CSV',font=('Segoe UI',11,'bold')).pack(anchor='w',pady=(6,4))
+        source=ttk.Frame(f); source.pack(fill='x')
+        self.choose_button=ttk.Button(source,text='Selecionar arquivo',command=self.choose); self.choose_button.pack(side='left',fill='x',expand=True)
+        ttk.Button(source,text='Permissões',command=hub.open_permissions).pack(side='right',padx=(6,0))
         self.filename=tk.StringVar(self.window,'Nenhum CSV selecionado'); ttk.Label(f,textvariable=self.filename,wraplength=460).pack(anchor='w',pady=4)
+        ttk.Label(f,text='2. Confira o formato do arquivo',font=('Segoe UI',11,'bold')).pack(anchor='w',pady=(6,0))
         opts=ttk.Frame(f); opts.pack(fill='x',pady=4)
         self.delimiter=tk.StringVar(self.window,','); self.decimal=tk.StringVar(self.window,'.')
         ttk.Label(opts,text='Separador de campos').pack(side='left')
@@ -32,10 +37,12 @@ class DataWindow:
         ttk.Label(opts,text='Decimal').pack(side='left')
         self.dec_box=ttk.Combobox(opts,textvariable=self.decimal,values=('.', ','),state='readonly',width=5); self.dec_box.pack(side='left',padx=6)
 
-        self.run_button=ttk.Button(f,text='Analisar CSV',command=self.run); self.run_button.pack(fill='x',pady=6)
-        self.cancel_button=ttk.Button(f,text='Cancelar',command=self.cancel); self.cancel_button.pack(fill='x',pady=4)
+        actions=ttk.Frame(f); actions.pack(fill='x',pady=6)
+        self.run_button=ttk.Button(actions,text='Analisar CSV',command=self.run,style='Aeris.Primary.TButton'); self.run_button.pack(side='left',fill='x',expand=True)
+        self.cancel_button=ttk.Button(actions,text='Cancelar',command=self.cancel); self.cancel_button.pack(side='right',padx=(6,0))
+        ttk.Label(f,text='3. Resultados da análise',font=('Segoe UI',11,'bold')).pack(anchor='w',pady=(8,0))
         frame=ttk.Frame(f); frame.pack(fill='both',expand=True,pady=5)
-        self.report=tk.Text(frame,height=10,wrap='word',state='disabled'); self.report.pack(side='left',fill='both',expand=True)
+        self.report=tk.Text(frame,height=10,wrap='word',state='disabled',padx=12,pady=10,relief='flat',highlightthickness=1); self.report.pack(side='left',fill='both',expand=True)
         bar=ttk.Scrollbar(frame,command=self.report.yview); bar.pack(side='right',fill='y'); self.report.configure(yscrollcommand=bar.set)
         ttk.Button(f,text='Limpar resultado',command=self.clear).pack(fill='x')
         self.permissions_changed()
@@ -97,6 +104,10 @@ class DataWindow:
             lines.append(f'\n{safe_name(col.name)} | {col.kind} | Ausentes: {col.missing} | Distintos: {col.distinct}')
             if col.mean is not None: lines.append(f' Mín: {col.minimum} | Máx: {col.maximum} | Média: {col.mean:.10g}')
         self.show('\n'.join(lines))
+        self.report.configure(state='normal')
+        self.report.tag_configure('summary',font=('Segoe UI',11,'bold'),spacing3=5)
+        self.report.tag_add('summary','1.0','3.0')
+        self.report.configure(state='disabled')
     def cancel(self):
         if self.job: self.job[0].set(); self.show('Cancelamento solicitado; resultado descartado.')
     def clear(self):
