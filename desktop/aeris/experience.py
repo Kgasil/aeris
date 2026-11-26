@@ -173,7 +173,7 @@ class Conversation(CompanionWindow):
         self.confirm_button=ttk.Button(row,text='Confirmar ação',command=self.confirm_action,style='Experience.Primary.TButton'); self.confirm_button.pack(side='left',padx=4)
         contexthead=ttk.Frame(right); contexthead.pack(fill='x',pady=(0,8))
         ttk.Label(contexthead,text='CONTEXTO DE TRABALHO',style='Experience.Section.TLabel').pack(side='left')
-        self.context_back=ttk.Button(contexthead,text='Voltar à conversa',command=self.toggle_context)
+        self.context_back=ttk.Button(contexthead,text='Voltar à conversa',command=lambda:self.hub.navigate('chat'))
         tabs=self.context_tabs=ttk.Notebook(right); tabs.pack(fill='both',expand=True)
         tabs.bind('<<NotebookTabChanged>>',self.context_changed,add='+')
         tabs.enable_traversal()
@@ -928,7 +928,7 @@ class Conversation(CompanionWindow):
                 except ValueError as exc: self.status.set(str(exc))
                 else:
                     self.screen_question=pending; self.visual_invalid=False; self.input.insert('1.0',draft)
-                    if self.compact: self.set_context(False)
+                    if self.compact: self.hub.navigate('chat')
                     self.visual_status.set('Pergunta vinculada à captura. Revise e envie.')
                     self.status.set('Revise a pergunta transcrita e clique Enviar ou Analisar captura com IA.')
             else: self.status.set('Não foi possível reconhecer a pergunta por voz.')
@@ -1063,6 +1063,7 @@ class ExperienceHub(Hub):
             if view in ('screen','notes','meeting'):
                 self.conversation.set_context(True)
                 self.conversation.context_tabs.select(('screen','notes','meeting').index(view))
+            elif view=='chat': self.conversation.set_context(False)
         self.view=view
         active={'catalog':'Ferramentas','screen':'Tela','notes':'Anotações','meeting':'Reuniões'}.get(view,'Conversar')
         for label,button in self.nav_buttons.items(): button.configure(style='Experience.Active.TButton' if label==active else 'Experience.Nav.TButton')
