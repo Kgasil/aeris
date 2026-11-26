@@ -1,5 +1,7 @@
 # Project Aeris — Eficiência e Simplicidade.
 
+> **Branch desktop-experience — candidato 1.1.0rc1, não publicado.** Consulte [preparação e critérios de lançamento](../docs/experience-release-candidate.md). As seções históricas abaixo descrevem versões anteriores, não evidências deste candidato.
+
 **by K&G Vision · Desktop v1.0.0rc5 · candidato de código-fonte**
 
 Pacote candidato de código-fonte para testes com dados fictícios; não é uma versão Windows validada ou um instalador. Site e Web Lab em https://kgasil.github.io/aeris/.
