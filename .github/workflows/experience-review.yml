@@ -57,9 +57,14 @@ jobs:
               time.sleep(.5)
               root.update()
               assert hub.conversation.send_button.winfo_rooty()+hub.conversation.send_button.winfo_height() <= root.winfo_rooty()+root.winfo_height(), "Send control clipped"
-              assert hub.conversation.capture_button.winfo_rooty()+hub.conversation.capture_button.winfo_height() <= root.winfo_rooty()+root.winfo_height(), "Capture control clipped"
+              assert hub.conversation.send_button.winfo_ismapped(), "Send control not visible"
               data=read_capture(capture_process())
               Path(os.environ["AERIS_EVIDENCE"],"experience-home.png").write_bytes(data)
+              hub.navigate("screen")
+              root.update()
+              assert hub.conversation.capture_button.winfo_ismapped(), "Capture control not visible"
+              assert hub.conversation.capture_button.winfo_rooty()+hub.conversation.capture_button.winfo_height() <= root.winfo_rooty()+root.winfo_height(), "Capture control clipped"
+              Path(os.environ["AERIS_EVIDENCE"],"experience-screen.png").write_bytes(read_capture(capture_process()))
               hub.navigate("catalog")
               root.update()
               time.sleep(.3)
