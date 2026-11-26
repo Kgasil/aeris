@@ -1,0 +1,53 @@
+{
+  "run": 45850700330,
+  "commit": "3359eb1e21abce8eeb799645510be4d648f3aa85",
+  "ocr": {
+    "scope": "Aeris source, real Tesseract Ubuntu 24.04",
+    "artifact_id": 15133511860,
+    "sha256": "8a5fa3fcf523389fab230db1d29d47793d72f3237cf5b6e156108f19f78f652d",
+    "tests": 6,
+    "passed": 6,
+    "skipped": 0,
+    "failures": 0,
+    "seconds": 0.357,
+    "engine": "5.3.4",
+    "package_version": "5.3.4-1build5",
+    "languages": [
+      "por",
+      "eng",
+      "spa"
+    ],
+    "language_package_version": "1:4.1.0-2",
+    "fixtures": "PNG pt/en/es, JPEG en",
+    "real_ocr": "PASS",
+    "input_preservation": "PASS",
+    "windows_installed": "NOT_TESTED"
+  },
+  "speech": {
+    "scope": "Windows Server 2022, source voice enumeration and separate native System.Speech synthesis to WAV",
+    "artifact_id": 15132807879,
+    "sha256": "82b642b5b52159a47b74cd2399497beed9e43bb6ea5f56ec694eadc85e693854",
+    "tests": 14,
+    "passed": 14,
+    "skipped": 0,
+    "failures": 0,
+    "seconds": 7.983,
+    "synthesis": "PASS",
+    "voice_culture": "en-US",
+    "available_cultures": [
+      "en-US"
+    ],
+    "wav_sha256": "5c1089ed86f5daa24bcbc2e5ab66f0df3af7c694307ebfa5b83e66f9a0952cab",
+    "wav_bytes": 211882,
+    "sample_rate_hz": 22050,
+    "channels": 1,
+    "pcm_bits": 16,
+    "frames": 105918,
+    "duration_seconds": 4.803537414965986,
+    "pt_br_voice": "NOT_TESTED",
+    "playback": "NOT_TESTED",
+    "microphone": "NOT_TESTED"
+  },
+  "independent_artifact_digest_checks": "PASS",
+  "release_approved": false
+}
