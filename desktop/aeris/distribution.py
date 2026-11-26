@@ -68,6 +68,19 @@ def self_test(full=False):
                 hub.navigate(view)
                 root.update()
                 if hub.view != view: raise RuntimeError('Navigation failed: '+view)
+            # Exercise both workspace layouts without starting capture or AI.
+            conversation=hub.conversation
+            conversation.resize_workspace(1100)
+            hub.navigate('screen')
+            if not conversation.chat_panel.winfo_manager() or not conversation.context_panel.winfo_manager():
+                raise RuntimeError('Wide layout failed')
+            conversation.resize_workspace(880)
+            if conversation.chat_panel.winfo_manager() or not conversation.context_panel.winfo_manager():
+                raise RuntimeError('Compact context layout failed')
+            hub.navigate('chat')
+            if not conversation.chat_panel.winfo_manager() or conversation.context_panel.winfo_manager():
+                raise RuntimeError('Compact conversation return failed')
+            conversation.resize_workspace(1100)
             hub.conversation.toggle_ai_settings()
             root.update()
             if not hub.conversation.ai_open or not hub.conversation.ai_settings.winfo_manager():
