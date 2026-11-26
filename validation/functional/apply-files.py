@@ -129,7 +129,7 @@ def apply(root):
     s=replace(s,"if not self.window.winfo_exists() or paths!=self.selected() or not all", "if not self.window.winfo_exists() or reviewed!=self.revision or records!=self.store.list() or paths!=self.selected() or not all")
     files["drop_ui.py"]=s
     s=files["compare_ui.py"]
-    s=replace(s,"self.paths=[None,None]\n        self.window", "self.paths=[None,None]; self.revision=0; self.request=None; self.comparison=None\n        self.window")
+    s=replace(s,"self.paths=[None,None]\n        self.window", "self.paths=[None,None]; self.revision=0; self.request=None; self.comparison=None; self.comparison_context=None\n        self.window")
     s=replace(s,"        self.status=tk.StringVar(self.window,'Pronto.');", """        self.changes_only=tk.BooleanVar(self.window,False)
         ttk.Checkbutton(f,text='Mostrar apenas linhas alteradas',variable=self.changes_only,command=self.render_comparison).pack(anchor='w')
         self.status=tk.StringVar(self.window,'Pronto.');""")
@@ -146,15 +146,16 @@ def apply(root):
     s=replace(s,"if not self.window.winfo_exists() or self.mode.get()!='Arquivos' or tuple(self.paths)!=selected", "if not self.window.winfo_exists() or self.job or reviewed!=self.context() or self.mode.get()!='Arquivos' or tuple(self.paths)!=selected")
     s=replace(s,"        event=threading.Event();outcome=queue.Queue(1)", "        self.request=self.context()\n        event=threading.Event();outcome=queue.Queue(1)")
     s=replace(s,"        self.job=None;self.controls()\n        if event.is_set()", "        self.job=None;reviewed=self.request;self.request=None;self.controls()\n        if reviewed!=self.context() or event.is_set()")
-    s=replace(s,"        rows=[]\n        for r in result.rows:", """        self.comparison=result; self.render_comparison()
+    s=replace(s,"        rows=[]\n        for r in result.rows:", """        self.comparison=result; self.comparison_context=reviewed; self.render_comparison()
     def render_comparison(self):
         result=self.comparison
         if result is None: return
+        if self.comparison_context!=self.context(): self.show(''); self.status.set('Entrada alterada; compare novamente.'); return
         if self.mode.get()=='Arquivos' and not self.hub.permissions.allowed(COMPARE_READ):
             self.show(''); return
         rows=[]
         for r in result.rows:
-            if self.changes_only.get() and r.kind=='=': continue""")
+            if self.changes_only.get() and r.kind==' ': continue""")
     s=replace(s,"        self.show('\\n'.join(rows))","        self.show('\\n'.join(rows) if rows else 'Nenhuma linha alterada.',keep=True)")
     s=replace(s,"        self.cancel();self.paths=[None,None]", "        self.revision+=1;self.cancel();self.paths=[None,None]")
     files["compare_ui.py"]=s
