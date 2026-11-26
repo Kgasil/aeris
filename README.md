@@ -11,6 +11,8 @@ Light · Modular · Privacy-conscious
 
 > **Marco 1.0 — Aeris Extension 1.0.0.** 16 ferramentas, 50 testes automatizados aprovados, instalação manual gratuita via GitHub. Desktop 1.0.0rc1 continua em prévia experimental. [Baixar extensão / Download extension](https://github.com/Kgasil/aeris/raw/refs/heads/main/downloads/Aeris-Extension-v1.0.0-install.zip) · [Tutorial](https://github.com/Kgasil/aeris/tree/main/extension).
 
+**Papel no ecossistema / Ecosystem role:** No ecossistema K&G Vision, o Aeris busca tornar tarefas recorrentes mais simples, aproximando ferramentas tecnológicas do cotidiano. / Within the K&G Vision ecosystem, Aeris aims to simplify recurring tasks and make technology more accessible in everyday work.
+
 ## Português
 
 O Aeris é um projeto da K&G Vision para criar ferramentas leves, discretas e úteis ao cotidiano. A proposta reúne um aplicativo desktop para Windows e uma extensão para navegadores Chromium, com módulos opcionais e processamento local sempre que possível.
