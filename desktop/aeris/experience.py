@@ -12,6 +12,7 @@ from aeris.intelligence import recommend_tool
 from aeris.voice_session import VoiceSession, MAX_TURNS
 from aeris.vision_session import VisionSession, INTERVAL_MS, MAX_SECONDS, MAX_FRAMES
 from aeris.visual_question import VisualQuestion
+from aeris.ready import inspect_environment, model_selection, check_model
 from aeris.meeting_audio import available as loopback_available, model_path, start_loopback, read_loopback, BLOCK_SECONDS
 from aeris.meeting_intelligence import prepare_minutes
 from aeris.companion_ui import CompanionWindow
@@ -93,7 +94,11 @@ class Conversation(CompanionWindow):
         ttk.Label(ai_header,textvariable=self.ai_state,style='Experience.Muted.TLabel').pack(side='left')
         self.ai_toggle=ttk.Button(ai_header,text='Configurar IA',command=self.toggle_ai_settings)
         self.ai_toggle.pack(side='right')
-        self.ai_settings= modelrow=ttk.Frame(w)
+        self.ai_settings=ttk.Frame(w,padding=10,style='Experience.Card.TFrame')
+        setup=self.ai_settings
+        ttk.Label(setup,text='Configure seu assistente',style='Experience.Card.TLabel',font=('Segoe UI',13,'bold')).pack(anchor='w')
+        ttk.Label(setup,text='1. Instale e abra o Ollama com um modelo local. 2. Detecte modelos. 3. Teste a IA.',wraplength=580,style='Experience.Card.TLabel').pack(anchor='w',pady=(4,6))
+        modelrow=ttk.Frame(setup,style='Experience.Card.TFrame'); modelrow.pack(fill='x')
         self.ai_header=ai_header
         self.mode_status=tk.StringVar(w,'Pronto · microfone e tela desligados')
         modes=ttk.Frame(w,padding=(8,4),style='Experience.Card.TFrame'); modes.pack(fill='x',pady=(0,8))
@@ -104,7 +109,14 @@ class Conversation(CompanionWindow):
         self.model=tk.StringVar(w,'')
         self.model_entry=ttk.Combobox(modelrow,textvariable=self.model,width=19); self.model_entry.pack(side='left',padx=6)
         self.detect_button=ttk.Button(modelrow,text='Detectar modelos',command=self.detect_models); self.detect_button.pack(side='left')
-        ttk.Button(modelrow,text='Ajuda',command=self.configure_ai).pack(side='left',padx=4)
+        self.test_ai_button=ttk.Button(modelrow,text='Testar IA',command=self.test_ai); self.test_ai_button.pack(side='left',padx=4)
+        self.ready_state=tk.StringVar(w,'Nenhum diagnóstico executado.')
+        ttk.Label(setup,textvariable=self.ready_state,wraplength=580,style='Experience.Card.TLabel').pack(anchor='w',pady=(6,0))
+        info=inspect_environment()
+        voice='Windows detectado; voz e tela ainda não testadas.' if info.windows else 'Voz e tela nativas exigem Windows.'
+        audio=('Áudio interno: dependências encontradas; modelo e dispositivo ainda não testados.' if info.loopback_candidate else 'Áudio interno: opcional, exige execução por código-fonte no Windows e dependências próprias.')
+        ttk.Label(setup,text=voice+' '+audio,wraplength=580,style='Experience.Card.TLabel').pack(anchor='w',pady=4)
+        ttk.Button(setup,text='Como instalar os recursos opcionais',command=self.configure_ai).pack(anchor='w')
         trace_window(w,self.model,self.model_changed)
         self.panes=panes=ttk.Frame(w); panes.pack(fill='both',expand=True)
         panes.columnconfigure(0,weight=3); panes.columnconfigure(1,weight=0); panes.rowconfigure(0,weight=1)
@@ -214,6 +226,7 @@ class Conversation(CompanionWindow):
         if not self.hub.enabled(name): self.hub.toggle_tool(name)
         return self.hub.enabled(name)
     def model_changed(self,*args):
+        self.ready_state.set('Modelo alterado. Clique Testar IA para verificar a resposta.')
         self.detach_question()
         self.close_meeting_review()
         self.session.cancel(); self.action_input=None; self.preview.set(''); self.ai_hint=None; self.update_hint(); super().model_changed(*args)
@@ -221,9 +234,21 @@ class Conversation(CompanionWindow):
     def detect_models(self):
         if not self.idle(): return
         if not self.authorize(COMPANION_CHAT,'Consultar os nomes dos modelos instalados no Ollama local? Nenhuma mensagem ou arquivo será enviado.'): return
-        if self.start(COMPANION_CHAT,installed_models,kind='models'): self.status.set('Consultando modelos instalados…')
+        if not self.idle(): return
+        if self.start(COMPANION_CHAT,installed_models,kind='models'):
+            self.ready_state.set('Consultando Ollama local…'); self.status.set('Consultando modelos instalados…')
+    def test_ai(self):
+        if not self.idle(): return
+        model=self.model.get().strip()
+        if not model:
+            self.ready_state.set('Escolha um modelo instalado primeiro.'); return
+        if not self.authorize(COMPANION_CHAT,'Enviar uma saudação fictícia ao Ollama local para testar a resposta? Nenhuma mensagem pessoal, imagem ou arquivo será enviado.'): return
+        if not self.idle() or model!=self.model.get().strip(): return
+        if self.start(COMPANION_CHAT,lambda:(model,check_model(model,chat_fn=chat)),kind='ready_test'):
+            self.ready_state.set('Testando resposta de texto do modelo local…'); self.status.set('Testando IA com mensagem fictícia.')
     def configure_ai(self):
-        messagebox.showinfo('IA local','Instale o Ollama e um modelo local, com OLLAMA_NO_CLOUD=1. Em seguida clique Detectar modelos ou digite o nome exato. Para imagens, use um modelo compatível com visão. Aeris não instala modelos nem envia dados para uma API de nuvem.',parent=self.hub.root)
+        if not self.ai_open: self.toggle_ai_settings()
+        messagebox.showinfo('Primeiro acesso','1. Instale o Ollama pela fonte oficial (ollama.com).\n2. Configure OLLAMA_NO_CLOUD=1, reinicie o Ollama e instale um modelo local compatível com seu computador.\n3. Clique Detectar modelos, selecione um modelo e clique Testar IA.\n\nVisão exige modelo multimodal. Voz exige recursos pt-BR do Windows. Áudio interno é experimental e requer instalação manual das dependências descritas em MEETING_EXPERIMENTAL.md.\n\nNenhuma instalação, download ou acesso a dispositivos é iniciado pelo assistente de configuração.',parent=self.hub.root)
     def idle(self):
         return not (self.closed or self.busy or self.voice.active or self.vision.active or self.meeting_active or self.capture_timer is not None)
     def send(self):
@@ -351,6 +376,7 @@ class Conversation(CompanionWindow):
         else: mode='Pronto · microfone e tela desligados'
         self.mode_status.set(mode)
         self.global_stop.configure(state='disabled' if free else 'normal')
+        self.test_ai_button.configure(state='normal' if free else 'disabled')
         self.monitor_button.configure(text='Parar acompanhamento' if self.vision.active else 'Acompanhar tela',state='normal' if free or self.vision.active else 'disabled')
         self.vision_state.set(f'TELA ATIVA · {self.vision.frames}/{MAX_FRAMES} capturas' if self.vision.active else 'Acompanhamento desligado')
         self.voice_button.configure(text='Parar voz' if self.voice.active else 'Conversar por voz',state='normal' if free or self.voice.active else 'disabled')
@@ -783,7 +809,7 @@ class Conversation(CompanionWindow):
         super().stop()
         if self.hub.root.state()=='withdrawn': self.hub.root.deiconify()
     def poll(self):
-        if self.kind not in ('screen','vision','meeting','models','route','voice_listen','voice_chat','voice_speak','monitor_screen','minutes','visual_question'): return super().poll()
+        if self.kind not in ('screen','vision','meeting','models','route','voice_listen','voice_chat','voice_speak','monitor_screen','minutes','visual_question','ready_test'): return super().poll()
         self.timer=None
         if self.closed: return
         try: job,ok,result=self.results.get_nowait()
@@ -804,12 +830,23 @@ class Conversation(CompanionWindow):
                     self.status.set('Confira a ferramenta sugerida.' if name else 'Nenhuma ferramenta adequada encontrada. Você pode conversar normalmente.')
                 else: self.status.set('Pedido ou modelo alterado. Sugestão descartada.')
             else: self.status.set('Não foi possível obter uma sugestão válida do modelo local.')
-        elif valid and kind=='models':
-            if ok and result:
+        elif kind=='ready_test':
+            if valid and ok and result[0]==self.model.get().strip() and result[1]:
+                self.ready_state.set('Teste de texto aprovado. Visão e voz ainda precisam de verificação própria.')
+                self.status.set('O modelo respondeu ao teste fictício.')
+            else:
+                self.ready_state.set('Teste não concluído. Confira modelo, Ollama e autorização.')
+        elif kind=='models':
+            if valid and ok and result:
                 self.model_entry.configure(values=result)
-                if len(result)==1 and not self.model.get().strip(): self.model.set(result[0])
-                self.status.set('Modelos locais encontrados. Escolha um modelo para conversar.')
-            else: self.status.set('Nenhum modelo local encontrado. Abra Ajuda para configurar o Ollama.')
+                chosen=model_selection(self.model.get(),result)
+                if chosen!=self.model.get(): self.model.set(chosen)
+                self.ready_state.set(f'{len(result)} modelo(s) local(is) encontrado(s). Selecione e teste a IA.')
+                self.status.set('Modelos locais encontrados.')
+            elif valid and ok:
+                self.model_entry.configure(values=()); self.ready_state.set('Ollama respondeu, mas não há modelo local elegível. Instale um modelo manualmente.')
+            else:
+                self.ready_state.set('Consulta não concluída. Verifique se o Ollama está aberto e autorizado.')
         elif kind=='monitor_screen':
             if valid and self.vision.allowed():
                 try:
