@@ -287,7 +287,7 @@ class Hub:
             if self.alive(w): w.force_lock()
 
     def clear_session(self):
-        if not messagebox.askyesno('Limpar sessão?', 'Descartar dados temporários e sessões Focus, e bloquear Vault, Bookmarks e Autofill? Registros salvos e clipboard serão preservados.', parent=self.root):
+        if not messagebox.askyesno('Limpar sessão?', 'Descartar dados temporários, conversas, capturas, transcrições, rascunhos e sessões de concentração, revogar acessos e bloquear cofres? Cópias protegidas em disco e clipboard do Windows serão preservados.', parent=self.root):
             return False
         self.stop_autosave()
         if self.alive(self.translate_window): self.translate_window.close(); self.translate_window=None
