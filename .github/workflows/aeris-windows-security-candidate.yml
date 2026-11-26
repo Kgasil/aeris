@@ -112,6 +112,40 @@ jobs:
           $s = [regex]::Replace($s,$pattern,'pyinstaller==6.22.3')
           [IO.File]::WriteAllText((Resolve-Path -LiteralPath $path).Path,$s,[Text.UTF8Encoding]::new($false))
           Copy-Item -LiteralPath $path -Destination security-evidence/requirements-build.txt
+      - name: Align portable release verification with Python 3.14 DLL
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $root = 'source/Aeris-Desktop-v1.0.0rc1-fix1/desktop'
+          $path = Join-Path $root 'aeris/release_check.py'
+          $s = [IO.File]::ReadAllText((Resolve-Path -LiteralPath $path).Path)
+          if ([regex]::Matches($s,'python312\.dll').Count -ne 2) { throw 'Unexpected release verifier' }
+          [IO.File]::WriteAllText((Resolve-Path -LiteralPath $path).Path,$s.Replace('python312.dll','python314.dll'),[Text.UTF8Encoding]::new($false))
+          $test = Join-Path $root 'tests/test_release_check.py'
+          $t = [IO.File]::ReadAllText((Resolve-Path -LiteralPath $test).Path)
+          $marker = '    def test_path_rejection(self):'
+          if ([regex]::Matches($t,[regex]::Escape($marker)).Count -ne 1) { throw 'Unexpected release test suite' }
+          $extra = @'
+          def test_runtime_dll_required(self):
+              (self.bundle / '_internal' / 'python314.dll').unlink()
+              with self.assertRaises(ValueError):
+                  build_portable(self.bundle, self.zip)
+              self.assertFalse(self.zip.exists())
+
+          def test_runtime_dll_architecture(self):
+              (self.bundle / '_internal' / 'python314.dll').write_bytes(fake_pe(0x14c))
+              with self.assertRaises(ValueError):
+                  build_portable(self.bundle, self.zip)
+              self.assertFalse(self.zip.exists())
+
+          '@
+          $extra = (($extra -split '\r?\n') | ForEach-Object { '    ' + $_ }) -join [Environment]::NewLine
+          [IO.File]::WriteAllText((Resolve-Path -LiteralPath $test).Path,$t.Replace($marker,$extra + [Environment]::NewLine + $marker),[Text.UTF8Encoding]::new($false))
+          Push-Location $root
+          try {
+            py -3.14-64 -m unittest tests.test_release_check -v
+            if ($LASTEXITCODE -ne 0) { throw 'Release verifier regression failed' }
+          } finally { Pop-Location }
       - name: Locate Inno Setup compiler and build
         shell: pwsh
         run: |
