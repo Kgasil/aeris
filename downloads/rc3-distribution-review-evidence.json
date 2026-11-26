@@ -1,0 +1,38 @@
+{
+  "run": 45852476796,
+  "commit": "87caed8fe2c20f765a36df8e8632df278abcc854",
+  "rc3_artifact_id": 15132444366,
+  "rc3_sha256": "de81221a8723a9c26f11db293e440c65243f4c4c53e8d2dd2d00afc0e94e270f",
+  "microsoft_origin": {
+    "artifact_id": 15134895053,
+    "sha256": "2e6c3dcc27e86c52d14fbe97900e6651d8fb7934f52b01b75c2d9ceb1165ad13",
+    "components": 46,
+    "exact_matches": 0,
+    "unresolved": 46,
+    "redist_roots": 11,
+    "scope": "Available SDK and Visual Studio REDIST paths on a different runner; unmatched does not establish unlawful origin",
+    "redistribution_approved": false
+  },
+  "clamav": {
+    "artifact_id": 15134755169,
+    "sha256": "ad9877b58c069195fbba92c347ffb83bcf4cb1fc5fb1313c59c6d099fc3f1d45",
+    "version_package": "1.5.4+dfsg-0ubuntu0.24.04.1",
+    "status": "NOT_TESTED",
+    "error": "Can't open/parse the config file",
+    "retry_run": 45852715374
+  },
+  "defender": {
+    "antivirus_enabled": true,
+    "real_time_protection_enabled": false,
+    "malware_scan": "NOT_TESTED"
+  },
+  "independent_artifact_digests": "PASS",
+  "reduced_runtime_experiment": {
+    "run": 45852772215,
+    "commit": "ab97bbe44d3cac92f8fddc2ab14b1b48dfab655a",
+    "version": "1.0.0rc4",
+    "status": "PENDING",
+    "scope": "Remove 44 signed OS runtime copies only in new generated staging, compare two VC runtime DLLs with pinned Python distribution; test and reverify, no claims of success"
+  },
+  "release_approved": false
+}
