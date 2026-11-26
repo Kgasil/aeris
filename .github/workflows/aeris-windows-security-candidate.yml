@@ -146,22 +146,56 @@ jobs:
             py -3.14-64 -m unittest tests.test_release_check -v
             if ($LASTEXITCODE -ne 0) { throw 'Release verifier regression failed' }
           } finally { Pop-Location }
-      - name: Locate Inno Setup compiler and build
+      - name: Download and verify official pinned Inno Setup 6.7.4
         shell: pwsh
         run: |
           $ErrorActionPreference = 'Stop'
-          $candidates = @(
-            (Join-Path ${env:ProgramFiles(x86)} 'Inno Setup 6\ISCC.exe'),
-            (Join-Path $env:ProgramFiles 'Inno Setup 6\ISCC.exe'),
-            (Join-Path $env:LOCALAPPDATA 'Programs\Inno Setup 6\ISCC.exe')
-          )
-          $iscc = $candidates | Where-Object { Test-Path -LiteralPath $_ -PathType Leaf } | Select-Object -First 1
-          if (-not $iscc) {
-            $cmd = Get-Command ISCC.exe -ErrorAction SilentlyContinue
-            if ($cmd) { $iscc = $cmd.Source }
-          }
-          if (-not $iscc) { throw 'Inno Setup 6 compiler not available on runner; no unverified download attempted.' }
-          & .\source\Aeris-Desktop-v1.0.0rc1-fix1\distribution\build.ps1 -Iscc $iscc
+          $url = 'https://github.com/jrsoftware/issrc/releases/download/is-6_7_4/innosetup-6.7.4.exe'
+          $expected = 'a549929319f9120716677c685535ca4671e4b937b5fdc87e2585f32d8eb30e8c'
+          $download = Join-Path $env:RUNNER_TEMP 'innosetup-6.7.4.exe'
+          $dir = Join-Path $env:RUNNER_TEMP 'Aeris-Inno-6.7.4'
+          if (Test-Path -LiteralPath $dir) { throw 'Expected fresh compiler directory' }
+          Invoke-WebRequest -Uri $url -OutFile $download
+          if ((Get-FileHash -LiteralPath $download -Algorithm SHA256).Hash.ToLowerInvariant() -ne $expected) { throw 'Inno Setup vendor download hash mismatch' }
+          $sig = Get-AuthenticodeSignature -LiteralPath $download
+          if ($sig.Status -ne 'Valid' -or $sig.SignerCertificate.Subject -notmatch '(?i)CN=Pyrsys B\.V\.(,|$)') { throw 'Inno Setup publisher signature not verified' }
+          [pscustomobject]@{version='6.7.4';url=$url;sha256=$expected;signature=$sig.Status.ToString();publisher=$sig.SignerCertificate.Subject} | ConvertTo-Json | Set-Content -LiteralPath security-evidence/compiler-download.json -Encoding utf8
+          $log = Join-Path $PWD 'security-evidence/compiler-install.log'
+          $p = Start-Process -FilePath $download -ArgumentList @('/VERYSILENT','/SUPPRESSMSGBOXES','/NORESTART','/SP-',('/DIR="' + $dir + '"'),('/LOG="' + $log + '"')) -PassThru
+          if (-not $p.WaitForExit(180000)) { $p.Kill(); throw 'Compiler installation timed out' }
+          if ($p.ExitCode -ne 0) { throw "Compiler installation exit code $($p.ExitCode)" }
+          $iscc = Join-Path $dir 'ISCC.exe'
+          if (-not (Test-Path -LiteralPath $iscc -PathType Leaf)) { throw 'Pinned compiler missing' }
+          if ((Get-AuthenticodeSignature -LiteralPath $iscc).Status -ne 'Valid') { throw 'Compiler signature not valid' }
+          $license = Join-Path $dir 'LICENSE.TXT'
+          if (-not (Test-Path -LiteralPath $license -PathType Leaf)) { throw 'Compiler license missing' }
+          Copy-Item -LiteralPath $license -Destination security-evidence/InnoSetup-LICENSE.txt
+          "AERIS_ISCC=$iscc" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+      - name: Include collected upstream notices in candidate before packing
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $path = 'source/Aeris-Desktop-v1.0.0rc1-fix1/distribution/build.ps1'
+          $s = [IO.File]::ReadAllText((Resolve-Path -LiteralPath $path).Path)
+          $marker = '    Invoke-Checked $python @((Join-Path $PSScriptRoot ''collect-notices.py''),$notices)'
+          if ([regex]::Matches($s,[regex]::Escape($marker)).Count -ne 1) { throw 'Unexpected notice collection recipe' }
+          $extra = @'
+              $reviewNotices = Join-Path $env:GITHUB_WORKSPACE 'validation/third-party-notices'
+              $expectedNotices = @('OpenSSL-3.5.9.txt','bzip2-1.0.8.txt','libffi-3.4.4.txt','XZ-5.2.5.txt','XZ-5.2.5-COPYING.LGPLv2.1.txt','Zstandard-1.5.7.txt','zlib-ng-2.2.4.txt','zlib-1.3.2.txt','mpdecimal-4.0.0.txt','libexpat.txt')
+              foreach ($name in $expectedNotices) {
+                  $notice = Join-Path $reviewNotices $name
+                  if (-not (Test-Path -LiteralPath $notice -PathType Leaf)) { throw "Missing reviewed upstream notice: $name" }
+                  Copy-Item -LiteralPath $notice -Destination $notices
+              }
+              Copy-Item -LiteralPath (Join-Path (Split-Path -Parent $Iscc) 'LICENSE.TXT') -Destination (Join-Path $notices 'InnoSetup-6.7.4.txt')
+          '@
+          [IO.File]::WriteAllText((Resolve-Path -LiteralPath $path).Path,$s.Replace($marker,$marker + [Environment]::NewLine + $extra),[Text.UTF8Encoding]::new($false))
+      - name: Build with verified Inno Setup 6.7.4
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          if (-not (Test-Path -LiteralPath $env:AERIS_ISCC -PathType Leaf)) { throw 'Pinned compiler unavailable' }
+          & .\source\Aeris-Desktop-v1.0.0rc1-fix1\distribution\build.ps1 -Iscc $env:AERIS_ISCC
       - name: Validate portable and installed previews
         shell: pwsh
         run: |
@@ -189,6 +223,7 @@ jobs:
           $desktopShortcut = Join-Path ([Environment]::GetFolderPath('DesktopDirectory')) 'Project Aeris.lnk'
           if ((Test-Path -LiteralPath $startShortcut) -or (Test-Path -LiteralPath $desktopShortcut)) { throw 'Expected clean shortcuts' }
           Run-Setup (Join-Path $PWD 'preview-evidence/install.log')
+          if (-not (Select-String -LiteralPath 'preview-evidence/install.log' -SimpleMatch 'Setup version: Inno Setup version 6.7.4' -Quiet)) { throw 'Generated setup did not use pinned compiler' }
           $shell = New-Object -ComObject WScript.Shell
           foreach ($shortcut in @($startShortcut,$desktopShortcut)) {
             if (-not (Test-Path -LiteralPath $shortcut -PathType Leaf)) { throw "Missing shortcut: $shortcut" }
@@ -237,7 +272,7 @@ jobs:
             [pscustomobject]@{ path=$file.FullName.Substring($bundle.Length+1); version=$file.VersionInfo.FileVersion; company=$file.VersionInfo.CompanyName; sha256=(Get-FileHash -LiteralPath $file.FullName -Algorithm SHA256).Hash.ToLowerInvariant(); signature=$sig.Status.ToString(); signer=if($sig.SignerCertificate){$sig.SignerCertificate.Subject}else{''} }
           }
           $inventory | ConvertTo-Json -Depth 4 | Set-Content -LiteralPath security-evidence/binary-inventory.json -Encoding utf8
-          $compiler = @((Join-Path ([Environment]::GetEnvironmentVariable('ProgramFiles(x86)')) 'Inno Setup 6\ISCC.exe'),(Join-Path $env:ProgramFiles 'Inno Setup 6\ISCC.exe'),(Join-Path $env:LOCALAPPDATA 'Programs\Inno Setup 6\ISCC.exe')) | Where-Object { Test-Path -LiteralPath $_ -PathType Leaf } | Select-Object -First 1
+          $compiler = $env:AERIS_ISCC
           if ($compiler) {
             $item=Get-Item -LiteralPath $compiler
             [pscustomobject]@{version=$item.VersionInfo.FileVersion;sha256=(Get-FileHash -LiteralPath $compiler).Hash;signature=(Get-AuthenticodeSignature -LiteralPath $compiler).Status.ToString()} | ConvertTo-Json | Set-Content -LiteralPath security-evidence/compiler.json -Encoding utf8
