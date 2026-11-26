@@ -1,0 +1,55 @@
+{
+  "scope": "Windows Server 2022 CI, synthetic settings and marker only; no production release or client OS certification",
+  "run": 45849278056,
+  "commit": "4aa654a0ba77031930adefb5c7d374d67fa3454a",
+  "artifact_id": 15132831716,
+  "artifact_sha256": "628ff322f7ac3eba90741bb2142c8b79b0a331a33dd4d7a23a0b5e297e9688c3",
+  "artifact_bytes": 27626001,
+  "artifact_expires": "2026-12-26T15:28:32Z",
+  "unit_tests": {
+    "total": 401,
+    "passed": 397,
+    "skipped": 4,
+    "failures": 0
+  },
+  "old": {
+    "version": "1.0.0rc1",
+    "artifact_id": 15132975671,
+    "setup_sha256": "0f3e0a21919f5944f45301c1f589e5f1665e3a608c5abd39d4a618677ac46407",
+    "exe_sha256": "ed8aa796b948b658dcc9ef97469512b9264240d56efadbb5e555091a5366849c"
+  },
+  "new": {
+    "version": "1.0.0rc2",
+    "setup": {
+      "bytes": 13340716,
+      "sha256": "f9337b75a8c62520629f4fe61c0448060974f9b40d3abb6b2831a259e10eccbe"
+    },
+    "portable": {
+      "bytes": 14782986,
+      "sha256": "5b38a79f595a8a55c1643bce53fac9d74442d2a17fcb96927f89d18fb131fb10",
+      "manifest_files_verified": 91,
+      "hash_mismatches": 0
+    },
+    "exe_sha256": "1cfc9f494feb5d5b15646fef4c1dbbe6490377326abf59a309e0c56e4db551a4"
+  },
+  "checks": {
+    "upgrade": "PASS",
+    "settings_preserved": "PASS",
+    "rejected_hash": "PASS",
+    "uninstall_preservation": "PASS",
+    "rollback": "PASS",
+    "backup_restore_copy": "PASS",
+    "independent_outer_and_asset_hashes": "PASS",
+    "independent_manifest_hashes": "PASS",
+    "six_profile_evidence_files_identical": "PASS"
+  },
+  "profile_evidence_sha256": "adfc62e1fa3829ee95f0ab1683cd0f0154e76c22e3f3a6c1a5860db5405ac1f9",
+  "interrupted_install": "NOT_TESTED",
+  "client_windows": "NOT_TESTED",
+  "defender": {
+    "antivirus_enabled": true,
+    "real_time_protection_enabled": false,
+    "malware_scan": "NOT_TESTED"
+  },
+  "release_approved": false
+}
