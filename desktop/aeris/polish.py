@@ -1,5 +1,5 @@
 """Pure sizing rules for the desktop workspace."""
-COMPACT_WIDTH=930
+COMPACT_WIDTH=1100
 
 def compact_workspace(width):
     return width < COMPACT_WIDTH
