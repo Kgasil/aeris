@@ -10,21 +10,23 @@ from aeris.permissions import REPORT_READ, REPORT_COPY
 class ReportWindow(DataWindow):
     permission=REPORT_READ
     title='Aeris Report'
-    description='Relatório descritivo local. Use CSV fictício; revise a prévia antes de copiar.'
+    display_title='Gerar relatório'
+    description='Gere um relatório de qualidade e estatísticas de um CSV. Revise antes de copiar; use dados fictícios.'
 
     def __init__(self,hub):
         self.dataset=None; self.output=None; self.metric_indices=[]; self.output_context=None; self.generation=0
         super().__init__(hub)
-        self.window.geometry('820x730'); self.window.minsize(650,600)
+        self.window.geometry('900x760'); self.window.minsize(650,600)
         f=self.report.master.master
         options=ttk.Frame(f); options.pack(fill='x',before=self.report.master,pady=4)
-        ttk.Label(options,text='Categoria').pack(side='left')
+        ttk.Label(options,text='Agrupar por (opcional)').pack(side='left')
         self.group_box=ttk.Combobox(options,width=20,state='disabled'); self.group_box.pack(side='left',padx=4)
+        ttk.Label(options,text='Cálculo').pack(side='left')
         self.mode_box=ttk.Combobox(options,values=MODES,width=10,state='disabled'); self.mode_box.set('Contagem'); self.mode_box.pack(side='left',padx=4)
         ttk.Label(options,text='Métrica').pack(side='left')
         self.metric_box=ttk.Combobox(options,width=20,state='disabled'); self.metric_box.pack(side='left',padx=4)
         for w in (self.group_box,self.mode_box,self.metric_box): w.bind('<<ComboboxSelected>>',lambda _:self.generate())
-        self.copy_button=ttk.Button(f,text='Copiar relatório revisado',command=self.copy); self.copy_button.pack(fill='x',pady=4)
+        self.copy_button=ttk.Button(f,text='Copiar relatório revisado',command=self.copy,style='Aeris.Primary.TButton'); self.copy_button.pack(fill='x',pady=4)
         self.status=tk.StringVar(self.window,''); ttk.Label(f,textvariable=self.status,wraplength=600).pack(anchor='w')
         self.controls()
 
