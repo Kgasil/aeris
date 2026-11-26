@@ -18,3 +18,5 @@ Sincronizar estado real nos materiais institucionais: extensão 1.0.0 disponíve
 
 ## Próximo passo sem custo
 Consolidar o inventário de recursos próprios e terceiros para aprovação do titular; realizar scan gratuito quando houver base atualizada e ambiente adequado; solicitar testes voluntários somente após análise de segurança e autorização de distribuição. A versão estável será preparada quando os requisitos realmente puderem ser cumpridos. Sem compromissos financeiros assumidos.
+
+- 26/11/2026 — [Refinamento funcional das 50 ferramentas](https://github.com/Kgasil/aeris/blob/main/validation/functional/ROADMAP.md): Security passou 473/477 testes Windows e 54 smokes, com dois avisos Tk em revisão; fonte RC5 de 362 arquivos e 54 hashes refinados verificada. [CI 45863779585](https://github.com/Kgasil/aeris/actions/runs/45863779585) valida o novo candidato; fonte pública RC1 e RC4 histórico preservados. Nenhum novo instalador aprovado, direitos/scan/Windows cliente pendentes, sem custos ou publicação automática.
