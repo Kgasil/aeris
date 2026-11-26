@@ -1,3 +1,6 @@
+
+> **Aeris Desktop RC5 — prévia pública experimental gratuita.** [Download, avisos e SHA-256](https://github.com/Kgasil/aeris/releases/tag/aeris-desktop-1.0.0rc5-terms1-preview). Instalador x64 12,80 MB, sem Python externo, conta ou terminal. Sem assinatura digital; scan antimalware válido, Windows cliente e revisão dos termos de terceiros pendentes. Use apenas ambiente descartável e dados fictícios, analise com proteção atualizada e não contorne bloqueios. Não é versão estável.
+
 <p align="center"><a href="https://kgasil.github.io/aeris/"><img src="assets/readme-cover.svg" alt="Project Aeris — official project identity" width="760"></a></p>
 
 # Project Aeris — Eficiência e Simplicidade.
@@ -210,3 +213,7 @@ ZIPs publicados no GitHub. Não publicado nas lojas. / ZIPs published on GitHub.
 **Resultado RC5 / RC5 result:** [Código-fonte consolidado permanente / Permanent consolidated source](https://github.com/Kgasil/aeris/tree/desktop-rc5-source) · [Evidência do pacote / Integrated evidence](downloads/functional-rc5-integrated-evidence.json). 477 testes distintos aprovados (473 Windows Server + 4 Ubuntu), 60 smokes; Setup experimental de 12,79 MB, 47 hashes verificados, 27 binários, 17 avisos. Sem assinatura, Windows cliente e distribuição não aprovados. Revisões exatas de [migração](https://github.com/Kgasil/aeris/actions/runs/45864700604) e [antimalware](https://github.com/Kgasil/aeris/actions/runs/45864693947) separadas. / Experimental setup only; no client certification or distribution approval.
 
 **Revisão adicional RC5 (26/11/2026):** atualização RC4→RC5, reinstalação limpa, rollback e restauração de cópia PASS no Server 2022; oito manifestos idênticos, zero DLLs obsoletas. ClamAV 1.5.4, daily 28194: integridade e assinatura da base PASS, idade 124.817 s (>24 h), scan NOT_TESTED. Defender em tempo real inativo na CI. Não publicar instalador antes da revisão aplicável. [Evidência exata](https://github.com/Kgasil/aeris/blob/main/downloads/functional-rc5-integrated-evidence.json).
+
+## Disponibilização experimental (26/11/2026)
+
+A pedido explícito do titular, a revisão terms1 foi disponibilizada publicamente para testes. [CI de publicação](https://github.com/Kgasil/aeris/actions/runs/45866976810) confirmou download anônimo e SHA-256. O executável é idêntico ao RC5; somente o instalador recebeu aceite dos termos. Os avisos de revisão pendente permanecem aplicáveis. Sem aprovação estável ou alegação de segurança.
