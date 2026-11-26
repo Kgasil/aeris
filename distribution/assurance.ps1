@@ -54,13 +54,23 @@ try {
             $i++
             $p=Start-Process -FilePath $cmd -ArgumentList @('-Scan','-ScanType','3','-File',('"' + $target + '"')) -RedirectStandardOutput (Join-Path $e "defender-$i.log") -RedirectStandardError (Join-Path $e "defender-$i-error.log") -PassThru
             if (-not $p.WaitForExit(180000)) { throw 'Defender scan timed out; no clearance' }
-            $scan.runs+=@([pscustomobject]@{target=(Split-Path -Leaf $target);exit_code=$p.ExitCode})
+            $stdout=Get-Content -LiteralPath (Join-Path $e "defender-$i.log") -Raw
+            $stderr=Get-Content -LiteralPath (Join-Path $e "defender-$i-error.log") -Raw
+            # Exit zero is insufficient: Defender may report that a target was skipped.
+            # Only an explicit no-threat result for the exact target counts as completed.
+            $expected='Scanning ' + $target + ' found no threats.'
+            $outcome='INCONCLUSIVE'
+            if ($p.ExitCode -ne 0) { $outcome='NONZERO_EXIT' }
+            elseif ($stdout -match '(?im)\b(?:skipped|not scanned|excluded)\b') { $outcome='SKIPPED' }
+            elseif ([string]::IsNullOrWhiteSpace($stderr) -and @($stdout -split '\r?\n' | Where-Object { $_.Trim() -ceq $expected }).Count -eq 1) { $outcome='COMPLETED_NO_THREATS_REPORTED' }
+            $scan.runs+=@([pscustomobject]@{target=(Split-Path -Leaf $target);exit_code=$p.ExitCode;outcome=$outcome})
             if ($p.ExitCode -ne 0) { throw 'Defender scan returned nonzero; review required' }
         }
         $detections=@(Get-MpThreatDetection -ErrorAction Stop | Where-Object { @($_.Resources | Where-Object { $_ -and $_.IndexOf($stagePath,[StringComparison]::OrdinalIgnoreCase) -ge 0 }).Count -gt 0 })
         $scan['matched_detection_count']=$detections.Count
         if ($detections.Count -gt 0) { $scan.status='DETECTIONS_FOUND' }
-        else { $scan.status='COMPLETED_NO_MATCHED_DETECTIONS' }
+        elseif ($scan.runs.Count -eq 3 -and @($scan.runs | Where-Object { $_.outcome -ne 'COMPLETED_NO_THREATS_REPORTED' }).Count -eq 0) { $scan.status='COMPLETED_NO_MATCHED_DETECTIONS' }
+        else { $scan.status='INCONCLUSIVE'; $scan['reason']='At least one target was skipped or lacked explicit scan completion.' }
     } catch { $scan['error']=$_.Exception.Message }
     $report['defender']=$scan
     foreach ($p in $hashes.Keys) {
