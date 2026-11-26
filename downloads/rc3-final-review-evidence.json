@@ -1,0 +1,48 @@
+{
+  "run": 45851971299,
+  "commit": "44307e0b5601b6f1720e6cd2437e3366a139951a",
+  "rc3_run": 45851387942,
+  "independent_artifact_digest_checks": "PASS",
+  "posix_ocr": {
+    "artifact_id": 15133039397,
+    "sha256": "40d20cc4d50a8063559d1db53512cd11effc176f32024c0dc9a8cc9e71133cb2",
+    "source_sha256": "a8a34378b5d1e0d7582c485edb27b002fe7ec239fa0c6e0b63e2bb5a37b03c6d",
+    "os": "Ubuntu 24.04",
+    "passed": 4,
+    "skipped": 0,
+    "failures": 0,
+    "seconds": 0.472,
+    "tests": [
+      "test_real_ocr",
+      "test_no_plaintext_fallback",
+      "test_fifo_rejected_before_open",
+      "test_non_windows_fails_closed"
+    ],
+    "tesseract": "5.3.4-1build5"
+  },
+  "performance": {
+    "artifact_id": 15132774322,
+    "sha256": "f0b56a6279da4b07a386a2bd695a2aad8097b9828714a96c8d37627c287eb09b",
+    "exe_sha256": "94c329abe46a128719f8c951c7a8df2b8936d1550855089c9f0d25ed1cda37f5",
+    "os": "Windows Server 2022",
+    "startup_seconds": [
+      1.26,
+      0.218,
+      0.225
+    ],
+    "peak_sampled_working_set_bytes": 41656320,
+    "idle_cpu_percent_one_core": [
+      0,
+      0,
+      0
+    ],
+    "shutdown_seconds": [
+      0.039,
+      0.039,
+      0.035
+    ],
+    "status": "PASS"
+  },
+  "scope": "413 distinct tests passed across applicable OS environments (409 Windows + 4 Ubuntu); not all 413 on Windows. RC3 portable performance only. Not stable release approval.",
+  "release_approved": false
+}
