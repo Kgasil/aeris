@@ -1,0 +1,56 @@
+name: Aeris exact RC3 to RC4 upgrade review
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/aeris-rc4-upgrade-review.yml'
+      - 'validation/installer/test-rc3-rc4-upgrade.ps1'
+permissions:
+  contents: read
+  actions: read
+jobs:
+  upgrade:
+    runs-on: windows-2022
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065
+        with:
+          python-version: '3.14.10'
+          architecture: x64
+      - name: Download and verify both exact historical artifacts
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $root = Join-Path $env:RUNNER_TEMP 'aeris-upgrade-exact'
+          New-Item -ItemType Directory -Path $root | Out-Null
+          $headers = @{Authorization=('Bearer ' + $env:GH_TOKEN);Accept='application/vnd.github+json';'X-GitHub-Api-Version'='2022-11-28'}
+          foreach ($r in @(@{version='rc3';id=15132444366;hash='de81221a8723a9c26f11db293e440c65243f4c4c53e8d2dd2d00afc0e94e270f'},@{version='rc4';id=15134209156;hash='34e010bb31a574211185f9b6729669c1b7a794856fdbbf10ae425b665aba6d8b'})) {
+            $zip = Join-Path $root ($r.version + '.zip')
+            Invoke-WebRequest -Uri ('https://api.github.com/repos/Kgasil/aeris/actions/artifacts/' + $r.id + '/zip') -Headers $headers -OutFile $zip
+            if ((Get-FileHash -LiteralPath $zip -Algorithm SHA256).Hash -ne $r.hash) { throw 'Outer digest mismatch' }
+            $out = Join-Path $root $r.version
+            Expand-Archive -LiteralPath $zip -DestinationPath $out
+          }
+          $source = Join-Path $root 'rc4/security-evidence/Aeris-1.0.0rc4-integrated-source.zip'
+          if ((Get-FileHash -LiteralPath $source -Algorithm SHA256).Hash -ne 'f52c8f065cb02b7052daffe79d57b58346528fd164688a847cc0aa8a57379efe') { throw 'Source digest mismatch' }
+          Expand-Archive -LiteralPath $source -DestinationPath (Join-Path $root 'source')
+      - name: Test upgrade, leftover runtime inventory, clean reinstall and rollback
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $root = Join-Path $env:RUNNER_TEMP 'aeris-upgrade-exact'
+          $python = (Get-Command python.exe).Source
+          & .\validation\installer\test-rc3-rc4-upgrade.ps1 -OldSetup (Join-Path $root 'rc3/Aeris-1.0.0rc3-Windows-x64-Setup.exe') -OldSetupSha256 'cd2416ff0530b63f186d9363eb2f974b40f27ba5e6f41a22e63540034d96ac0a' -OldExeSha256 '94c329abe46a128719f8c951c7a8df2b8936d1550855089c9f0d25ed1cda37f5' -NewSetup (Join-Path $root 'rc4/Aeris-1.0.0rc4-Windows-x64-Setup.exe') -NewSetupSha256 'eacbccd22ffeb8b2961fe838c321c61bc63445c08da6aea97b4ed3aa5e09452a' -NewExeSha256 '05272bdfa2be694cba686171a91a55d51c9ff014344b91ba33fe77a47be5b37e' -Python $python -SourceDesktop (Join-Path $root 'source/desktop') -Validator (Join-Path $root 'source/distribution/validate-windows.ps1') -EvidenceDirectory upgrade-evidence
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: aeris-rc3-rc4-exact-upgrade-evidence
+          path: upgrade-evidence/
+          if-no-files-found: warn
+          retention-days: 30
