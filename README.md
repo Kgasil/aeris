@@ -188,3 +188,9 @@ ZIPs publicados no GitHub. Não publicado nas lojas. / ZIPs published on GitHub.
 [CI RC3](https://github.com/Kgasil/aeris/actions/runs/45851387942) · [Evidências e hashes / Evidence and hashes](downloads/windows-integrated-rc3-evidence.json) · [Preparação do lançamento / Release preparation](release/desktop-1.0.0-preparation.md).
 
 409 de 413 testes aprovados, quatro ignorados com motivos registrados; instalação, reinstalação, desinstalação e 91 hashes verificados em Windows Server 2022. RC3 não é release pública nem 1.0.0 estável. Windows 10/11, direitos, scan real e decisão de assinatura pendentes. / 409 of 413 tests passed, four documented skips; install, reinstall, uninstall and 91 hashes verified. RC3 is not a public or stable release. Client Windows, redistribution, malware scan and signing decision pending.
+
+## Desktop RC4 — candidato reduzido / Reduced-runtime candidate
+
+[Build RC4](https://github.com/Kgasil/aeris/actions/runs/45853309017) · [Evidências / Evidence](downloads/windows-rc4-reduced-runtime-evidence.json) · [Migração / Migration](validation/installer/UPGRADE-RECOVERY.md).
+
+27 binários, 47 hashes, 409 testes Windows aprovados, quatro skips. RC3→RC4 preservou dados fictícios em CI, mas deixou 44 DLLs antigas; reinstalação limpa removeu-as. **RC4 experimental, não aprovado para distribuição.** Não instalar antes da análise de segurança e validação cliente. / 27 binaries, 47 verified hashes, 409 Windows tests passed, four skips. In-place upgrade retained 44 obsolete DLLs; clean reinstall removed them while preserving synthetic data. Experimental, not approved for distribution. Stable release pending.
