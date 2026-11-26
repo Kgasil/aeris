@@ -74,7 +74,7 @@ def self_test(full=False):
             hub.navigate('screen')
             if not conversation.chat_panel.winfo_manager() or not conversation.context_panel.winfo_manager():
                 raise RuntimeError('Wide layout failed')
-            conversation.resize_workspace(880)
+            conversation.resize_workspace(980)
             if conversation.chat_panel.winfo_manager() or not conversation.context_panel.winfo_manager():
                 raise RuntimeError('Compact context layout failed')
             hub.navigate('chat')
