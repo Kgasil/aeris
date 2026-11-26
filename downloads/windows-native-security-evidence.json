@@ -1,0 +1,25 @@
+{
+  "run": 45849675870,
+  "commit": "6c2082fc5fbeec65d42f70e5dbaf92e6fcb03ff2",
+  "artifact_id": 15132602375,
+  "artifact_sha256": "395b2ddb83fb3de25d1b759c837a7ffb91d3ccafcbb1d5aa59cf4e65a6ba20ca",
+  "artifact_digest_independently_verified": true,
+  "scope": "Source-level native Windows APIs on Server 2022, same account, not client OS or installed binary validation",
+  "tests": 7,
+  "passed": 7,
+  "failures": 0,
+  "skipped": 0,
+  "elapsed_seconds": 0.472,
+  "checks": {
+    "dpapi_same_account_cross_process": "PASS",
+    "dpapi_invalid_and_tamper": "PASS",
+    "vault_native_roundtrip": "PASS",
+    "mutex_cross_process": "PASS",
+    "mutex_abrupt_exit_recovery": "PASS",
+    "vault_cross_process_lock": "PASS",
+    "other_account_dpapi": "NOT_TESTED",
+    "ordinary_user_acl": "NOT_TESTED",
+    "packaged_duplicate_instance": "NOT_TESTED"
+  },
+  "release_approved": false
+}
