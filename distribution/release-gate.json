@@ -1,5 +1,5 @@
 {
-  "version": "1.0.0rc5",
+  "version": "1.1.0rc1",
   "purpose": "Registro de evidências; não é uma certificação. Todos os itens pendentes bloqueiam o lançamento binário.",
   "checks": {
     "windows_build_x64": {"status": "pending", "evidence": ""},
