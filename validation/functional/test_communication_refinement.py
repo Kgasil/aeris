@@ -45,9 +45,12 @@ class CommunicationRefinement(TestCase):
         ui.set_voices(('A','B')); ui.voice.set('B'); ui.set_voices(('B','C'))
         self.assertEqual(ui.voice.get(),'B')
         ui.set_voices(('A',)); self.assertEqual(ui.voice.get(),'Voz padrão do Windows')
-        self.h.permissions.set(PLAY_VOICE,True); ui.rate.set('invalid')
-        with patch('aeris.voice_ui.start_process') as launch:
+        self.h.permissions.set(PLAY_VOICE,True)
+        # Tk's Scale rejects an invalid assignment itself. Simulate a failed
+        # read from the control to exercise Voice's defensive handler.
+        with patch.object(ui.rate,'get',side_effect=tk.TclError('invalid scale read')),patch('aeris.voice_ui.start_process') as launch:
             ui.play(); launch.assert_not_called()
+        self.assertIn('invalid scale read',ui.status.get())
         ui.clear(); self.assertEqual(ui.count.get(),'0 caracteres')
         with self.assertRaises(tk.TclError): ui.text.edit_undo()
 
