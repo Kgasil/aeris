@@ -91,6 +91,13 @@ jobs:
             $_ | Out-String | Add-Content (Join-Path $evidence 'build.log')
             throw
           }
+      - name: Homologate installer on disposable hosted runner
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $stage = @(Get-ChildItem -LiteralPath distribution/out -Directory)
+          if ($stage.Count -ne 1) { throw 'Expected a single fresh build' }
+          & .\distribution\homologate-candidate.ps1 -Stage $stage[0].FullName -Evidence (Join-Path $PWD 'candidate-evidence') -ConfirmDisposableRunner
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         if: always()
         with:
