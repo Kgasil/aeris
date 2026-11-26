@@ -1,0 +1,142 @@
+name: Aeris RC5 installer terms revision (no publish)
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/aeris-rc5-terms-installer.yml'
+      - 'validation/installer/Aeris-rc5-terms1.iss'
+      - 'validation/installer/RC5-TERMS-REVIEW.txt'
+  workflow_dispatch:
+permissions:
+  contents: read
+  actions: read
+jobs:
+  package:
+    runs-on: windows-2022
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065
+        with:
+          python-version: '3.14.10'
+          architecture: x64
+      - name: Retrieve verified exact RC5 portable and installer resources
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: pwsh
+        run: |
+          $ErrorActionPreference='Stop'
+          New-Item -ItemType Directory -Path terms-evidence, recipe | Out-Null
+          $outer=Join-Path $env:RUNNER_TEMP 'rc5.zip'
+          & curl.exe --fail --location --silent --show-error -H "Authorization: Bearer $env:GH_TOKEN" -H 'Accept: application/vnd.github+json' 'https://api.github.com/repos/Kgasil/aeris/actions/artifacts/15138829732/zip' -o $outer
+          if ($LASTEXITCODE -ne 0) { throw 'Artifact download failed' }
+          py -3.14-64 validation/performance/extract-rc5.py $outer exact-bundle | Set-Content -LiteralPath terms-evidence/portable-integrity.json -Encoding utf8
+          if ($LASTEXITCODE -ne 0) { throw 'Portable verification failed' }
+          @'
+          import io,zipfile,hashlib
+          from pathlib import Path
+          import sys
+          with zipfile.ZipFile(sys.argv[1]) as outer:
+              raw=outer.read('security-evidence/Aeris-1.0.0rc5-integrated-source.zip')
+              assert hashlib.sha256(raw).hexdigest()=='fe393db2e8903ae9c181d23639729204bad96fefcbdc60de4c7cec2170debc18'
+              with zipfile.ZipFile(io.BytesIO(raw)) as z:
+                  icon=z.read('distribution/aeris.ico')
+                  assert hashlib.sha256(icon).hexdigest()=='26e178cded091a337a2d43bdb48b849df8976b7ac99685d0453ab1566851fa99'
+                  Path('recipe/aeris.ico').write_bytes(icon)
+                  Path('recipe/validate-windows.ps1').write_bytes(z.read('distribution/validate-windows.ps1'))
+          '@ | Set-Content -LiteralPath recipe/resources.py -Encoding utf8
+          py -3.14-64 recipe/resources.py $outer
+          if ($LASTEXITCODE -ne 0) { throw 'Resource verification failed' }
+          Copy-Item validation/installer/Aeris-rc5-terms1.iss recipe/Aeris.iss
+          $terms=[IO.File]::ReadAllText((Resolve-Path validation/installer/RC5-TERMS-REVIEW.txt).Path)
+          [IO.File]::WriteAllText((Join-Path $PWD 'recipe/RC5-TERMS-REVIEW.txt'),$terms,[Text.UTF8Encoding]::new($true))
+          @'
+          Project Aeris — Eficiência e Simplicidade.
+          RC5 experimental, revisão de empacotamento 1. Não aprovado para distribuição.
+          Instalação por usuário. Sem conta. IA e OCR opcionais.
+          Sem assinatura digital. Não desative as proteções do Windows.
+          Feche o Aeris antes de instalar. Preserve backup dos dados locais.
+          Uninstall preserves local data. Unsigned experimental candidate.
+          '@ | Set-Content -LiteralPath recipe/PREVIEW.txt -Encoding utf8BOM
+          Copy-Item recipe/RC5-TERMS-REVIEW.txt terms-evidence/
+          Copy-Item recipe/Aeris.iss terms-evidence/
+      - name: Verify compiler and compile installer only
+        shell: pwsh
+        run: |
+          $ErrorActionPreference='Stop'
+          $download=Join-Path $env:RUNNER_TEMP 'innosetup-6.7.4.exe'
+          $dir=Join-Path $env:RUNNER_TEMP 'Aeris-Inno-6.7.4'
+          Invoke-WebRequest -Uri 'https://github.com/jrsoftware/issrc/releases/download/is-6_7_4/innosetup-6.7.4.exe' -OutFile $download
+          if ((Get-FileHash -LiteralPath $download -Algorithm SHA256).Hash -ne 'a549929319f9120716677c685535ca4671e4b937b5fdc87e2585f32d8eb30e8c') { throw 'Compiler download hash mismatch' }
+          $sig=Get-AuthenticodeSignature -LiteralPath $download
+          if ($sig.Status -ne 'Valid' -or $sig.SignerCertificate.Subject -notmatch '(?i)CN=Pyrsys B\.V\.(,|$)') { throw 'Compiler publisher mismatch' }
+          $p=Start-Process -FilePath $download -ArgumentList @('/VERYSILENT','/SUPPRESSMSGBOXES','/NORESTART','/SP-',('/DIR="'+$dir+'"')) -PassThru
+          if (-not $p.WaitForExit(180000)) { $p.Kill(); throw 'Compiler install timeout' }
+          if ($p.ExitCode -ne 0) { throw 'Compiler installation failed' }
+          $iscc=Join-Path $dir 'ISCC.exe'
+          if ((Get-AuthenticodeSignature -LiteralPath $iscc).Status -ne 'Valid') { throw 'Compiler signature invalid' }
+          $bundle=(Resolve-Path exact-bundle/Aeris).Path
+          $out=(Resolve-Path terms-evidence).Path
+          & $iscc "/DAppVersion=1.0.0rc5" "/DBundleDir=$bundle" "/O$out" (Resolve-Path recipe/Aeris.iss).Path 2>&1 | Tee-Object -FilePath terms-evidence/compiler.log
+          if ($LASTEXITCODE -ne 0) { throw 'Installer compilation failed' }
+          $setup=Join-Path $out 'Aeris-1.0.0rc5-Windows-x64-Setup-terms1.exe'
+          $sha=(Get-FileHash -LiteralPath $setup -Algorithm SHA256).Hash.ToLowerInvariant()
+          $termsSha=(Get-FileHash -LiteralPath recipe/RC5-TERMS-REVIEW.txt -Algorithm SHA256).Hash.ToLowerInvariant()
+          [pscustomobject]@{version='1.0.0rc5';packaging_revision='terms1';setup_sha256=$sha;setup_bytes=(Get-Item -LiteralPath $setup).Length;terms_sha256=$termsSha;app_exe_sha256='4cb9ed45a6e9cce9c1f86a9d71e6f915aba987ab3532e034e34bd9300b7d0025';portable_sha256='ffbda95354b563e1d6a1b8f90fc43184a197585488c3da8609ac6970ffee9701';signed=$false;release_approved=$false} | ConvertTo-Json | Set-Content -LiteralPath terms-evidence/package.json -Encoding utf8
+      - name: Test silent refusal, accepted install, reinstall, uninstall and identical application files
+        shell: pwsh
+        run: |
+          $ErrorActionPreference='Stop'
+          $dest=Join-Path $env:LOCALAPPDATA 'Programs\KGVision\Aeris'
+          $data=Join-Path $env:LOCALAPPDATA 'Aeris'
+          $setup=(Resolve-Path terms-evidence/Aeris-1.0.0rc5-Windows-x64-Setup-terms1.exe).Path
+          $evidence=(Resolve-Path terms-evidence).Path
+          $bundle=(Resolve-Path exact-bundle/Aeris).Path
+          $package=Get-Content -LiteralPath terms-evidence/package.json -Raw | ConvertFrom-Json
+          if ((Test-Path $dest) -or (Test-Path $data)) { throw 'Fresh disposable CI profile required' }
+          function Run-Setup([string]$label,[string]$accept) {
+            if ((Get-FileHash -LiteralPath $setup -Algorithm SHA256).Hash -ne $package.setup_sha256) { throw 'Installer changed' }
+            $args=@('/VERYSILENT','/SUPPRESSMSGBOXES','/NORESTART','/CURRENTUSER',('/LOG="'+(Join-Path $evidence "$label.log")+'"'))
+            if ($accept) { $args+=('/ACCEPTTERMS='+$accept) }
+            $p=Start-Process -FilePath $setup -ArgumentList $args -PassThru
+            if (-not $p.WaitForExit(120000)) { $p.Kill(); throw 'Installer timed out' }
+            return $p.ExitCode
+          }
+          foreach ($case in @(@{label='missing-consent';accept=''},@{label='incorrect-consent';accept='WRONG'})) {
+            if ((Run-Setup $case.label $case.accept) -eq 0 -or (Test-Path $dest) -or (Test-Path $data)) { throw 'Unaccepted installation not blocked' }
+          }
+          function Assert-Bundle {
+            $files=@(Get-ChildItem -LiteralPath $bundle -File -Recurse)
+            if ($files.Count -ne 48) { throw 'Unexpected original bundle count' }
+            foreach ($f in $files) {
+              $relative=$f.FullName.Substring($bundle.Length+1)
+              $actual=Join-Path $dest $relative
+              if (-not (Test-Path -LiteralPath $actual -PathType Leaf) -or (Get-FileHash -LiteralPath $actual -Algorithm SHA256).Hash -ne (Get-FileHash -LiteralPath $f.FullName -Algorithm SHA256).Hash) { throw "Installed file differs: $relative" }
+            }
+            if ((Get-FileHash -LiteralPath (Join-Path $dest 'RC5-TERMS-REVIEW.txt') -Algorithm SHA256).Hash -ne $package.terms_sha256) { throw 'Installed terms differ' }
+          }
+          if ((Run-Setup 'accepted-install' 'RC5-TERMS1') -ne 0) { throw 'Accepted install failed' }
+          Assert-Bundle
+          & .\recipe\validate-windows.ps1 -AerisExe (Join-Path $dest 'Aeris.exe') -ExpectedExeSha256 $package.app_exe_sha256 -Mode Installed -ConfirmTestVM | Set-Content -LiteralPath terms-evidence/installed-validation.json -Encoding utf8
+          New-Item -ItemType Directory -Path $data -Force | Out-Null
+          $marker=Join-Path $data 'ci-terms-synthetic.txt'
+          Set-Content -LiteralPath $marker -Value 'Synthetic test data only' -Encoding ascii
+          $markerHash=(Get-FileHash -LiteralPath $marker -Algorithm SHA256).Hash
+          if ((Run-Setup 'accepted-reinstall' 'RC5-TERMS1') -ne 0) { throw 'Reinstall failed' }
+          Assert-Bundle
+          if ((Get-FileHash -LiteralPath $marker -Algorithm SHA256).Hash -ne $markerHash) { throw 'Data changed on reinstall' }
+          $u=@(Get-ChildItem -LiteralPath $dest -Filter 'unins*.exe' -File)
+          if ($u.Count -ne 1) { throw 'Uninstaller missing' }
+          $p=Start-Process -FilePath $u[0].FullName -ArgumentList @('/VERYSILENT','/SUPPRESSMSGBOXES','/NORESTART') -PassThru
+          if (-not $p.WaitForExit(120000)) { $p.Kill(); throw 'Uninstall timeout' }
+          if ($p.ExitCode -ne 0 -or (Test-Path (Join-Path $dest 'Aeris.exe')) -or (Test-Path (Join-Path $dest 'RC5-TERMS-REVIEW.txt')) -or (Get-FileHash -LiteralPath $marker -Algorithm SHA256).Hash -ne $markerHash) { throw 'Uninstall/data failure' }
+          [pscustomobject]@{silent_missing_consent='PASS';silent_wrong_consent='PASS';accepted_install='PASS';same_version_reinstall='PASS';all_48_bundle_files_identical='PASS';installed_terms_hash='PASS';packaged_self_test='PASS';uninstall='PASS';synthetic_data_preserved='PASS';interactive_client='NOT_TESTED';license_review='PENDING';release_approved=$false} | ConvertTo-Json | Set-Content -LiteralPath terms-evidence/status.json -Encoding utf8
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: aeris-rc5-terms1-review-not-a-release
+          path: terms-evidence/
+          if-no-files-found: warn
+          retention-days: 30
