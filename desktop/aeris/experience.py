@@ -9,6 +9,7 @@ from tkinter import ttk,messagebox
 from aeris.hub import Hub, COLORS
 from aeris.experience_help import HELP
 from aeris.intelligence import recommend_tool
+from aeris.voice_session import VoiceSession, MAX_TURNS
 from aeris.companion_ui import CompanionWindow
 from aeris.companion import chat,validate_message,speech_process,MAX_HISTORY
 from aeris.copilot import CopilotSession,parse_command
@@ -72,6 +73,7 @@ class Conversation(CompanionWindow):
         self.hub=hub; self.history=[]; self.results=queue.Queue(); self.job=0
         self.busy=False; self.process=None; self.timer=None; self.closed=False
         self.chat_allowed=False; self.kind=None; self.candidate=None
+        self.voice=VoiceSession(); self.voice_timer=None
         self.session=CopilotSession(hub); self.action_input=None; self.screen=None; self.photo=None
         self.capture_timer=None; self.screen_question=None; self.meeting_active=False
         self.meeting_timer=None; self.meeting_generation=0; self.meeting_chunks=[]
@@ -117,10 +119,13 @@ class Conversation(CompanionWindow):
         self.input.bind('<Control-Return>',self.keyboard_send)
         row=ttk.Frame(left); row.pack(fill='x',pady=6)
         self.send_button=ttk.Button(row,text='Enviar',style='Experience.Primary.TButton',command=self.send); self.send_button.pack(side='right')
-        self.mic_button=ttk.Button(row,text='Microfone',command=self.listen); self.mic_button.pack(side='left')
+        self.mic_button=ttk.Button(row,text='Ditar',command=self.listen); self.mic_button.pack(side='left')
+        self.voice_button=ttk.Button(row,text='Conversar por voz',command=self.toggle_voice,style='Experience.Primary.TButton'); self.voice_button.pack(side='left',padx=4)
         self.stop_button=ttk.Button(row,text='Parar',command=self.stop); self.stop_button.pack(side='left',padx=4)
         row=ttk.Frame(left); row.pack(fill='x')
         self.speak_button=ttk.Button(row,text='Ouvir resposta',command=self.speak); self.speak_button.pack(side='left')
+        self.voice_indicator=tk.StringVar(w,'Voz desligada')
+        self.voice_panel=ttk.Label(left,textvariable=self.voice_indicator,style='Experience.Section.TLabel'); self.voice_panel.pack(anchor='w',pady=(3,0))
         self.advanced_open=False
         self.route_button=ttk.Button(row,text='Encontrar ferramenta',command=self.route_tool); self.route_button.pack(side='left',padx=4)
         self.advanced_toggle=ttk.Button(row,text='Mais opções',command=self.toggle_advanced); self.advanced_toggle.pack(side='right')
@@ -199,7 +204,7 @@ class Conversation(CompanionWindow):
     def configure_ai(self):
         messagebox.showinfo('IA local','Instale o Ollama e um modelo local, com OLLAMA_NO_CLOUD=1. Em seguida clique Detectar modelos ou digite o nome exato. Para imagens, use um modelo compatível com visão. Aeris não instala modelos nem envia dados para uma API de nuvem.',parent=self.hub.root)
     def send(self):
-        if self.meeting_active or self.busy: return
+        if self.meeting_active or self.busy or self.voice.active: return
         # Recognized local commands use the same reviewed action path, without a model.
         try: parse_command(self.input.get('1.0','end-1c'))
         except ValueError: pass
@@ -209,6 +214,89 @@ class Conversation(CompanionWindow):
             self.configure_ai(); return
         if self.ensure_tool('Copilot') and self.authorize(COMPANION_CHAT,'Enviar a mensagem e o histórico ao Ollama local? Nenhum outro arquivo será enviado.'):
             super().send()
+    def toggle_voice(self):
+        if self.voice.active:
+            self.stop_voice(); return
+        if self.closed or self.busy or self.meeting_active or self.capture_timer is not None: return
+        if self.input.get('1.0','end-1c').strip():
+            self.status.set('Envie ou limpe o rascunho antes de iniciar a conversa por voz.'); return
+        model=self.model.get().strip()
+        if not model:
+            if not self.ai_open: self.toggle_ai_settings()
+            self.configure_ai(); return
+        revision=self.hub.permissions.revision
+        if not messagebox.askyesno('Conversar por voz?',f'O microfone será reativado após cada resposta, por até {MAX_TURNS} turnos. A fala reconhecida será enviada ao modelo Ollama local com o histórico da conversa. O Aeris não grava áudio em arquivo. Clique Parar voz a qualquer momento.',parent=self.hub.root): return
+        if self.closed or revision!=self.hub.permissions.revision or model!=self.model.get().strip(): return
+        for cap,label in ((COMPANION_MIC,'Autorizar ditado pelo microfone?'),(COMPANION_CHAT,'Autorizar envio de texto e histórico ao modelo local?'),(COMPANION_SPEAK,'Autorizar reprodução de respostas por voz?')):
+            if not self.authorize(cap,label): return
+        if self.closed or self.busy or self.meeting_active or self.capture_timer is not None or self.voice.active or model!=self.model.get().strip() or self.input.get('1.0','end-1c').strip(): return
+        if not self.ensure_tool('Copilot') or not self.voice_allowed(): return
+        self.session.cancel(); self.action_input=None; self.preview.set(''); self.discard_candidate()
+        self.voice.begin(model); self.voice_next()
+    def voice_allowed(self):
+        return all(self.hub.permissions.allowed(cap) for cap in (COMPANION_MIC,COMPANION_CHAT,COMPANION_SPEAK))
+    def stop_voice(self,message='Conversa por voz encerrada.'):
+        self.voice.stop()
+        if self.voice_timer is not None:
+            self.window.after_cancel(self.voice_timer); self.voice_timer=None
+        if self.busy and self.kind in ('voice_listen','voice_chat','voice_speak'):
+            super().stop()
+        self.status.set(message); self.refresh()
+    def voice_next(self):
+        self.voice_timer=None
+        if not self.voice.active: return
+        if self.closed or not self.voice_allowed() or self.model.get().strip()!=self.voice.model or self.meeting_active or self.busy:
+            self.stop_voice(); return
+        phase=self.voice.phase
+        if phase not in ('listen','speak'):
+            self.stop_voice('Conversa por voz interrompida.'); return
+        try:
+            if worker_for(self.hub).busy: raise OSError('Outra operação local ativa.')
+            p=speech_process(); self.process=p
+            value=self.history[-1][1] if phase=='speak' and self.history else ''
+            def work():
+                try:
+                    out,_=p.communicate(json.dumps({'action':phase,'text':value},ensure_ascii=True),timeout=18 if phase=='listen' else 90)
+                    if p.returncode: raise OSError('Voz indisponível.')
+                    return validate_message(strict_json(out,32768)) if phase=='listen' else None
+                except subprocess.TimeoutExpired:
+                    p.kill(); p.communicate(); raise
+            if not self.start(COMPANION_MIC if phase=='listen' else COMPANION_SPEAK,work,kind='voice_'+phase):
+                p.kill()
+                try: p.communicate(timeout=2)
+                except (OSError,subprocess.TimeoutExpired): pass
+                self.process=None; raise OSError('Não foi possível iniciar a voz.')
+        except (OSError,PermissionError):
+            self.stop_voice('Voz indisponível. Confira o microfone e os recursos de voz pt-BR do Windows.'); return
+        self.status.set('MICROFONE ATIVO · fale agora.' if phase=='listen' else 'Reproduzindo resposta · microfone desligado.')
+    def voice_result(self,kind,ok,result):
+        if not self.voice.active: return
+        if not ok or not self.voice_allowed() or self.voice.model!=self.model.get().strip():
+            self.stop_voice('Conversa por voz interrompida: silêncio, erro ou permissão revogada.'); return
+        phase=kind.removeprefix('voice_')
+        if phase!=self.voice.phase:
+            self.stop_voice(); return
+        if phase=='listen':
+            # A spoken local action is a draft, never an automatic execution.
+            try: parse_command(result)
+            except ValueError: pass
+            else:
+                self.stop_voice('Pedido de ação reconhecido. Revise o texto e envie para preparar a confirmação.')
+                self.input.insert('1.0',result); return
+            self.voice.advance(phase)
+            model=self.voice.model; history=tuple(self.history)
+            if not self.start(COMPANION_CHAT,lambda:(result,chat(model,history,result)),kind='voice_chat'):
+                self.stop_voice('Não foi possível consultar a IA.'); return
+            self.status.set('Consultando IA local · microfone desligado.')
+        elif phase=='chat':
+            text,response=result
+            self.history.extend((('user',text),('assistant',response))); self.history=self.history[-MAX_HISTORY:]; self.draw()
+            self.voice.advance(phase)
+            self.voice_timer=self.window.after(250,self.voice_next)
+        else:
+            if self.voice.advance(phase) is None:
+                self.stop_voice('Limite da sessão de voz atingido. Inicie outra se quiser continuar.'); return
+            self.voice_timer=self.window.after(450,self.voice_next)
     def listen(self):
         if self.ensure_tool('Copilot') and self.authorize(COMPANION_MIC,'Usar o microfone padrão para um ditado curto? Nenhuma gravação é salva pelo Aeris.'):
             self.speech('listen')
@@ -224,7 +312,10 @@ class Conversation(CompanionWindow):
         if self.candidate or self.session.pending:
             if not self.proposal_panel.winfo_manager(): self.proposal_panel.pack(fill='x',pady=4)
         else: self.proposal_panel.pack_forget()
-        free=not self.busy and not self.meeting_active and self.capture_timer is None
+        free=not self.busy and not self.meeting_active and self.capture_timer is None and not self.voice.active
+        self.voice_button.configure(text='Parar voz' if self.voice.active else 'Conversar por voz',state='normal' if free or self.voice.active else 'disabled')
+        self.voice_indicator.set({'listen':'VOZ · Ouvindo','chat':'VOZ · Pensando (microfone desligado)','speak':'VOZ · Respondendo (microfone desligado)'}.get(self.voice.phase,'Voz desligada'))
+        self.input.configure(state='disabled' if self.voice.active else 'normal')
         for button in (self.send_button,self.mic_button,self.prepare_button,self.suggest_button,self.capture_button,self.meeting_start,self.detect_button):
             button.configure(state='normal' if free else 'disabled')
         self.hint_button.configure(state='normal' if free else 'disabled')
@@ -317,6 +408,7 @@ class Conversation(CompanionWindow):
                 break
     def permissions_changed(self):
         self.session.cancel(); self.action_input=None; self.preview.set('')
+        if self.voice.active and not self.voice_allowed(): self.stop_voice('Conversa por voz encerrada: permissão revogada.')
         if not self.hub.permissions.allowed(COMPANION_CHAT):
             self.ai_hint=None; self.update_hint()
         if not self.hub.permissions.allowed(COMPANION_SCREEN): self.discard_screen()
@@ -453,12 +545,13 @@ class Conversation(CompanionWindow):
         if self.hub.alive(self.hub.meeting_window): self.hub.meeting_window.render()
         self.status.set('Ata salva na sessão. Revise participantes e decisões em Reuniões.')
     def stop(self):
+        if self.voice.active: self.stop_voice()
         if self.meeting_active: self.stop_meeting()
         if self.capture_timer is not None: self.discard_screen()
         super().stop()
         if self.hub.root.state()=='withdrawn': self.hub.root.deiconify()
     def poll(self):
-        if self.kind not in ('screen','vision','meeting','models','route'): return super().poll()
+        if self.kind not in ('screen','vision','meeting','models','route','voice_listen','voice_chat','voice_speak'): return super().poll()
         self.timer=None
         if self.closed: return
         try: job,ok,result=self.results.get_nowait()
@@ -467,7 +560,10 @@ class Conversation(CompanionWindow):
         kind=self.kind
         if kind=='screen': self.hub.root.deiconify()
         valid=job==self.job and self.hub.permissions.allowed(self.cap)
-        if valid and kind=='route':
+        if kind in ('voice_listen','voice_chat','voice_speak'):
+            if valid: self.voice_result(kind,ok,result)
+            elif self.voice.active: self.stop_voice()
+        elif valid and kind=='route':
             if ok:
                 original,model,name=result
                 if original==self.input.get('1.0','end-1c') and model==self.model.get().strip():
@@ -510,7 +606,8 @@ class Conversation(CompanionWindow):
         return super().dirty() or bool(self.screen or self.note.get('1.0','end-1c') or self.meeting_text.get('1.0','end-1c') or self.meeting_active)
     def destroyed(self,event):
         if event.widget is self.window:
-            for timer in (self.meeting_timer,self.capture_timer):
+            self.voice.stop()
+            for timer in (self.meeting_timer,self.capture_timer,self.voice_timer):
                 if timer is not None:
                     try: self.hub.root.after_cancel(timer)
                     except tk.TclError: pass
@@ -581,6 +678,7 @@ class ExperienceHub(Hub):
         selected=self.category_display.get()
         self.category.set(next((key for key,value in CATEGORIES.items() if value==selected),'Todas'))
     def navigate(self,view):
+        if view!='chat' and self.conversation.voice.active: self.conversation.stop_voice()
         self.catalog.pack_forget(); self.conversation.window.pack_forget()
         if view=='catalog': self.catalog.pack(fill='both',expand=True); self.search.focus_set()
         else:
