@@ -136,7 +136,7 @@ def apply(root):
     s=replace(s,"    def show(self,text):\n        self.report.configure","""    def context(self):
         return (self.revision,self.mode.get(),tuple(self.paths) if self.mode.get()=='Arquivos' else tuple(t.get('1.0','end-1c') for t in self.inputs))
     def show(self,text,keep=False):
-        if not keep: self.comparison=None
+        if not keep: self.comparison=None; self.comparison_context=None
         self.report.configure""")
     s=replace(s,"            event.widget.edit_modified(False);self.cancel();", "            event.widget.edit_modified(False);self.revision+=1;self.cancel();")
     s=replace(s,"        value=filedialog.askopenfilename","        reviewed=self.context()\n        value=filedialog.askopenfilename")
