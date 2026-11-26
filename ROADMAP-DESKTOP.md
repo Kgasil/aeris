@@ -18,8 +18,8 @@ Objetivo: oferecer um Setup.exe autossuficiente, gratuito, com instalação simp
 | Etapa | Entrega | Critério de conclusão | Status |
 | --- | --- | --- | --- |
 | 01 | Auditoria de distribuição e inventário de dependências | Inventário dos componentes realmente empacotados, versões, termos, avisos e lacunas de redistribuição | Em andamento — inventário verificado; direitos e avisos pendentes |
-| 02 | Instalador simplificado | Revisar Inno Setup, instalação por usuário, idioma, atalhos, abertura opcional, desinstalação e ausência de dependências manuais; preservar AppId e dados | Próxima tarefa independente |
-| 03 | Build e CI de instalação | Validar novo workflow, gerar Setup.exe, hashes, logs e evidências; investigar falhas e testes ignorados | Pendente |
+| 02 | Instalador simplificado | Revisar Inno Setup, instalação por usuário, idioma, atalhos, abertura opcional, desinstalação e ausência de dependências manuais; preservar AppId e dados | Implementado — validação nativa na etapa 03 |
+| 03 | Build e CI de instalação | Validar novo workflow, gerar Setup.exe, hashes, logs e evidências; investigar falhas e testes ignorados | Próxima tarefa independente |
 | 04 | Segurança e confiança da distribuição | Revisão dos binários, permissões, malware scan, hashes, decisão documentada sobre Authenticode e autorização de redistribuição; nenhuma alegação falsa de assinatura | Pendente |
 | 05 | Prévia permanente | Publicar prerelease experimental versionada somente após aprovação da redistribuição e confiança; testar download direto e fallback do site | Pendente |
 | 06 | Windows 10 e 11 | Executar checklist de instalação e primeiro uso em VMs limpas x64 com conta comum, sem Python; guardar evidências separadas | Pendente |
@@ -45,3 +45,5 @@ Objetivo: oferecer um Setup.exe autossuficiente, gratuito, com instalação simp
 - 26/11/2026 — Roadmap criado; etapa 01 é a próxima. Nenhum teste novo executado nesta atualização.
 
 - 26/11/2026 — Etapa 01: [auditoria de distribuição](validation/desktop-distribution-audit.md) (8185ffd) e [verificador de manifesto](validation/audit-desktop-bundle.py) (71adb95) registrados. Artefato histórico baixado; três hashes e 1.002 arquivos conferidos. Inventário identifica 68 binários e seis arquivos de avisos/licenças. Revisão de direitos, versões incorporadas e avisos permanece em aberto; não publicar. Próxima tarefa independente: etapa 02, sem liberar distribuição.
+
+- 26/11/2026 — Etapa 02: [receita Inno Setup simplificada](validation/installer/Aeris.iss) (d82dfd7), [workflow de CI](.github/workflows/aeris-windows-installer-preview.yml) (a495791) e [documentação](validation/installer/README.md) (599e737). Receita original inspecionada dentro do ZIP Fix 1; AppId, mutex, diretório, privilégios e aviso de prévia preservados. Seleção automática de idioma quando reconhecido, página de atalhos como confirmação de instalação, atalho desktop opcional selecionado por padrão, abertura voluntária desmarcada por padrão, sem abertura silenciosa. Verificações de atalhos e limpeza adicionadas à CI; compilação e execução gráfica não confirmadas nesta etapa. Próxima: etapa 03. Gate de licenças permanece aberto; nenhum binário novo publicado.
