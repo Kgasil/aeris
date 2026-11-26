@@ -1,0 +1,2 @@
+d0f064c1b73c46465171cc1fb208b530ed66573e054c2ca211b216547bbb3c00  Aeris-Extension-v1.0.0-completa.zip
+e77e6e8596c14e54f22303e7a5d368356c19eaa79df8c8597752790755d9a0d9  Aeris-Extension-v1.0.0-install.zip
