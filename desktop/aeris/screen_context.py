@@ -73,3 +73,23 @@ def describe_screen(model,question,image,*,connection_factory=http.client.HTTPCo
         if not isinstance(msg,dict) or msg.get('role')!='assistant' or msg.get('tool_calls'): raise ValueError('Resposta inválida.')
         return validate_message(msg.get('content'))
     finally: conn.close()
+
+
+def installed_models(*,connection_factory=http.client.HTTPConnection):
+    """Discover model names on explicit request; never pull or download a model."""
+    conn=connection_factory('127.0.0.1',11434,timeout=5)
+    try:
+        conn.request('GET','/api/tags')
+        response=conn.getresponse()
+        if response.status!=200: raise OSError('Ollama local indisponível.')
+        obj=strict_json(response.read(MAX_RESPONSE+1),MAX_RESPONSE)
+        if not isinstance(obj,dict) or not isinstance(obj.get('models'),list): raise ValueError('Lista de modelos inválida.')
+        models=[]
+        for record in obj['models'][:200]:
+            if not isinstance(record,dict): continue
+            name=record.get('name',record.get('model'))
+            if isinstance(name,str) and re.fullmatch(r'[A-Za-z0-9][A-Za-z0-9_.:-]{0,127}',name) and 'cloud' not in name.lower() and name not in models:
+                # Remote model identifiers are not supported by this interface.
+                if not record.get('remote_host') and not record.get('remote_model'): models.append(name)
+        return tuple(models)
+    finally: conn.close()
