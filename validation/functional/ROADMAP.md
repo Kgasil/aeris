@@ -7,8 +7,8 @@ Base imutável: RC4 integrado, run 45853309017, artefato 15134209156, SHA-256 fo
 | Fase | Ferramentas | Estado |
 | --- | --- | --- |
 | 01 Core | Hub, Spotlight, Health, Backup, Bridge | Aprovada em CI (fonte e Tk) |
-| 02 Productivity | Focus, Workspace, Checklist, Reminder, Routine | Alterações implementadas, CI cumulativa iniciada |
-| 03 Memory | Vault, Capture, Timeline, Ideas, Bookmarks | Pendente |
+| 02 Productivity | Focus, Workspace, Checklist, Reminder, Routine | Aprovada em CI (fonte e Tk) |
+| 03 Memory | Vault, Capture, Timeline, Ideas, Bookmarks | Alterações implementadas; CI cumulativa iniciada |
 | 04 Quick Actions | Autofill, Clipboard, Snippets, Expand, Convert | Pendente |
 | 05 Communication | Translate, Voice, Text, Email, Meeting | Pendente |
 | 06 Learning | Learn, Research, Flashcards, Pronounce, Accessibility | Pendente |
@@ -31,3 +31,9 @@ Próxima ação: conferir CI 01, corrigir falhas reais, registrar evidências e 
 [CI Core 45856259980](https://github.com/Kgasil/aeris/actions/runs/45856259980) aprovada: seis novos testes sem skips, 415/419 regressões Windows (quatro skips de ambiente), cinco smokes gráficos, hashes dos seis arquivos e ZIP conferidos independentemente. [Evidência](../../downloads/functional-core-evidence.json) (4fd4e7f). Sem teste de cliente ou novo instalador.
 
 [Overlay Productivity](apply-productivity.py) (20b4a95): cinco arquivos originais RC4 com hashes de entrada; Focus: três presets de duração sem interromper sessão ativa/pausada. Workspace: carregar/excluir somente item ainda idêntico após confirmação, tratar seleção removida sem exceção. Checklist: filtro adicional de prioridade, manter seleção visível, Enter para concluir e não alternar tarefa por duplo clique em região vazia. Reminder: bloquear edição/cancelamento após deadline mesmo antes de collect_due, sem consumir alerta. Routine: vincular cópia ao contexto de entrada/ordem/idiomas e à identidade da prévia confirmada, rejeitar alteração durante diálogo. Mantidos armazenamento de sessão, permissões, limites e esquema; nenhum serviço novo. [Seis testes](test_productivity_refinement.py) (d2a72c4), [workflow cumulativo](../../.github/workflows/aeris-functional-productivity.yml) (a502f80), [CI 45856628978](https://github.com/Kgasil/aeris/actions/runs/45856628978) iniciada; resultado pendente. Executar regressão e dez smokes, preservar RC4. Próxima fase Memory após conferir resultado. Orçamento assumido zero.
+
+## Resultado Productivity e Fase 03 — Memory (26/11/2026)
+
+[CI Productivity 45856628978](https://github.com/Kgasil/aeris/actions/runs/45856628978) aprovada: 6/6 novos testes, 421/425 regressões Windows, quatro skips, dez smokes. SHA-256 externo e hashes dos 11 arquivos modificados conferidos independentemente. [Evidência](../../downloads/functional-productivity-evidence.json) (05c8d68).
+
+[Overlay Memory](apply-memory.py) (9856dc8): cinco arquivos originais RC4 com hashes conferidos antes de alterar. Vault: Ctrl+S, contador de registros, revalidar identidade de seleção e conteúdo durante confirmação, limpar contador e atalho ao bloquear. Capture: Ctrl+S, tratar registro removido, revalidar seleção e exclusão; editor compartilhado também beneficia Snippets, que será revisado na fase 04. Timeline e Ideas: limpar filtros preservando rascunho, manter seleção visível e revalidar registros antes de abrir/excluir. Bookmarks: conferir endereço, seleção, estado desbloqueado e permissão novamente antes de abrir no navegador; proteger exclusão. Não ampliar permissões nem alterar formatos, DPAPI ou armazenamento de sessão. [Seis regressões](test_memory_refinement.py) (3064aba) usam dados fictícios, Tk real, backend simulado nos testes UI de Vault/Bookmarks e launcher injetado (não abrem sites reais). [Workflow cumulativo](../../.github/workflows/aeris-functional-memory.yml) (a68f01c), [CI 45857557390](https://github.com/Kgasil/aeris/actions/runs/45857557390) iniciada com regressão e 16 smokes. Resultado pendente. Nenhum novo Setup, nenhum gasto. Próxima fase Quick Actions após validação Memory.
