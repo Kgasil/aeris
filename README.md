@@ -1,4 +1,7 @@
 
+> **Aeris Desktop 1.1.0 RC1 — nova prévia experimental.** Consulte [as releases publicadas](https://github.com/Kgasil/aeris/releases) para verificar se o novo instalador está disponível. A análise independente ClamAV continua pendente. Instalador sem assinatura digital; não ignore alertas, não desative proteções e use apenas ambiente de testes com dados fictícios. A prévia RC5 anterior continua disponível. [Validação da nova compilação](https://github.com/Kgasil/aeris/actions/runs/45893869745).
+
+
 > **Aeris Desktop RC5 — prévia pública experimental gratuita.** [Download, avisos e SHA-256](https://github.com/Kgasil/aeris/releases/tag/aeris-desktop-1.0.0rc5-terms1-preview). Instalador x64 12,80 MB, sem Python externo, conta ou terminal. Microsoft Defender: nenhuma ameaça detectada em análise diagnóstica em 26/11/2026. Sem assinatura digital; Windows cliente e revisão dos termos de terceiros pendentes. Use apenas ambiente descartável e dados fictícios, analise com proteção atualizada e não contorne bloqueios. Não é versão estável.
 
 <p align="center"><a href="https://kgasil.github.io/aeris/"><img src="assets/readme-cover.svg" alt="Project Aeris — official project identity" width="760"></a></p>
