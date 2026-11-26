@@ -24,6 +24,16 @@ NAMES=dict(zip(
 CATEGORIES=dict(zip(('Core','Productivity','Memory','Quick Actions','Communication','Learning','Intelligence','Business','Files','Security'),
 ('Essenciais','Produtividade','Memória','Ações rápidas','Comunicação','Aprendizado','Inteligência','Negócios','Arquivos','Segurança')))
 
+GOALS={
+    'Escrever e comunicar': ["Text","Email","Translate","Voice","Pronounce","Snippets","Expand","Accessibility"],
+    'Organizar meu trabalho': ["Capture","Meeting","Checklist","Reminder","Focus","Ideas","Timeline","Workspace","Bookmarks"],
+    'Analisar informações': ["Data","Dashboard","Report","Calculator","Convert","Decision","Debug"],
+    'Estudar e aprender': ["Learn","Research","Flashcards","Interview"],
+    'Trabalhar com arquivos': ["Documents","Organizer","Drop","Compare","Lens","Metadata"],
+    'Proteger informações': ["Privacy","Permissions","Vault","Backup","Link","Verify"],
+    'Automatizar e configurar': ["Hub","Spotlight","Health","Bridge","Routine","Autofill","Clipboard","Copilot","Context","Search"],
+}
+
 class Conversation(CompanionWindow):
     """Reuse the bounded local worker, chat, speech, history and permission lifecycle."""
     def __init__(self,hub,parent):
@@ -389,15 +399,21 @@ class ExperienceHub(Hub):
     def build_catalog(self):
         self.catalog=ttk.Frame(self.root,padding=18)
         f=self.catalog
-        ttk.Label(f,text='Ferramentas de trabalho',style='Experience.Title.TLabel').pack(anchor='w')
-        ttk.Label(f,text='Encontre o que precisa, veja um exemplo e abra a ferramenta.',style='Experience.Muted.TLabel').pack(anchor='w',pady=(2,12))
+        ttk.Label(f,text='O que você deseja fazer?',style='Experience.Title.TLabel').pack(anchor='w')
+        ttk.Label(f,text='Escolha um objetivo ou pesquise pelo que precisa fazer.',style='Experience.Muted.TLabel').pack(anchor='w',pady=(2,12))
+        self.goal=tk.StringVar(self.root,'Todas')
+        goals=ttk.Frame(f); goals.pack(fill='x',pady=(0,12))
+        for i,name in enumerate(('Todas',*GOALS)):
+            goals.columnconfigure(i%2,weight=1,uniform='goal')
+            ttk.Radiobutton(goals,text=name,value=name,variable=self.goal,command=self.refresh,style='Experience.Goal.TRadiobutton').grid(row=i//2,column=i%2,sticky='ew',padx=3,pady=2)
+        ttk.Label(f,text='Buscar por nome, tarefa ou exemplo',style='Experience.Muted.TLabel').pack(anchor='w')
         filters=ttk.Frame(f); filters.pack(fill='x',pady=(0,8))
         self.search=ttk.Entry(filters,textvariable=self.query); self.search.pack(side='left',fill='x',expand=True,ipady=5)
         self.search.bind('<Return>',self.focus_results); self.search.bind('<Escape>',lambda _:self.clear_filters())
         ttk.Button(filters,text='Limpar',command=self.clear_filters).pack(side='right',padx=(5,0))
         self.category_display=tk.StringVar(self.root,'Todas')
         self.category_box=ttk.Combobox(filters,textvariable=self.category_display,values=('Todas',*CATEGORIES.values()),state='readonly',width=15)
-        self.category_box.pack(side='right',padx=(5,0)); self.category_box.bind('<<ComboboxSelected>>',self.choose_category)
+        self.category_box.bind('<<ComboboxSelected>>',self.choose_category)
         self.count=ttk.Label(f,text='',style='Experience.Muted.TLabel'); self.count.pack(anchor='w',pady=(0,6))
         body=ttk.Frame(f); body.pack(fill='both',expand=True); body.columnconfigure(0,weight=3); body.columnconfigure(1,weight=2); body.rowconfigure(0,weight=1)
         left=ttk.Frame(body); left.grid(row=0,column=0,sticky='nsew',padx=(0,10))
@@ -406,12 +422,15 @@ class ExperienceHub(Hub):
         sb=ttk.Scrollbar(left,command=self.listbox.yview); sb.pack(side='right',fill='y'); self.listbox.configure(yscrollcommand=sb.set)
         self.listbox.bind('<<ListboxSelect>>',self.show_selected); self.listbox.bind('<Return>',self.open_selected); self.listbox.bind('<Double-1>',self.open_selected)
         detail=ttk.Frame(body,padding=14,style='Experience.Card.TFrame'); detail.grid(row=0,column=1,sticky='nsew')
-        self.detail_name=ttk.Label(detail,text='',style='Experience.Detail.TLabel',wraplength=215,justify='left'); self.detail_name.pack(anchor='w',fill='x')
+        self.detail_name=ttk.Label(detail,text='',style='Experience.Detail.TLabel',wraplength=250,justify='left'); self.detail_name.pack(anchor='w',fill='x')
         self.detail_status=ttk.Label(detail,text='',style='Experience.Card.TLabel',wraplength=215); self.detail_status.pack(anchor='w',pady=(4,12),fill='x')
         self.detail_desc=ttk.Label(detail,text='',style='Experience.Card.TLabel',wraplength=215,justify='left'); self.detail_desc.pack(anchor='w',fill='x')
         self.example=ttk.Label(detail,text='',style='Experience.Card.TLabel',wraplength=215,justify='left'); self.example.pack(anchor='w',pady=(12,6),fill='x')
         self.toggle=ttk.Button(detail,text='Ativar')
         self.launch=ttk.Button(detail,text='Abrir',style='Experience.Primary.TButton')
+    def clear_filters(self):
+        if hasattr(self,'goal'): self.goal.set('Todas')
+        return super().clear_filters()
     def choose_category(self,_=None):
         selected=self.category_display.get()
         self.category.set(next((key for key,value in CATEGORIES.items() if value==selected),'Todas'))
@@ -439,8 +458,9 @@ class ExperienceHub(Hub):
         from aeris.registry import normalize
         self.category_display.set(CATEGORIES.get(self.category.get(),'Todas'))
         query=normalize(self.query.get()).split()
-        self.visible=tuple(m for m in self.modules if (self.category.get()=='Todas' or m.category==self.category.get()) and all(q in normalize(' '.join((m.name,NAMES.get(m.name,m.name),m.description,m.category,CATEGORIES.get(m.category,m.category),*HELP.get(m.name,('',''))))) for q in query))
-        for m in self.visible: self.listbox.insert('end',f'  {NAMES.get(m.name,m.name)}  ·  {CATEGORIES.get(m.category,m.category)}')
+        goal=self.goal.get() if hasattr(self,'goal') else 'Todas'
+        self.visible=tuple(m for m in self.modules if (goal=='Todas' or m.name in GOALS.get(goal,())) and (self.category.get()=='Todas' or m.category==self.category.get()) and all(q in normalize(' '.join((m.name,NAMES.get(m.name,m.name),m.description,m.category,CATEGORIES.get(m.category,m.category),*HELP.get(m.name,('',''))))) for q in query))
+        for m in self.visible: self.listbox.insert('end',f'  {NAMES.get(m.name,m.name)}')
         self.count.configure(text=f'{len(self.visible)} ferramentas encontradas')
         if self.visible:
             index=next((i for i,m in enumerate(self.visible) if m.name==selected),0)
@@ -454,12 +474,18 @@ class ExperienceHub(Hub):
             m=self.visible[sel[0]]; self.detail_name.configure(text=NAMES.get(m.name,m.name))
             description,example=HELP.get(m.name,(m.description,'')); self.detail_desc.configure(text=description); self.example.configure(text='COMO USAR\n'+example)
             if m.name in self.tool_buttons:
-                self.launch.configure(text='Abrir ferramenta')
-                self.detail_status.configure(text=CATEGORIES.get(m.category,m.category)+' · '+('Disponível' if self.enabled(m.name) else 'Ative para usar'))
+                self.toggle.pack_forget()
+                self.launch.configure(text='Abrir ferramenta',command=lambda name=m.name:self.open_friendly(name))
+                self.launch.pack(fill='x',pady=(14,4))
+                if self.enabled(m.name):
+                    self.toggle.configure(text='Desativar ferramenta',command=lambda name=m.name:self.toggle_tool(name))
+                    self.toggle.pack(fill='x',pady=4)
+                self.detail_status.configure(text='Disponível nesta sessão' if self.enabled(m.name) else 'Pronta para ativar ao abrir')
     def apply_appearance(self):
         super().apply_appearance()
         from aeris.theme import PALETTES
         p=PALETTES[self.settings.appearance.theme]; style=ttk.Style(self.root)
+        style.configure('Experience.Goal.TRadiobutton',padding=(8,5),font=('Segoe UI',10))
         style.configure('Experience.Title.TLabel',font=('Segoe UI',22,'bold'))
         style.configure('Experience.Brand.TLabel',font=('Segoe UI',30,'bold'),background='#193D30',foreground='#FFFFFF')
         style.configure('Experience.Side.TFrame',background='#193D30')
