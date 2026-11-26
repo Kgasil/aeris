@@ -1,0 +1,30 @@
+{
+  "run": 45856259980,
+  "commit": "ba62003474aae3cc1f7d62205c5f4b0c3f5191dc",
+  "artifact_id": 15134639077,
+  "artifact_sha256": "8272e37bd6586b01325db63719f5f78edc758201d86fea190c7e619c4c2c9ea8",
+  "independent_digest": "PASS",
+  "changed_source_hashes_verified": 6,
+  "new_tests": {
+    "passed": 6,
+    "skipped": 0,
+    "seconds": 2.982
+  },
+  "full_regression": {
+    "total": 419,
+    "passed": 415,
+    "skipped": 4,
+    "failures": 0,
+    "seconds": 17.607
+  },
+  "smokes": [
+    "smoke_backup",
+    "smoke_bridge",
+    "smoke_health",
+    "smoke_refinement",
+    "smoke_spotlight_isolated"
+  ],
+  "smokes_result": "PASS",
+  "scope": "Source overlays and actual Tk on Windows Server 2022; not a new packaged executable or Windows client test",
+  "release_approved": false
+}
