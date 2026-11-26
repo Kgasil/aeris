@@ -9,12 +9,16 @@ Versão 1.0.0 empacotada a partir da RC2. 16 ferramentas, 69 regras de revisão,
 - 50/50 testes Node aprovados; sintaxe de todos os módulos JavaScript aprovada.
 - Pacote de instalação reconstruído com hash idêntico; integridade dos ZIPs conferida.
 - O titular informou ter testado a RC2, sem fornecer relatório detalhado de navegador, ambiente ou casos.
-- Os ZIPs 1.0.0 foram gerados localmente; ainda não estão disponíveis para download neste repositório.
+- Os ZIPs 1.0.0 estão publicados em `downloads/`, com hashes dos objetos Git conferidos.
 
 | Arquivo | SHA-256 |
 |---|---|
 | Aeris-Extension-v1.0.0-install.zip | `e77e6e8596c14e54f22303e7a5d368356c19eaa79df8c8597752790755d9a0d9` |
 | Aeris-Extension-v1.0.0-completa.zip | `d0f064c1b73c46465171cc1fb208b530ed66573e054c2ca211b216547bbb3c00` |
+
+## Downloads
+
+[**Baixar extensão / Download extension**](https://github.com/Kgasil/aeris/raw/refs/heads/main/downloads/Aeris-Extension-v1.0.0-install.zip) · [Código-fonte completo / Full source](https://github.com/Kgasil/aeris/raw/refs/heads/main/downloads/Aeris-Extension-v1.0.0-completa.zip)
 
 ## Instalação manual
 

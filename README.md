@@ -67,7 +67,7 @@ Open `index.html` in a browser. No build step or backend is needed. The website 
 | K&G Vision | [Institutional](https://kgasil.github.io/) | [Source](https://github.com/Kgasil/kgasil.github.io) | Independent initiative / Iniciativa independente |
 | Project Genesis | [Wisdom & Application / Sabedoria e Aplicação](https://kgasil.github.io/genesis/) | [Source](https://github.com/Kgasil/genesis) | 75 private study PDFs; [interactive public library](https://kgasil.github.io/genesis/biblioteca.html) / 75 PDFs de estudo privados; [biblioteca pública interativa](https://kgasil.github.io/genesis/biblioteca.html) |
 | Project Vision | [Security and Development](https://kgasil.github.io/vision/) | [Source](https://github.com/Kgasil/vision) | Local demonstration lab / Laboratório demonstrativo local |
-| Project Aeris | [Discreet & Efficient. / Discreto e Eficiente.](https://kgasil.github.io/aeris/) | [Source](https://github.com/Kgasil/aeris) | Desktop RC1; Extension 1.0.0 build ready, ZIP upload pending / Desktop RC1; Extensão 1.0.0 empacotada, upload dos ZIPs pendente |
+| Project Aeris | [Discreet & Efficient. / Discreto e Eficiente.](https://kgasil.github.io/aeris/) | [Source](https://github.com/Kgasil/aeris) | Desktop RC1; Extension 1.0.0 available for manual installation / Desktop RC1; Extensão 1.0.0 disponível para instalação manual |
 | Project Lilium | [Strategy & Growth / Estratégia e Crescimento](https://kgasil.github.io/lilium/) | [Source](https://github.com/Kgasil/lilium) | Web Lab 1.0 public demo; Desktop v0.14.0 controlled preview; [Mini v0.1.1](https://github.com/Kgasil/lilium/tree/main/extension) GitHub-only experimental extension. / Web Lab 1.0 público; Desktop v0.14.0 em prévia controlada; Mini v0.1.1 experimental pelo GitHub. |
 
 **Learn · Build · Simplify · Transform / Aprender · Construir · Simplificar · Transformar**
@@ -129,10 +129,12 @@ The [fourth run](https://github.com/Kgasil/aeris/actions/runs/45729575816) passe
 
 ## Aeris Extension — 1.0.0
 
-16 ferramentas em um candidato Manifest V3. 50 testes Node aprovados; sintaxe JavaScript, hashes e reconstrução determinística conferidos. A versão 1.0.0 preserva a lógica RC2 testada pelo responsável. / 16 tools, 50 passing Node tests, verified syntax, checksums and reproducible install package. Version 1.0.0 preserves the RC2 logic. ZIPs ainda locais; validação nativa e publicação em lojas pendentes. / ZIPs remain local; native browser validation and store publication pending. [Instruções / Instructions](https://kgasil.github.io/aeris/extension-preview.html) · [Laboratório de validação / Validation lab](https://kgasil.github.io/aeris/extension-validation.html).
+16 ferramentas em um candidato Manifest V3. 50 testes Node aprovados; sintaxe JavaScript, hashes e reconstrução determinística conferidos. A versão 1.0.0 preserva a lógica RC2 testada pelo responsável. / 16 tools, 50 passing Node tests, verified syntax, checksums and reproducible install package. Version 1.0.0 preserves the RC2 logic. ZIPs disponíveis no GitHub; validação nativa independente e publicação em lojas pendentes. / ZIPs available on GitHub; independent native browser validation and store publication pending. [Instruções / Instructions](https://kgasil.github.io/aeris/extension-preview.html) · [Laboratório de validação / Validation lab](https://kgasil.github.io/aeris/extension-validation.html).
 
 
 ### Instalação manual / Manual installation
+
+[**Baixar extensão / Download extension**](https://github.com/Kgasil/aeris/raw/refs/heads/main/downloads/Aeris-Extension-v1.0.0-install.zip) · [Código-fonte completo / Full source](https://github.com/Kgasil/aeris/raw/refs/heads/main/downloads/Aeris-Extension-v1.0.0-completa.zip)
 
 [**Tutorial completo: Chrome, Edge e Opera**](extension/README.md) · [Notas 1.0.0](release/extension-1.0.0-notes.md) · [SHA-256](downloads/Aeris-Extension-v1.0.0-SHA256SUMS.txt)
 
@@ -141,4 +143,4 @@ The [fourth run](https://github.com/Kgasil/aeris/actions/runs/45729575816) passe
 3. Ative o modo de desenvolvedor e selecione Carregar sem compactação, se permitido.
 4. Escolha a pasta com `manifest.json` e abra Aeris no menu de extensões.
 
-ZIPs preparados localmente; upload pendente. Não publicado nas lojas. / ZIPs prepared locally; upload pending. Not published in extension stores.
+ZIPs publicados no GitHub. Não publicado nas lojas. / ZIPs published on GitHub. Not published in extension stores.

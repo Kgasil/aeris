@@ -2,7 +2,7 @@
 
 **Discreto e Eficiente. · by K&G Vision**
 
-Extensão gratuita, Manifest V3, com 16 ferramentas. Distribuição manual para avaliação, fora das lojas de extensões. Os ZIPs 1.0.0 foram preparados e verificados, mas o envio dos binários ao GitHub está pendente. Use o ZIP de instalação recebido do projeto; não use arquivos de terceiros.
+Extensão gratuita, Manifest V3, com 16 ferramentas. Distribuição manual para avaliação, fora das lojas de extensões. Os ZIPs 1.0.0 estão publicados no GitHub. [**Baixar extensão / Download extension**](https://github.com/Kgasil/aeris/raw/refs/heads/main/downloads/Aeris-Extension-v1.0.0-install.zip) · [Código-fonte completo / Full source](https://github.com/Kgasil/aeris/raw/refs/heads/main/downloads/Aeris-Extension-v1.0.0-completa.zip). Não use arquivos de terceiros.
 
 ## Chrome
 
@@ -48,6 +48,6 @@ Abra o [laboratório de validação](https://kgasil.github.io/aeris/extension-va
 
 ## English quick start
 
-Extract the official install ZIP into a permanent folder. Open `chrome://extensions/`, `edge://extensions/` or `opera://extensions/`; enable Developer mode and choose Load unpacked, if available and permitted. Select the directory containing manifest.json. Open Aeris from the browser extension menu. Test using synthetic data only. Do not bypass administrative policies. Public ZIP upload and independent native compatibility checks remain pending.
+Extract the official install ZIP into a permanent folder. Open `chrome://extensions/`, `edge://extensions/` or `opera://extensions/`; enable Developer mode and choose Load unpacked, if available and permitted. Select the directory containing manifest.json. Open Aeris from the browser extension menu. Test using synthetic data only. Do not bypass administrative policies. The ZIPs are available on GitHub. Independent native compatibility checks remain pending.
 
 [Release notes](../release/extension-1.0.0-notes.md) · [Project website](https://kgasil.github.io/aeris/) · [Report a problem](https://github.com/Kgasil/aeris/issues).
