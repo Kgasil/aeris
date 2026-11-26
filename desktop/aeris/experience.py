@@ -206,6 +206,7 @@ class Conversation(CompanionWindow):
         if not self.hub.enabled(name): self.hub.toggle_tool(name)
         return self.hub.enabled(name)
     def model_changed(self,*args):
+        self.close_meeting_review()
         self.session.cancel(); self.action_input=None; self.preview.set(''); self.ai_hint=None; self.update_hint(); super().model_changed(*args)
         self.ai_state.set('IA local · '+self.model.get().strip()[:48] if self.model.get().strip() else 'IA local · escolha um modelo')
     def detect_models(self):
