@@ -112,3 +112,7 @@ The third run reached 394 passed, four skipped and one error (399 total). Window
 ### Windows CI — packaging fix 2
 
 The [fourth run](https://github.com/Kgasil/aeris/actions/runs/45729575816) passed 395 unit tests, with four skips and no errors or failures. PyInstaller could not locate the catalog because the source path was relative to the generated spec directory. The workflow now applies a checked, build-only absolute-path adjustment. The published Fix 1 ZIP is unchanged; the executable and installer remain unapproved. Linux regression on the local corrected source: 393 passing tests, six skips.
+
+### Portable Windows preview — successful CI
+
+[Run 45730089078](https://github.com/Kgasil/aeris/actions/runs/45730089078) passed 395 native unit tests (four skips), PyInstaller build, packaged UI self-test, and 1,002-file portable bundle verification on Windows Server 2022. The unsigned temporary artifact is available on the run page until December 3, 2026. This is not Windows 10/11 certification or a stable release. A separate installer-preview workflow checks build, install, same-version reinstall and uninstall with synthetic data on a disposable runner.
