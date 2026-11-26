@@ -45,7 +45,8 @@ $protection = $null
 try {
     $protection = Get-MpComputerStatus | Select-Object AntivirusEnabled,RealTimeProtectionEnabled,AntivirusSignatureVersion,AntivirusSignatureLastUpdated
 } catch { Write-Warning 'Defender status unavailable; manual review required.' }
-$baseline = $family -ne 'Not client Windows' -and [Environment]::Is64BitOperatingSystem -and -not $isAdmin -and $pythonCommands.Count -eq 0 -and @($pythonRegistry).Count -eq 0
+$nativeArchitecture = if ($env:PROCESSOR_ARCHITEW6432) { $env:PROCESSOR_ARCHITEW6432 } else { $env:PROCESSOR_ARCHITECTURE }
+$baseline = $family -ne 'Not client Windows' -and $nativeArchitecture -eq 'AMD64' -and [Environment]::Is64BitOperatingSystem -and -not $isAdmin -and $pythonCommands.Count -eq 0 -and @($pythonRegistry).Count -eq 0
 $checks = [ordered]@{
     client_x64_nonadmin_no_detected_python = $baseline
     setup_sha256_matches = $true
@@ -73,7 +74,8 @@ $report = [ordered]@{
     os_build = $build
     os_version = $os.Version
     os_caption = $os.Caption
-    architecture = $os.OSArchitecture
+    architecture = $nativeArchitecture
+    os_architecture_caption = $os.OSArchitecture
     admin_membership_detected = $isAdmin
     python_commands_detected = $pythonCommands
     python_registry_detected = @($pythonRegistry).Count
