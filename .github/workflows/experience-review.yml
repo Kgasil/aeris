@@ -60,10 +60,16 @@ jobs:
               assert hub.conversation.send_button.winfo_ismapped(), "Send control not visible"
               data=read_capture(capture_process())
               Path(os.environ["AERIS_EVIDENCE"],"experience-home.png").write_bytes(data)
+              root.geometry('980x660+16+12')
+              root.update()
               hub.navigate("screen")
               root.update()
+              assert hub.conversation.compact, "Expected compact workspace at 980px"
+              assert not hub.conversation.chat_panel.winfo_ismapped(), "Compact workspace must hide conversation"
               assert hub.conversation.capture_button.winfo_ismapped(), "Capture control not visible"
               assert hub.conversation.capture_button.winfo_rooty()+hub.conversation.capture_button.winfo_height() <= root.winfo_rooty()+root.winfo_height(), "Capture control clipped"
+              assert hub.conversation.discard_button.winfo_ismapped(), "Discard control not visible"
+              assert hub.conversation.discard_button.winfo_height() >= hub.conversation.discard_button.winfo_reqheight(), "Discard control clipped"
               Path(os.environ["AERIS_EVIDENCE"],"experience-screen.png").write_bytes(read_capture(capture_process()))
               hub.navigate("catalog")
               root.update()
