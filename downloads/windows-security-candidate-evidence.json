@@ -1,0 +1,84 @@
+{
+  "scope": "Windows Server 2022 disposable runner; per-user install; unsigned experimental security candidate, not Windows 10/11 certification or release approval",
+  "run": 45846890963,
+  "commit": "1b3106aaef5f23e9d78b0bb60055373914aaec57",
+  "artifact_id": 15130134767,
+  "artifact_sha256": "7e785f7b0caeb0872118fd5f3aa4310486fe298fc45c11012bcab75c9fb757ab",
+  "artifact_expires": "2026-12-26T15:14:30Z",
+  "unit_tests": {
+    "total": 401,
+    "passed": 397,
+    "skipped": 4,
+    "failures": 0,
+    "errors": 0
+  },
+  "additional_targeted_tests": {
+    "timeline": 6,
+    "release_check": 11,
+    "scope": "Repeated subsets of full suite, not added to total"
+  },
+  "portable": {
+    "bytes": 14756235,
+    "sha256": "d5510577d2d7988c672dbf15d4a3ad446169426828a7e7b8fe43f332682aed32",
+    "manifest_files_verified": 78,
+    "binaries": 71,
+    "notice_files": 4
+  },
+  "installer": {
+    "bytes": 13326111,
+    "sha256": "f32769f049df6837933c6187492443176b126815489fdead10558e4d2907bfd5"
+  },
+  "exe_sha256": "69f9b17a91edba3b255299b716602422226ca5c78ad9341588cecea9a1016c54",
+  "runtime": {
+    "python": "3.14.10",
+    "openssl": "3.5.9",
+    "tcl_tk": "9.0.4",
+    "zlib": "1.3.2",
+    "pyinstaller": "6.22.3",
+    "inno_setup": "6.7.1",
+    "msvc_runtime": "14.51.36247.0",
+    "ucrt": "10.0.26100.1742",
+    "api_set_dlls": 43
+  },
+  "checks": {
+    "portable_ui_self_test": "PASS",
+    "installed_ui_self_test": "PASS",
+    "reinstalled_ui_self_test": "PASS",
+    "install": "PASS",
+    "reinstall_same_version": "PASS",
+    "uninstall": "PASS",
+    "synthetic_data_preserved": "PASS",
+    "shortcut_targets": "PASS",
+    "shortcut_cleanup": "PASS",
+    "silent_no_launch": "PASS",
+    "independent_outer_and_asset_hashes": "PASS",
+    "binary_inventory_matches_manifest": "PASS"
+  },
+  "binary_signatures": {
+    "valid": 66,
+    "not_signed": 5,
+    "not_signed_paths": [
+      "Aeris.exe",
+      "_internal/libtommath.dll",
+      "_internal/tcl90.dll",
+      "_internal/tcl9tk90.dll",
+      "_internal/zlib1.dll"
+    ],
+    "scope": "Authenticode status from CI; not independently revalidated on Linux"
+  },
+  "defender": {
+    "antivirus_enabled": true,
+    "real_time_protection_enabled": false,
+    "signature_version": "1.463.480.0",
+    "malware_scan": "NOT_TESTED"
+  },
+  "redistribution_approved": false,
+  "release_approved": false,
+  "remaining": [
+    "Inno Setup update and license review",
+    "Third-party notice completeness and redistribution rights",
+    "Actual malware scan with active protection",
+    "Signing/trust decision",
+    "Windows 10/11 interactive validation and remaining roadmap"
+  ]
+}
