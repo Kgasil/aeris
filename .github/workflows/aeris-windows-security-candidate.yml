@@ -84,6 +84,23 @@ jobs:
           New-Item -ItemType Directory -Path security-evidence | Out-Null
           py -3.14-64 -c "import sys, ssl, tkinter, json; t=tkinter.Tcl(); print(json.dumps(dict(python=sys.version,openssl=ssl.OPENSSL_VERSION,tcl=t.eval('info patchlevel'))))" | Set-Content -LiteralPath security-evidence/runtime.json -Encoding utf8
           if ($LASTEXITCODE -ne 0) { throw 'Runtime inventory failed' }
+      - name: Preserve strict Timeline date and time validation on Python 3.14
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $path = 'source/Aeris-Desktop-v1.0.0rc1-fix1/desktop/aeris/timeline.py'
+          $s = [IO.File]::ReadAllText((Resolve-Path -LiteralPath $path).Path)
+          $old = "r'[0-9]{4}-[0-9]{2}-[0-9]{2} [0-9]{2}:[0-9]{2}'"
+          $new = "r'[0-9]{4}-[0-9]{2}-[0-9]{2} (?:[01][0-9]|2[0-3]):[0-5][0-9]'"
+          if ([regex]::Matches($s,[regex]::Escape($old)).Count -ne 1) { throw 'Unexpected Timeline implementation' }
+          [IO.File]::WriteAllText((Resolve-Path -LiteralPath $path).Path,$s.Replace($old,$new),[Text.UTF8Encoding]::new($false))
+          Push-Location 'source/Aeris-Desktop-v1.0.0rc1-fix1/desktop'
+          try {
+            py -3.14-64 -m unittest tests.test_timeline -v
+            if ($LASTEXITCODE -ne 0) { throw 'Timeline regression failed' }
+            py -3.14-64 -c "from aeris.timeline import parse_when; assert parse_when('2026-11-25 00:00').hour == 0; assert parse_when('2026-11-25 23:59').minute == 59"
+            if ($LASTEXITCODE -ne 0) { throw 'Timeline valid boundary regression failed' }
+          } finally { Pop-Location }
       - name: Locate Inno Setup compiler and build
         shell: pwsh
         run: |
