@@ -76,6 +76,24 @@ def self_test(full=False):
             root.update()
             if hub.conversation.ai_open or hub.conversation.ai_settings.winfo_manager():
                 raise RuntimeError('Readiness panel did not close')
+            # Synthetic visual draft: no screen, microphone or AI access.
+            from aeris.visual_question import VisualQuestion
+            conversation=hub.conversation
+            conversation.screen_question=VisualQuestion(b'fake-image','local')
+            conversation.input.insert('1.0','Pergunta fictícia')
+            root.update()
+            conversation.detach_question()
+            conversation.refresh()
+            if not conversation.visual_invalid or conversation.screen_question is not None:
+                raise RuntimeError('Visual draft invalidation failed')
+            conversation.send()
+            if conversation.busy or conversation.input.get('1.0','end-1c')!='Pergunta fictícia':
+                raise RuntimeError('Invalid visual draft was sent or lost')
+            conversation.release_question()
+            if conversation.visual_invalid:
+                raise RuntimeError('Explicit text-only release failed')
+            conversation.input.delete('1.0','end')
+            root.update()
             if full:
                 # Opening windows only: no clipboard, external files, audio, AI or user records.
                 from dataclasses import replace
