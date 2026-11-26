@@ -29,7 +29,7 @@ class Conversation(CompanionWindow):
         self.hub=hub; self.history=[]; self.results=queue.Queue(); self.job=0
         self.busy=False; self.process=None; self.timer=None; self.closed=False
         self.chat_allowed=False; self.kind=None; self.candidate=None
-        self.session=CopilotSession(hub); self.screen=None; self.photo=None
+        self.session=CopilotSession(hub); self.action_input=None; self.screen=None; self.photo=None
         self.capture_timer=None; self.screen_question=None; self.meeting_active=False
         self.meeting_timer=None; self.meeting_generation=0; self.meeting_chunks=[]
         self.window=w=ttk.Frame(parent,padding=(24,18)); w.bind('<Destroy>',self.destroyed,add='+')
@@ -105,6 +105,8 @@ class Conversation(CompanionWindow):
     def ensure_tool(self,name):
         if not self.hub.enabled(name): self.hub.toggle_tool(name)
         return self.hub.enabled(name)
+    def model_changed(self,*args):
+        self.session.cancel(); self.action_input=None; self.preview.set(''); super().model_changed(*args)
     def configure_ai(self):
         messagebox.showinfo('IA local','Instale o Ollama e um modelo local, com OLLAMA_NO_CLOUD=1. Digite o nome exato do modelo instalado. Para imagens, use um modelo compatível com visão. Aeris não instala modelos nem envia dados para uma API de nuvem.',parent=self.hub.root)
     def send(self):
@@ -143,13 +145,13 @@ class Conversation(CompanionWindow):
         self.transcript.configure(state='disabled'); self.transcript.see('end')
     def reset_chat(self):
         if self.dirty() and not messagebox.askyesno('Nova conversa?','Limpar conversa e rascunho? As anotações e a reunião permanecem.',parent=self.hub.root): return
-        self.clear()
+        self.session.cancel(); self.action_input=None; self.preview.set(''); self.clear()
     def input_changed(self,event=None):
         if self.input.edit_modified():
-            self.session.cancel(); self.preview.set('')
+            self.session.cancel(); self.action_input=None; self.preview.set('')
         super().input_changed(event); self.refresh()
     def permissions_changed(self):
-        self.session.cancel(); self.preview.set('')
+        self.session.cancel(); self.action_input=None; self.preview.set('')
         if not self.hub.permissions.allowed(COMPANION_SCREEN): self.discard_screen()
         if self.meeting_active and not self.hub.permissions.allowed(COMPANION_MIC): self.stop_meeting()
         super().permissions_changed()
@@ -157,6 +159,9 @@ class Conversation(CompanionWindow):
         if not self.model.get().strip(): self.configure_ai(); return
         if self.ensure_tool('Copilot') and self.authorize(COMPANION_CHAT,'Enviar apenas seu pedido ao modelo local?') and self.authorize(COPILOT_RUN,'Permitir preparar ações locais para sua confirmação?'):
             super().suggest()
+    def accept_candidate(self):
+        super().accept_candidate()
+        if self.input.get('1.0','end-1c'): self.status.set('Revise o pedido e clique Preparar ação. Nada foi executado.')
     def prepare_action(self):
         if self.busy or self.meeting_active: return
         self.session.cancel(); self.preview.set('')
@@ -168,9 +173,12 @@ class Conversation(CompanionWindow):
         if not self.ensure_tool(proposal.tool): return
         try: p=self.session.prepare(text)
         except (ValueError,PermissionError) as e: self.status.set(str(e)); return
-        self.preview.set(p.preview); self.refresh()
+        self.action_input=text; self.preview.set(p.preview); self.refresh()
     def confirm_action(self):
         if self.busy or self.meeting_active: return
+        if self.action_input!=self.input.get('1.0','end-1c'):
+            self.session.cancel(); self.action_input=None; self.preview.set(''); self.status.set('Pedido alterado. Prepare novamente.'); self.refresh(); return
+        self.action_input=None
         try: result=self.session.confirm()
         except (ValueError,PermissionError,KeyError) as e: result=str(e)
         self.preview.set(''); self.status.set(result); self.refresh()
@@ -204,7 +212,7 @@ class Conversation(CompanionWindow):
         except ValueError as e: self.status.set(str(e)); return
         revision=self.hub.permissions.revision
         if not messagebox.askyesno('Enviar captura?', 'Enviar apenas esta imagem revisada e a pergunta ao modelo de visão local? Não inclui histórico ou outros arquivos.',parent=self.hub.root): return
-        if self.screen is not raw or revision!=self.hub.permissions.revision or model!=self.model.get().strip() or not self.hub.permissions.allowed(COMPANION_CHAT): return
+        if self.screen is not raw or revision!=self.hub.permissions.revision or model!=self.model.get().strip() or question!=(self.input.get('1.0','end-1c').strip() or 'Explique o que aparece nesta imagem e como posso continuar.') or not self.hub.permissions.allowed(COMPANION_CHAT): return
         if self.start(COMPANION_SCREEN,lambda:(question,describe_screen(model,question,raw)),kind='vision'):
             self.status.set('Analisando uma captura, não a tela ao vivo…')
     def append_answer(self):
@@ -215,7 +223,7 @@ class Conversation(CompanionWindow):
         if not messagebox.askyesno('Salvar anotação?', 'Criar uma anotação temporária com o texto revisado?',parent=self.hub.root): return
         if text!=self.note.get('1.0','end-1c').strip() or not self.ensure_tool('Capture'): return
         from aeris.content import CaptureStore
-        if self.hub.capture_store is None: self.hub.capture_store=CaptureStore()
+        if self.hub.capture_store is None: self.hub.capture_store=CaptureStore(self.hub.invalidate_search)
         try: self.hub.capture_store.save('Anotação de trabalho',text,None)
         except ValueError as e: self.status.set(str(e)); return
         if self.hub.alive(self.hub.capture_window): self.hub.capture_window.refresh()
@@ -224,6 +232,7 @@ class Conversation(CompanionWindow):
         if self.busy or self.meeting_active: return
         if not messagebox.askyesno('Transcrição de reunião','Todos os participantes foram avisados e concordam com a transcrição? O microfone permanecerá ativo em blocos até Parar, fechar, revogar ou atingir o limite de 20 blocos. Nenhum áudio é gravado em arquivo pelo Aeris.',parent=self.hub.root): return
         if not self.authorize(COMPANION_MIC,'Autorizar o microfone nesta sessão?'): return
+        if self.busy or self.meeting_active: return
         self.meeting_active=True; self.meeting_generation+=1; self.meeting_chunks=[]
         self.meeting_text.configure(state='disabled'); self.meeting_next(); self.refresh()
     def meeting_next(self):
@@ -292,7 +301,7 @@ class Conversation(CompanionWindow):
             else: self.status.set('Captura indisponível.')
         elif valid and kind=='vision':
             if ok and self.hub.permissions.allowed(COMPANION_CHAT):
-                question,response=result; self.history.extend((('user','[Captura pontual] '+question),('assistant',response))); self.history=self.history[-MAX_HISTORY:]; self.draw(); self.status.set('Análise concluída. A IA pode errar.')
+                question,response=result; self.history.extend((('user',('[Captura pontual] '+question)[:4000]),('assistant',response))); self.history=self.history[-MAX_HISTORY:]; self.draw(); self.status.set('Análise concluída. A IA pode errar.')
             else: self.status.set('Modelo de visão indisponível ou permissão revogada.')
         elif valid and kind=='meeting' and self.meeting_active:
             if ok:
@@ -316,6 +325,9 @@ class Conversation(CompanionWindow):
         super().destroyed(event)
 
 class ExperienceHub(Hub):
+    def __init__(self,root,settings=None):
+        super().__init__(root,settings)
+        root.bind('<Control-f>',lambda _:self.navigate('catalog'))
     def build(self):
         super().build()
         self.legacy_side,self.catalog=self.root.winfo_children()[:2]
@@ -338,18 +350,25 @@ class ExperienceHub(Hub):
         if view=='catalog': self.catalog.pack(fill='both',expand=True,padx=24,pady=22); self.search.focus_set()
         else: self.conversation.window.pack(fill='both',expand=True)
         self.view=view
+    def open_search_result(self,result):
+        found=super().open_search_result(result)
+        if found and result.source=='Ferramentas': self.navigate('catalog')
+        return found
     def open_friendly(self,name):
         if not self.enabled(name): self.toggle_tool(name)
         if self.enabled(name): self.open_tool(name)
     def refresh(self,*_):
-        super().refresh(*_)
+        old=self.listbox.curselection()
+        selected=self.visible[old[0]].name if old and old[0]<len(self.visible) else None
         self.listbox.delete(0,'end')
         from aeris.registry import normalize
         query=normalize(self.query.get()).split()
         self.visible=tuple(m for m in self.modules if (self.category.get()=='Todas' or m.category==self.category.get()) and all(q in normalize(' '.join((m.name,NAMES.get(m.name,m.name),m.description,m.category,CATEGORIES.get(m.category,m.category)))) for q in query))
         for m in self.visible: self.listbox.insert('end',f'  {NAMES.get(m.name,m.name)}  ·  {CATEGORIES.get(m.category,m.category)}')
         self.count.configure(text=f'{len(self.visible)} ferramentas encontradas')
-        if self.visible: self.listbox.selection_set(0)
+        if self.visible:
+            index=next((i for i,m in enumerate(self.visible) if m.name==selected),0)
+            self.listbox.selection_set(index); self.listbox.activate(index); self.listbox.see(index)
         self.show_selected()
     def show_selected(self,*_):
         super().show_selected(*_)
