@@ -108,3 +108,7 @@ The recommended source download now includes the Windows compatibility correctio
 ### Windows CI — regression test compatibility
 
 The third run reached 394 passed, four skipped and one error (399 total). Windows denied replacement of an open file. The next CI run overlays `validation/test_verify.py` onto the verified Fix 1 archive, preserving security assertions and independently testing a completed replacement. Application code and published source ZIP remain unchanged. Local Linux regression: 393 passed, six skipped.
+
+### Windows CI — packaging fix 2
+
+The [fourth run](https://github.com/Kgasil/aeris/actions/runs/45729575816) passed 395 unit tests, with four skips and no errors or failures. PyInstaller could not locate the catalog because the source path was relative to the generated spec directory. The workflow now applies a checked, build-only absolute-path adjustment. The published Fix 1 ZIP is unchanged; the executable and installer remain unapproved. Linux regression on the local corrected source: 393 passing tests, six skips.
