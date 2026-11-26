@@ -245,6 +245,18 @@ class Conversation(CompanionWindow):
             self.transcript.insert('end',('Você' if role=='user' else 'Aeris')+'\n','person')
             self.transcript.insert('end',value+'\n','message')
         self.transcript.configure(state='disabled'); self.transcript.see('end')
+    def clear_workspace(self):
+        self.stop()
+        self.discard_screen()
+        self.session.cancel(); self.action_input=None; self.preview.set('')
+        self.clear()
+        self.note.delete('1.0','end')
+        self.meeting_text.configure(state='normal'); self.meeting_text.delete('1.0','end')
+        self.meeting_chunks.clear()
+        self.auto_speak.set(False)
+        self.update_hint()
+        self.status.set('Sessão limpa. Resultados pendentes descartados; registros protegidos preservados.')
+        self.refresh()
     def reset_chat(self):
         if self.dirty() and not messagebox.askyesno('Nova conversa?','Limpar conversa e rascunho? As anotações e a reunião permanecem.',parent=self.hub.root): return
         self.session.cancel(); self.action_input=None; self.preview.set(''); self.clear()
@@ -617,6 +629,10 @@ class ExperienceHub(Hub):
     def permissions_changed(self):
         super().permissions_changed()
         if hasattr(self,'conversation'): self.conversation.permissions_changed()
+    def clear_session(self):
+        if not super().clear_session(): return False
+        self.conversation.clear_workspace()
+        return True
     def close(self):
         if self.conversation.dirty() and not messagebox.askyesno('Encerrar Aeris?', 'A conversa, captura, transcrição e rascunhos desta sessão serão descartados. Encerrar?',parent=self.root): return
         self.conversation.stop()
