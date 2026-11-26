@@ -39,9 +39,13 @@ jobs:
           set -euo pipefail
           sudo apt-get update
           sudo apt-get install -y --no-install-recommends clamav clamav-freshclam
-          mkdir "$RUNNER_TEMP/clamav-db"
-          printf 'DatabaseDirectory %s\nDatabaseMirror database.clamav.net\nDatabaseOwner %s\nLogTime yes\nChecks 1\n' "$RUNNER_TEMP/clamav-db" "$(id -un)" > "$RUNNER_TEMP/freshclam.conf"
-          freshclam --config-file="$RUNNER_TEMP/freshclam.conf" 2>&1 | tee scan-evidence/freshclam.log
+          sudo install -d -o clamav -g clamav -m 0755 "$RUNNER_TEMP/clamav-db"
+          # Start from the Ubuntu package's own configuration, isolating database and log paths.
+          sudo test -s /etc/clamav/freshclam.conf
+          sudo awk '!/^[[:space:]]*(DatabaseDirectory|UpdateLogFile|PidFile|NotifyClamd|DatabaseOwner|LogSyslog)[[:space:]]/' /etc/clamav/freshclam.conf > "$RUNNER_TEMP/freshclam.conf"
+          printf '\nDatabaseDirectory %s\nDatabaseOwner clamav\n' "$RUNNER_TEMP/clamav-db" >> "$RUNNER_TEMP/freshclam.conf"
+          chmod 0644 "$RUNNER_TEMP/freshclam.conf"
+          sudo freshclam --config-file="$RUNNER_TEMP/freshclam.conf" --stdout 2>&1 | tee scan-evidence/freshclam.log
           clamscan --database="$RUNNER_TEMP/clamav-db" --version | tee scan-evidence/version.txt
           daily=$(find "$RUNNER_TEMP/clamav-db" -maxdepth 1 \( -name daily.cvd -o -name daily.cld \) -print -quit)
           test -n "$daily"
