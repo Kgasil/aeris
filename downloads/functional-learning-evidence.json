@@ -1,0 +1,24 @@
+{
+  "run": 45859212852,
+  "commit": "603cb1fe8adb9b339f846858aabc68f41e2d10d8",
+  "artifact_id": 15138380289,
+  "artifact_sha256": "9c66b5d47a1a50b183563fd9fad8fbe2c8af3f2f34ee39508fb01d001e3d7bbc",
+  "independent_digest": "PASS",
+  "changed_source_hashes_verified": 30,
+  "new_tests": {
+    "passed": 6,
+    "skipped": 0,
+    "seconds": 2.889
+  },
+  "full_regression": {
+    "total": 449,
+    "passed": 445,
+    "skipped": 4,
+    "failures": 0,
+    "seconds": 22.771
+  },
+  "smokes": 34,
+  "smokes_result": "PASS",
+  "scope": "Cumulative source overlays and real Tk on Windows Server CI; synthetic records and simulated speech; no new package or Windows client certification",
+  "release_approved": false
+}
