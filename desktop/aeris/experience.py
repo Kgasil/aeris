@@ -78,7 +78,7 @@ class Conversation(CompanionWindow):
         self.accept_button=ttk.Button(row,text='Usar sugestão',command=self.accept_candidate); self.accept_button.pack(side='left')
         self.confirm_button=ttk.Button(row,text='Confirmar ação',command=self.confirm_action,style='Experience.Primary.TButton'); self.confirm_button.pack(side='left',padx=4)
         ttk.Label(right,text='CONTEXTO DE TRABALHO',style='Experience.Section.TLabel').pack(anchor='w',pady=(0,8))
-        tabs=ttk.Notebook(right); tabs.pack(fill='both',expand=True)
+        tabs=self.context_tabs=ttk.Notebook(right); tabs.pack(fill='both',expand=True)
         screen=ttk.Frame(tabs,padding=9); tabs.add(screen,text='Tela')
         ttk.Label(screen,text='Veja uma captura da tela principal',style='Experience.Subtitle.TLabel',wraplength=242).pack(anchor='w')
         ttk.Label(screen,text='Captura pontual, nunca em segundo plano. Revise a imagem antes de enviá-la ao modelo local de visão.',wraplength=242,justify='left').pack(anchor='w',pady=5)
@@ -251,7 +251,7 @@ class Conversation(CompanionWindow):
         try: self.hub.capture_store.save('Anotação de trabalho',text,None)
         except ValueError as e: self.status.set(str(e)); return
         if self.hub.alive(self.hub.capture_window): self.hub.capture_window.refresh()
-        self.status.set('Anotação salva nesta sessão. Para preservar, use cópia protegida.')
+        self.status.set('Anotação salva nesta sessão. O bloco continua disponível para edição.')
     def start_meeting(self):
         if self.busy or self.meeting_active: return
         revision=self.hub.permissions.revision
@@ -285,7 +285,12 @@ class Conversation(CompanionWindow):
         if self.meeting_active or self.busy: return
         text=self.meeting_text.get('1.0','end-1c').strip()
         prompt='Resuma a transcrição abaixo, separando decisões, dúvidas e ações. Não invente participantes, prazos ou responsáveis.\n\n'+text
-        if not text or len(prompt)>4000: self.status.set('Selecione um trecho de até 3.800 caracteres para resumir.'); return
+        if not text or len(prompt)>4000:
+            if self.meeting_text.tag_ranges('sel'):
+                text=self.meeting_text.get('sel.first','sel.last').strip()
+                prompt='Resuma o trecho abaixo, separando decisões, dúvidas e ações. Não invente participantes, prazos ou responsáveis.\n\n'+text
+            if not text or len(prompt)>4000:
+                self.status.set('Selecione um trecho de até 3.800 caracteres para resumir.'); return
         if self.input.get('1.0','end-1c').strip(): self.status.set('Envie ou limpe o rascunho da conversa primeiro.'); return
         self.input.insert('1.0',prompt); self.status.set('Resumo preparado no editor. Revise e clique Enviar.')
     def save_meeting(self):
@@ -372,7 +377,7 @@ class ExperienceHub(Hub):
         ttk.Label(side,text='aeris.',style='Experience.Brand.TLabel').pack(anchor='w')
         ttk.Label(side,text='Eficiência e\nSimplicidade.',style='Experience.Side.TLabel').pack(anchor='w',pady=(0,22))
         self.nav_buttons={}
-        for label,command in [('Conversar',lambda:self.navigate('chat')),('Anotações',lambda:self.open_friendly('Capture')),('Reuniões',lambda:self.open_friendly('Meeting')),('Tarefas',lambda:self.open_friendly('Checklist')),('Ferramentas',lambda:self.navigate('catalog'))]:
+        for label,command in [('Conversar',lambda:self.navigate('chat')),('Tela',lambda:self.navigate('screen')),('Anotações',lambda:self.navigate('notes')),('Reuniões',lambda:self.navigate('meeting')),('Tarefas',lambda:self.open_friendly('Checklist')),('Ferramentas',lambda:self.navigate('catalog'))]:
             button=ttk.Button(side,text=label,command=command,style='Experience.Nav.TButton'); button.pack(fill='x',pady=2); self.nav_buttons[label]=button
         ttk.Separator(side).pack(fill='x',pady=18)
         ttk.Button(side,text='Configurações',command=self.open_appearance,style='Experience.Nav.TButton').pack(fill='x',pady=3)
@@ -413,9 +418,13 @@ class ExperienceHub(Hub):
     def navigate(self,view):
         self.catalog.pack_forget(); self.conversation.window.pack_forget()
         if view=='catalog': self.catalog.pack(fill='both',expand=True); self.search.focus_set()
-        else: self.conversation.window.pack(fill='both',expand=True)
+        else:
+            self.conversation.window.pack(fill='both',expand=True)
+            if view in ('screen','notes','meeting'):
+                self.conversation.context_tabs.select(('screen','notes','meeting').index(view))
         self.view=view
-        for label,button in self.nav_buttons.items(): button.configure(style='Experience.Active.TButton' if label==('Ferramentas' if view=='catalog' else 'Conversar') else 'Experience.Nav.TButton')
+        active={'catalog':'Ferramentas','screen':'Tela','notes':'Anotações','meeting':'Reuniões'}.get(view,'Conversar')
+        for label,button in self.nav_buttons.items(): button.configure(style='Experience.Active.TButton' if label==active else 'Experience.Nav.TButton')
     def open_search_result(self,result):
         found=super().open_search_result(result)
         if found and result.source=='Ferramentas': self.navigate('catalog')
