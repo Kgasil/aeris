@@ -6,6 +6,7 @@ import os
 import subprocess
 from pathlib import Path
 from aeris.safe_input import strict_json
+from aeris.ai_setup import local_port
 
 MAX_MESSAGE=4000
 MAX_HISTORY=12
@@ -28,7 +29,7 @@ def chat(model, history, text, *, connection_factory=http.client.HTTPConnection,
     messages.append({'role':'user','content':validate_message(text)})
     body=json.dumps(dict(model=model,messages=messages,stream=False,keep_alive=0,options={'num_predict':512,'num_ctx':4096}),ensure_ascii=True).encode()
     # Fixed loopback endpoint, no proxies, redirects, custom host or tool calls.
-    conn=connection_factory('127.0.0.1',11434,timeout=45)
+    conn=connection_factory('127.0.0.1',local_port(),timeout=45)
     try:
         conn.request('POST','/api/chat',body,{'Content-Type':'application/json'})
         response=conn.getresponse()

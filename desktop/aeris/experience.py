@@ -4,6 +4,7 @@ from datetime import date
 import json
 import queue
 import subprocess
+import threading
 import tkinter as tk
 from tkinter import ttk,messagebox,filedialog
 from aeris.hub import Hub, COLORS
@@ -13,6 +14,7 @@ from aeris.voice_session import VoiceSession, MAX_TURNS
 from aeris.vision_session import VisionSession, INTERVAL_MS, MAX_SECONDS, MAX_FRAMES
 from aeris.visual_question import VisualQuestion
 from aeris.ready import inspect_environment, model_selection, check_model
+from aeris.ai_setup import ManagedRuntime, load_choice, reset_endpoint
 from aeris.catalog_index import CatalogIndex
 from aeris.polish import compact_workspace
 from aeris.meeting_audio import available as loopback_available, model_path, start_loopback, read_loopback, BLOCK_SECONDS
@@ -79,6 +81,7 @@ class Conversation(CompanionWindow):
     def __init__(self,hub,parent):
         self.hub=hub; self.history=[]; self.results=queue.Queue(); self.job=0
         self.busy=False; self.process=None; self.timer=None; self.closed=False
+        self.ai_runtime=ManagedRuntime(hub.settings.path); self.setup_cancel=None; self.setup_progress=queue.Queue()
         self.chat_allowed=False; self.kind=None; self.candidate=None
         self.voice=VoiceSession(); self.voice_timer=None
         self.vision=VisionSession(); self.vision_timer=None; self.vision_expiry=None; self.vision_badge=None
@@ -99,7 +102,7 @@ class Conversation(CompanionWindow):
         self.ai_settings=ttk.Frame(w,padding=10,style='Experience.Card.TFrame')
         setup=self.ai_settings
         ttk.Label(setup,text='Configure seu assistente',style='Experience.Card.TLabel',font=('Segoe UI',13,'bold')).pack(anchor='w')
-        ttk.Label(setup,text='1. Instale e abra o Ollama com um modelo local. 2. Detecte modelos. 3. Teste a IA.',wraplength=580,style='Experience.Card.TLabel').pack(anchor='w',pady=(4,6))
+        ttk.Label(setup,text='Prepare a IA automaticamente ou selecione um modelo já instalado. Você controla os downloads.',wraplength=580,style='Experience.Card.TLabel').pack(anchor='w',pady=(4,6))
         modelrow=ttk.Frame(setup,style='Experience.Card.TFrame'); modelrow.pack(fill='x')
         self.ai_header=ai_header
         self.mode_status=tk.StringVar(w,'Pronto · microfone e tela desligados')
@@ -118,7 +121,7 @@ class Conversation(CompanionWindow):
         voice='Windows detectado; voz e tela ainda não testadas.' if info.windows else 'Voz e tela nativas exigem Windows.'
         audio=('Áudio interno: dependências encontradas; modelo e dispositivo ainda não testados.' if info.loopback_candidate else 'Áudio interno: opcional, exige execução por código-fonte no Windows e dependências próprias.')
         ttk.Label(setup,text=voice+' '+audio,wraplength=580,style='Experience.Card.TLabel').pack(anchor='w',pady=4)
-        ttk.Button(setup,text='Como instalar os recursos opcionais',command=self.configure_ai).pack(anchor='w')
+        self.setup_button=ttk.Button(setup,text='Preparar IA automaticamente',command=self.configure_ai,style='Experience.Primary.TButton'); self.setup_button.pack(anchor='w')
         trace_window(w,self.model,self.model_changed)
         self.panes=panes=ttk.Frame(w); panes.pack(fill='both',expand=True)
         panes.columnconfigure(0,weight=3); panes.columnconfigure(1,weight=0); panes.rowconfigure(0,weight=1)
@@ -283,8 +286,47 @@ class Conversation(CompanionWindow):
         if self.start(COMPANION_CHAT,lambda:(model,check_model(model,chat_fn=chat)),kind='ready_test'):
             self.ready_state.set('Testando resposta de texto do modelo local…'); self.status.set('Testando IA com mensagem fictícia.')
     def configure_ai(self):
+        if not self.idle(): return
         if not self.ai_open: self.toggle_ai_settings()
-        messagebox.showinfo('Primeiro acesso','1. Instale o Ollama pela fonte oficial (ollama.com).\n2. Configure OLLAMA_NO_CLOUD=1, reinicie o Ollama e instale um modelo local compatível com seu computador.\n3. Clique Detectar modelos, selecione um modelo e clique Testar IA.\n\nVisão exige modelo multimodal. Voz exige recursos pt-BR do Windows. Áudio interno é experimental e requer instalação manual das dependências descritas em MEETING_EXPERIMENTAL.md.\n\nNenhuma instalação, download ou acesso a dispositivos é iniciado pelo assistente de configuração.',parent=self.hub.root)
+        if not inspect_environment().windows:
+            messagebox.showinfo('Configuração da IA','A preparação automática exige Windows. Você pode selecionar modelos do Ollama local já instalado.',parent=self.hub.root); return
+        choice=messagebox.askyesnocancel('Preparar IA local',
+            'SIM: conversas + imagens (Qwen2.5-VL 3B, download de cerca de 3,2 GB; reserve 6 GB para o modelo).\n'
+            'NÃO: modo leve de texto (Qwen2.5 1.5B, cerca de 1 GB; reserve 3 GB).\n'
+            'CANCELAR: usar o Aeris sem instalar IA.\n\n'
+            'O Ollama será instalado pelo WinGet se necessário; pode exigir espaço adicional. '
+            'A IA usa um servidor local separado, sem nuvem. Voz pt-BR e áudio interno exigem recursos próprios do Windows.',
+            parent=self.hub.root)
+        if choice is None: return
+        model='qwen2.5vl:3b' if choice else 'qwen2.5:1.5b'
+        if not messagebox.askyesno('Autorizar instalação e download?',
+            'Autoriza a instalação do Ollama pelo catálogo oficial WinGet, o aceite dos termos aplicáveis do pacote e da fonte, e o download do modelo '+model+'? '
+            'Consulte as licenças em ollama.com e no catálogo do modelo. Apenas o modelo e o instalador serão baixados. '
+            'Nenhum áudio, imagem ou dado pessoal será enviado. O teste usa apenas uma saudação fictícia. '
+            'Você pode cancelar; arquivos já baixados podem permanecer para retomar.',
+            parent=self.hub.root): return
+        if not self.authorize(COMPANION_CHAT,'Autorizar o teste de texto fictício no modelo local?'): return
+        self.begin_ai_setup(model,download=True)
+    def restore_ai(self):
+        model=load_choice(self.ai_runtime.choice)
+        if model and self.idle():
+            self.begin_ai_setup(model,download=False)
+    def begin_ai_setup(self,model,*,download):
+        if not self.idle(): return
+        cancel=threading.Event(); progress=self.setup_progress; runtime=self.ai_runtime
+        job=self.job+1; results=self.results
+        def work():
+            try: return (job,True,runtime.prepare(model,cancel,progress.put,download=download))
+            except (OSError,ValueError,RuntimeError,subprocess.SubprocessError) as exc:
+                return (job,False,str(exc)[:300])
+            except Exception:
+                return (job,False,'Configuração não concluída. Confira o Ollama e tente novamente.')
+        if not worker_for(self.hub).start(work,results.put):
+            self.ready_state.set('Outra operação local ainda está em andamento.'); return
+        self.setup_cancel=cancel; self.busy=True; self.cap=COMPANION_CHAT
+        self.kind='ai_setup' if download else 'ai_restore'; self.job=job
+        self.ready_state.set('Preparando IA local…'); self.status.set('Preparando IA local…')
+        self.refresh(); self.schedule_poll()
     def idle(self):
         return not (self.closed or self.busy or self.voice.active or self.vision.active or self.meeting_active or self.capture_timer is not None)
     def send(self):
@@ -421,6 +463,7 @@ class Conversation(CompanionWindow):
         self.mode_status.set(mode)
         self.global_stop.configure(state='disabled' if free else 'normal')
         self.test_ai_button.configure(state='normal' if free else 'disabled')
+        self.setup_button.configure(state='normal' if free else 'disabled')
         self.monitor_button.configure(text='Parar acompanhamento' if self.vision.active else 'Acompanhar tela',state='normal' if free or self.vision.active else 'disabled')
         self.vision_state.set(f'TELA ATIVA · {self.vision.frames}/{MAX_FRAMES} capturas' if self.vision.active else 'Acompanhamento desligado')
         self.voice_button.configure(text='Parar voz' if self.voice.active else 'Conversar por voz',state='normal' if free or self.voice.active else 'disabled')
@@ -858,6 +901,7 @@ class Conversation(CompanionWindow):
         if self.hub.alive(self.hub.meeting_window): self.hub.meeting_window.render()
         self.status.set('Ata salva na sessão. Revise participantes e decisões em Reuniões.')
     def stop(self):
+        if self.setup_cancel is not None: self.setup_cancel.set()
         self.detach_question()
         if self.vision.active: self.stop_vision()
         if self.voice.active: self.stop_voice()
@@ -866,6 +910,24 @@ class Conversation(CompanionWindow):
         super().stop()
         if self.hub.root.state()=='withdrawn': self.hub.root.deiconify()
     def poll(self):
+        if self.kind in ('ai_setup','ai_restore'):
+            self.timer=None
+            if self.closed: return
+            try:
+                while True:
+                    msg=self.setup_progress.get_nowait(); self.ready_state.set(msg); self.status.set(msg)
+            except queue.Empty: pass
+            try: job,ok,result=self.results.get_nowait()
+            except queue.Empty: self.schedule_poll(); return
+            self.busy=False; self.process=None; self.setup_cancel=None
+            if job==self.job and ok:
+                self.model_entry.configure(values=(result,)); self.model.set(result)
+                self.ready_state.set('IA local pronta. Texto disponível; teste voz e visão separadamente.')
+                self.status.set('IA local pronta para conversar.')
+            elif job==self.job:
+                self.ready_state.set(str(result)); self.status.set('Configuração não concluída.');
+            else: self.ready_state.set('Configuração cancelada.')
+            self.refresh(); return
         if self.kind not in ('screen','vision','meeting','models','route','voice_listen','voice_chat','voice_speak','monitor_screen','minutes','visual_question','ready_test'): return super().poll()
         self.timer=None
         if self.closed: return
@@ -962,6 +1024,8 @@ class Conversation(CompanionWindow):
     def destroyed(self,event):
         if event.widget is self.window:
             self.closed=True; self.meeting_active=False
+            if self.setup_cancel is not None: self.setup_cancel.set()
+            self.ai_runtime.close(); reset_endpoint()
             self.voice.stop(); self.vision.stop()
             if self.meeting_badge is not None:
                 try: self.meeting_badge.destroy()
@@ -1149,5 +1213,7 @@ class ExperienceHub(Hub):
         self.conversation.stop()
         super().close()
 
-def main():
-    root=tk.Tk(); ExperienceHub(root); root.mainloop()
+def main(configure=False):
+    root=tk.Tk(); hub=ExperienceHub(root)
+    root.after(500,hub.conversation.configure_ai if configure else hub.conversation.restore_ai)
+    root.mainloop()

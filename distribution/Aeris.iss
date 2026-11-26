@@ -41,6 +41,8 @@ Name: "english"; MessagesFile: "compiler:Default.isl"
 [CustomMessages]
 brazilianportuguese.LaunchAeris=Abrir o Project Aeris
 english.LaunchAeris=Open Project Aeris
+brazilianportuguese.SetupAI=Abrir Aeris e preparar IA local (download opcional)
+english.SetupAI=Open Aeris and prepare local AI (optional download)
 [Tasks]
 Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"
 [Files]
@@ -49,7 +51,7 @@ Source: "{#BundleDir}\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs 
 Name: "{autoprograms}\Project Aeris"; Filename: "{app}\Aeris.exe"; WorkingDir: "{app}"
 Name: "{autodesktop}\Project Aeris"; Filename: "{app}\Aeris.exe"; WorkingDir: "{app}"; Tasks: desktopicon
 [Run]
-Filename: "{app}\Aeris.exe"; Description: "{cm:LaunchAeris}"; WorkingDir: "{app}"; Flags: postinstall nowait skipifsilent unchecked runasoriginaluser
+Filename: "{app}\Aeris.exe"; Parameters: "--configure-ai"; Description: "{cm:SetupAI}"; WorkingDir: "{app}"; Flags: postinstall nowait skipifsilent runasoriginaluser
 [Code]
 function InitializeSetup(): Boolean;
 begin
