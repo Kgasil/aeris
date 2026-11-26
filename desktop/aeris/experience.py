@@ -111,6 +111,10 @@ class Conversation(CompanionWindow):
         messagebox.showinfo('IA local','Instale o Ollama e um modelo local, com OLLAMA_NO_CLOUD=1. Digite o nome exato do modelo instalado. Para imagens, use um modelo compatível com visão. Aeris não instala modelos nem envia dados para uma API de nuvem.',parent=self.hub.root)
     def send(self):
         if self.meeting_active or self.busy: return
+        # Recognized local commands use the same reviewed action path, without a model.
+        try: parse_command(self.input.get('1.0','end-1c'))
+        except ValueError: pass
+        else: self.prepare_action(); return
         if not self.model.get().strip(): self.configure_ai(); return
         if self.ensure_tool('Copilot') and self.authorize(COMPANION_CHAT,'Enviar a mensagem e o histórico ao Ollama local? Nenhum outro arquivo será enviado.'):
             super().send()
@@ -173,7 +177,7 @@ class Conversation(CompanionWindow):
         if not self.ensure_tool(proposal.tool): return
         try: p=self.session.prepare(text)
         except (ValueError,PermissionError) as e: self.status.set(str(e)); return
-        self.action_input=text; self.preview.set(p.preview); self.refresh()
+        self.action_input=text; self.preview.set(p.preview); self.status.set('Revise a ação abaixo e confirme somente se estiver correta.'); self.refresh()
     def confirm_action(self):
         if self.busy or self.meeting_active: return
         if self.action_input!=self.input.get('1.0','end-1c'):
@@ -230,7 +234,9 @@ class Conversation(CompanionWindow):
         self.status.set('Anotação salva nesta sessão. Para preservar, use cópia protegida.')
     def start_meeting(self):
         if self.busy or self.meeting_active: return
+        revision=self.hub.permissions.revision
         if not messagebox.askyesno('Transcrição de reunião','Todos os participantes foram avisados e concordam com a transcrição? O microfone permanecerá ativo em blocos até Parar, fechar, revogar ou atingir o limite de 20 blocos. Nenhum áudio é gravado em arquivo pelo Aeris.',parent=self.hub.root): return
+        if self.closed or self.hub.permissions.revision!=revision: return
         if not self.authorize(COMPANION_MIC,'Autorizar o microfone nesta sessão?'): return
         if self.busy or self.meeting_active: return
         self.meeting_active=True; self.meeting_generation+=1; self.meeting_chunks=[]
