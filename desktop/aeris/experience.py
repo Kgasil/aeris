@@ -11,6 +11,7 @@ from aeris.experience_help import HELP
 from aeris.intelligence import recommend_tool
 from aeris.voice_session import VoiceSession, MAX_TURNS
 from aeris.vision_session import VisionSession, INTERVAL_MS, MAX_SECONDS, MAX_FRAMES
+from aeris.visual_question import VisualQuestion
 from aeris.meeting_audio import available as loopback_available, model_path, start_loopback, read_loopback, BLOCK_SECONDS
 from aeris.meeting_intelligence import prepare_minutes
 from aeris.companion_ui import CompanionWindow
@@ -161,6 +162,9 @@ class Conversation(CompanionWindow):
         ttk.Label(screen,textvariable=self.vision_state,style='Experience.Section.TLabel',wraplength=242).pack(anchor='w',pady=4)
         self.monitor_button=ttk.Button(screen,text='Acompanhar tela',command=self.toggle_vision,style='Experience.Primary.TButton'); self.monitor_button.pack(fill='x',pady=3)
         self.capture_button=ttk.Button(screen,text='Capturar tela',command=self.capture); self.capture_button.pack(fill='x',pady=3)
+        self.visual_mic=ttk.Button(screen,text='Perguntar por voz',command=self.ask_screen_voice); self.visual_mic.pack(fill='x',pady=3)
+        self.visual_status=tk.StringVar(w,'')
+        ttk.Label(screen,textvariable=self.visual_status,wraplength=242,style='Experience.Muted.TLabel').pack(anchor='w')
         self.analyze_button=ttk.Button(screen,text='Analisar captura com IA',command=self.analyze); self.analyze_button.pack(fill='x',pady=3)
         ttk.Button(screen,text='Descartar captura',command=self.discard_screen).pack(fill='x',pady=3)
         notes=ttk.Frame(tabs,padding=9); tabs.add(notes,text='Anotações')
@@ -210,6 +214,7 @@ class Conversation(CompanionWindow):
         if not self.hub.enabled(name): self.hub.toggle_tool(name)
         return self.hub.enabled(name)
     def model_changed(self,*args):
+        self.detach_question()
         self.close_meeting_review()
         self.session.cancel(); self.action_input=None; self.preview.set(''); self.ai_hint=None; self.update_hint(); super().model_changed(*args)
         self.ai_state.set('IA local · '+self.model.get().strip()[:48] if self.model.get().strip() else 'IA local · escolha um modelo')
@@ -223,6 +228,9 @@ class Conversation(CompanionWindow):
         return not (self.closed or self.busy or self.voice.active or self.vision.active or self.meeting_active or self.capture_timer is not None)
     def send(self):
         if not self.idle(): return
+        if self.screen_question is not None:
+            if self.screen_question.matches(self.screen,self.model.get().strip()): self.analyze(); return
+            self.detach_question(); self.status.set('Captura ou modelo alterado. Revise a pergunta antes de enviar.'); return
         # Recognized local commands use the same reviewed action path, without a model.
         try: parse_command(self.input.get('1.0','end-1c'))
         except ValueError: pass
@@ -337,6 +345,8 @@ class Conversation(CompanionWindow):
             mode={'listen':'Voz · ouvindo','chat':'Voz · pensando','speak':'Voz · respondendo'}[self.voice.phase]
         elif self.vision.active: mode='Tela · acompanhamento autorizado'
         elif self.meeting_active: mode='Reunião · '+('áudio interno' if self.meeting_source=='internal' else 'microfone')
+        elif self.busy and self.kind=='visual_question': mode='Voz + tela · ditando pergunta'
+        elif self.busy and self.kind=='vision': mode='Tela · analisando captura'
         elif self.busy or self.capture_timer is not None: mode='Operação local em andamento'
         else: mode='Pronto · microfone e tela desligados'
         self.mode_status.set(mode)
@@ -356,6 +366,7 @@ class Conversation(CompanionWindow):
         self.meeting_loopback.configure(state='normal' if free else 'disabled')
         self.minutes_button.configure(state='normal' if free else 'disabled')
         self.analyze_button.configure(state='normal' if (free or (self.vision.active and not self.busy)) and self.screen else 'disabled')
+        self.visual_mic.configure(state='normal' if (free or (self.vision.active and not self.busy)) and self.screen else 'disabled')
         self.accept_button.configure(state='normal' if free and self.candidate and self.hub.permissions.allowed(COPILOT_RUN) and self.hub.permissions.allowed(COMPANION_CHAT) else 'disabled')
         self.confirm_button.configure(state='normal' if free and self.session.pending else 'disabled')
         self.auto_button.configure(state='normal' if self.hub.permissions.allowed(COMPANION_SPEAK) else 'disabled')
@@ -444,6 +455,9 @@ class Conversation(CompanionWindow):
         if not self.hub.permissions.allowed(COMPANION_CHAT):
             self.ai_hint=None; self.update_hint()
             if self.busy and self.kind=='vision': super().stop()
+        if not self.hub.permissions.allowed(COMPANION_MIC):
+            self.detach_question()
+            if self.busy and self.kind=='visual_question': super().stop()
         if not self.hub.permissions.allowed(COMPANION_SCREEN): self.discard_screen()
         if self.meeting_active and not self.hub.permissions.allowed(self.meeting_cap()): self.stop_meeting()
         if not self.hub.permissions.allowed(COMPANION_CHAT): self.close_meeting_review()
@@ -459,7 +473,7 @@ class Conversation(CompanionWindow):
         super().accept_candidate()
         if self.input.get('1.0','end-1c'): self.status.set('Revise o pedido e clique Preparar ação. Nada foi executado.')
     def prepare_action(self):
-        if not self.idle(): return
+        if not self.idle() or self.screen_question is not None: return
         self.session.cancel(); self.preview.set('')
         text=self.input.get('1.0','end-1c')
         try: proposal=parse_command(text)
@@ -471,7 +485,7 @@ class Conversation(CompanionWindow):
         except (ValueError,PermissionError) as e: self.status.set(str(e)); return
         self.action_input=text; self.preview.set(p.preview); self.status.set('Revise a ação abaixo e confirme somente se estiver correta.'); self.refresh()
     def confirm_action(self):
-        if not self.idle(): return
+        if not self.idle() or self.screen_question is not None: return
         if self.action_input!=self.input.get('1.0','end-1c'):
             self.session.cancel(); self.action_input=None; self.preview.set(''); self.status.set('Pedido alterado. Prepare novamente.'); self.refresh(); return
         self.action_input=None
@@ -537,6 +551,7 @@ class Conversation(CompanionWindow):
             self.stop_vision('Captura periódica indisponível.'); return
         self.status.set('TELA ATIVA · atualizando captura local.')
     def show_capture(self,result):
+        self.detach_question()
         image=tk.PhotoImage(data=base64.b64encode(result).decode('ascii'))
         factor=max(1,(image.width()+229)//230,(image.height()+259)//260)
         self.photo=image.subsample(factor,factor); self.screen=result
@@ -556,15 +571,52 @@ class Conversation(CompanionWindow):
             if not self.start(COMPANION_SCREEN,lambda:read_capture(p),kind='screen'): p.kill(); self.process=None; self.hub.root.deiconify()
         except (OSError,PermissionError): self.hub.root.deiconify(); self.status.set('Captura indisponível.'); self.refresh()
     def discard_screen(self):
+        self.detach_question()
         if self.vision.active: self.stop_vision()
         self.screen=None; self.photo=None
         if hasattr(self,'image_label'): self.image_label.configure(image='',text='Nenhuma captura')
         if self.capture_timer is not None:
             self.hub.root.after_cancel(self.capture_timer); self.capture_timer=None; self.hub.root.deiconify()
-        if self.busy and self.kind in ('screen','vision'): super().stop()
+        if self.busy and self.kind in ('screen','vision','visual_question'): super().stop()
         self.refresh()
+    def detach_question(self):
+        self.screen_question=None
+        if hasattr(self,'visual_status'): self.visual_status.set('')
+    def ask_screen_voice(self):
+        if self.closed or self.busy or self.voice.active or self.meeting_active or self.capture_timer is not None or not self.screen: return
+        if not self.hub.permissions.allowed(COMPANION_SCREEN): return
+        if self.input.get('1.0','end-1c').strip():
+            self.status.set('Envie ou limpe o rascunho antes de ditar uma pergunta.'); return
+        model=self.model.get().strip()
+        if not model:
+            if not self.ai_open: self.toggle_ai_settings()
+            self.configure_ai(); return
+        if self.vision.active: self.stop_vision('Acompanhamento pausado para perguntar sobre a última captura.')
+        raw=self.screen
+        if not self.authorize(COMPANION_MIC,'Usar o microfone para ditar uma pergunta sobre a captura revisada? Nenhuma imagem será enviada neste passo.'): return
+        if not self.idle() or self.screen is not raw or model!=self.model.get().strip() or self.input.get('1.0','end-1c').strip() or not self.hub.permissions.allowed(COMPANION_SCREEN) or not self.hub.permissions.allowed(COMPANION_MIC): return
+        self.detach_question()
+        pending=VisualQuestion(raw,model)
+        try:
+            if worker_for(self.hub).busy: raise OSError('Outra operação local ativa.')
+            p=speech_process(); self.process=p
+            def work():
+                try:
+                    out,_=p.communicate(json.dumps({'action':'listen','text':''}),timeout=18)
+                    if p.returncode: raise OSError('Sem transcrição.')
+                    return pending,validate_message(strict_json(out,32768))
+                except subprocess.TimeoutExpired:
+                    p.kill(); p.communicate(); raise
+            if not self.start(COMPANION_MIC,work,kind='visual_question'):
+                p.kill()
+                try: p.communicate(timeout=2)
+                except (OSError,subprocess.TimeoutExpired): pass
+                self.process=None; raise OSError('Não foi possível iniciar a voz.')
+        except (OSError,PermissionError):
+            self.status.set('Ditado indisponível. Confira o microfone e o reconhecedor pt-BR.'); self.refresh(); return
+        self.status.set('MICROFONE ATIVO · dite sua pergunta sobre a captura.')
     def analyze(self):
-        if self.busy or self.meeting_active or self.voice.active or not self.screen: return
+        if self.closed or self.busy or self.meeting_active or self.voice.active or self.capture_timer is not None or not self.screen or not self.hub.permissions.allowed(COMPANION_SCREEN): return
         if self.vision.active: self.stop_vision('Acompanhamento pausado para revisar a captura.')
         if not self.model.get().strip():
             if not self.ai_open: self.toggle_ai_settings()
@@ -576,7 +628,9 @@ class Conversation(CompanionWindow):
         revision=self.hub.permissions.revision
         if not messagebox.askyesno('Enviar captura?', 'Enviar apenas esta imagem revisada e a pergunta ao modelo de visão local? Não inclui histórico ou outros arquivos.',parent=self.hub.root): return
         if self.screen is not raw or revision!=self.hub.permissions.revision or model!=self.model.get().strip() or question!=(self.input.get('1.0','end-1c').strip() or 'Explique o que aparece nesta imagem e como posso continuar.') or not self.hub.permissions.allowed(COMPANION_CHAT): return
+        if not self.idle() or not self.hub.permissions.allowed(COMPANION_SCREEN): return
         if self.start(COMPANION_SCREEN,lambda:(question,describe_screen(model,question,raw)),kind='vision'):
+            self.detach_question(); self.input.delete('1.0','end')
             self.status.set('Analisando uma captura, não a tela ao vivo…')
     def append_answer(self):
         if self.history and self.history[-1][0]=='assistant': self.note.insert('end',('\n\n' if self.note.get('1.0','end-1c') else '')+self.history[-1][1])
@@ -721,6 +775,7 @@ class Conversation(CompanionWindow):
         if self.hub.alive(self.hub.meeting_window): self.hub.meeting_window.render()
         self.status.set('Ata salva na sessão. Revise participantes e decisões em Reuniões.')
     def stop(self):
+        self.detach_question()
         if self.vision.active: self.stop_vision()
         if self.voice.active: self.stop_voice()
         if self.meeting_active: self.stop_meeting()
@@ -728,7 +783,7 @@ class Conversation(CompanionWindow):
         super().stop()
         if self.hub.root.state()=='withdrawn': self.hub.root.deiconify()
     def poll(self):
-        if self.kind not in ('screen','vision','meeting','models','route','voice_listen','voice_chat','voice_speak','monitor_screen','minutes'): return super().poll()
+        if self.kind not in ('screen','vision','meeting','models','route','voice_listen','voice_chat','voice_speak','monitor_screen','minutes','visual_question'): return super().poll()
         self.timer=None
         if self.closed: return
         try: job,ok,result=self.results.get_nowait()
@@ -774,9 +829,21 @@ class Conversation(CompanionWindow):
                     self.status.set('Captura pronta. Revise antes de enviar.')
                 except (tk.TclError,ValueError): self.status.set('Não foi possível mostrar a captura.')
             else: self.status.set('Captura indisponível.')
+        elif valid and kind=='visual_question':
+            if ok:
+                pending,text=result
+                try:
+                    draft=pending.draft(text,self.screen,self.model.get().strip(),mic_allowed=self.hub.permissions.allowed(COMPANION_MIC),screen_allowed=self.hub.permissions.allowed(COMPANION_SCREEN),empty_editor=not self.input.get('1.0','end-1c').strip())
+                except ValueError as exc: self.status.set(str(exc))
+                else:
+                    self.screen_question=pending; self.input.insert('1.0',draft)
+                    self.visual_status.set('Pergunta vinculada à captura. Revise e envie.')
+                    self.status.set('Revise a pergunta transcrita e clique Enviar ou Analisar captura com IA.')
+            else: self.status.set('Não foi possível reconhecer a pergunta por voz.')
         elif valid and kind=='vision':
             if ok and self.hub.permissions.allowed(COMPANION_CHAT):
                 question,response=result; self.history.extend((('user',('[Captura pontual] '+question)[:4000]),('assistant',response))); self.history=self.history[-MAX_HISTORY:]; self.draw(); self.status.set('Análise concluída. A IA pode errar.')
+                if self.auto_speak.get() and self.hub.permissions.allowed(COMPANION_SPEAK): self.speech('speak')
             else: self.status.set('Modelo de visão indisponível ou permissão revogada.')
         elif valid and kind=='minutes':
             if ok:
@@ -811,7 +878,7 @@ class Conversation(CompanionWindow):
                 if timer is not None:
                     try: self.hub.root.after_cancel(timer)
                     except tk.TclError: pass
-            self.screen=None; self.photo=None; self.meeting_chunks.clear(); self.meeting_active=False
+            self.screen=None; self.photo=None; self.screen_question=None; self.meeting_chunks.clear(); self.meeting_active=False
         super().destroyed(event)
 
 class ExperienceHub(Hub):
