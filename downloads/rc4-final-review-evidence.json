@@ -1,0 +1,48 @@
+{
+  "run": 45854218340,
+  "commit": "68d763ce220be39858777d8ba1c06958b1e4e0c8",
+  "rc4_run": 45853309017,
+  "independent_artifact_digest_checks": "PASS",
+  "posix_ocr": {
+    "artifact_id": 15135216924,
+    "sha256": "9f2c1a79b641e3d63b27083c93bce24196970fe1f55af334b6b131afa32e39c1",
+    "source_sha256": "f52c8f065cb02b7052daffe79d57b58346528fd164688a847cc0aa8a57379efe",
+    "os": "Ubuntu 24.04",
+    "passed": 4,
+    "skipped": 0,
+    "failures": 0,
+    "seconds": 0.551,
+    "tests": [
+      "test_real_ocr",
+      "test_no_plaintext_fallback",
+      "test_fifo_rejected_before_open",
+      "test_non_windows_fails_closed"
+    ],
+    "tesseract": "5.3.4-1build5"
+  },
+  "performance": {
+    "artifact_id": 15134896957,
+    "sha256": "e5c6351b00ca5f95c24c272b5ad93249ae8d72e875869e4d49cf83b777507687",
+    "exe_sha256": "05272bdfa2be694cba686171a91a55d51c9ff014344b91ba33fe77a47be5b37e",
+    "os": "Windows Server 2022",
+    "startup_seconds": [
+      1.031,
+      0.229,
+      0.234
+    ],
+    "peak_sampled_working_set_bytes": 41566208,
+    "idle_cpu_percent_one_core": [
+      0,
+      0,
+      0
+    ],
+    "shutdown_seconds": [
+      0.055,
+      0.055,
+      0.05
+    ],
+    "status": "PASS"
+  },
+  "scope": "409 Windows + 4 applicable Linux tests passed on RC4 source; portable performance in CI, not client Windows certification",
+  "release_approved": false
+}
