@@ -1,0 +1,92 @@
+name: Stage exact Aeris RC5 download (draft only)
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/aeris-rc5-stage-download.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+  actions: read
+concurrency:
+  group: aeris-rc5-draft-stage
+  cancel-in-progress: false
+jobs:
+  draft:
+    if: github.repository == 'Kgasil/aeris'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: write
+      actions: read
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - name: Verify exact existing CI package without rebuilding or executing
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          mkdir -p draft-evidence
+          gh api repos/Kgasil/aeris/actions/runs/45863779585 --jq '.conclusion' | grep -Fx success
+          gh api repos/Kgasil/aeris/actions/artifacts/15138829732 --jq '.expired' | grep -Fx false
+          curl --fail --location --silent --show-error -H "Authorization: Bearer $GH_TOKEN" -H 'Accept: application/vnd.github+json' https://api.github.com/repos/Kgasil/aeris/actions/artifacts/15138829732/zip -o "$RUNNER_TEMP/rc5.zip"
+          python validation/verify-ci-artifact.py "$RUNNER_TEMP/rc5.zip" --expected-sha256 09aa2076cac6f9bc8a543869027fe2617f0590fd4509a6f18261def0e797ba9a > draft-evidence/integrity.json
+          mkdir "$RUNNER_TEMP/staged"
+          name=Aeris-1.0.0rc5-Windows-x64-Setup.exe
+          unzip -p "$RUNNER_TEMP/rc5.zip" "$name" > "$RUNNER_TEMP/staged/$name"
+          printf '%s\n' "54ab3ab65672a32dc944259bb291f5c66ed735d4c5d5876641725131c9915aa8  $name" > "$RUNNER_TEMP/staged/SHA256SUMS.txt"
+          (cd "$RUNNER_TEMP/staged" && sha256sum -c SHA256SUMS.txt && test "$(stat -c %s "$name")" = 12792748)
+      - name: Stage a draft only (no public release, no automatic publishing)
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          tag=aeris-desktop-1.0.0rc5-preview
+          gh api --paginate repos/Kgasil/aeris/releases > "$RUNNER_TEMP/releases.json"
+          # Reject any existing release of this name; never modify a published release.
+          jq -se --arg tag "$tag" 'map(.[]) | all(.tag_name != $tag)' "$RUNNER_TEMP/releases.json"
+          # Refuse existing tags as well; the draft must point to the verified source.
+          gh api --paginate repos/Kgasil/aeris/tags > "$RUNNER_TEMP/tags.json"
+          jq -se --arg tag "$tag" 'map(.[]) | all(.name != $tag)' "$RUNNER_TEMP/tags.json"
+          cat > "$RUNNER_TEMP/notes.txt" <<'EOF'
+          **RASCUNHO PRIVADO DE DISTRIBUIÇÃO — NÃO PUBLICAR / DO NOT PUBLISH.**
+
+          Aeris Desktop 1.0.0 RC5 experimental, 50 ferramentas. Instalador exato da CI 45863779585, sem assinatura digital; sem recompilar. Testes Windows Server e Ubuntu aprovados; não é certificação Windows cliente.
+
+          Bloqueios: scan antimalware válido ainda não executado; revisão de direitos e termos Microsoft/Python (incluindo aceite do usuário), confirmação do titular, Windows cliente x64 e revisão de confiança ainda pendentes. O instalador RC5 não contém uma página de aceite dos termos finais. Se esses termos exigirem alteração do instalador, criar e validar outro candidato; não publicar estes bytes.
+
+          Sem lojas, conta no aplicativo ou serviços pagos. Não desativar SmartScreen/Defender. O link público será habilitado somente após aprovação e publicação efetiva.
+
+          Evidências: https://github.com/Kgasil/aeris/blob/main/downloads/functional-rc5-integrated-evidence.json
+          EOF
+          gh api --method POST repos/Kgasil/aeris/releases \
+            -f tag_name="$tag" -f target_commitish=bfedb434358ce04d55827d7a057de3edf31c6728 \
+            -f name='Aeris Desktop RC5 — RASCUNHO (não publicar)' \
+            -F draft=true -F prerelease=true -F make_latest=false -F body=@"$RUNNER_TEMP/notes.txt" > "$RUNNER_TEMP/release.json"
+          jq -e --arg tag "$tag" '.draft==true and .prerelease==true and .tag_name==$tag' "$RUNNER_TEMP/release.json"
+          id=$(jq -r '.id' "$RUNNER_TEMP/release.json")
+          [[ "$id" =~ ^[0-9]+$ ]]
+          for name in Aeris-1.0.0rc5-Windows-x64-Setup.exe SHA256SUMS.txt; do
+            curl --fail --silent --show-error -X POST -H "Authorization: Bearer $GH_TOKEN" -H 'Content-Type: application/octet-stream' --data-binary @"$RUNNER_TEMP/staged/$name" "https://uploads.github.com/repos/Kgasil/aeris/releases/$id/assets?name=$name" > "$RUNNER_TEMP/$name.json"
+          done
+          gh api "repos/Kgasil/aeris/releases/$id" > "$RUNNER_TEMP/after.json"
+          jq -e --arg tag "$tag" '.draft and .prerelease and .tag_name==$tag and (.assets|length)==2 and any(.assets[]; .name=="Aeris-1.0.0rc5-Windows-x64-Setup.exe" and .state=="uploaded" and .size==12792748 and .digest=="sha256:54ab3ab65672a32dc944259bb291f5c66ed735d4c5d5876641725131c9915aa8")' "$RUNNER_TEMP/after.json"
+          asset=$(jq -r '.assets[] | select(.name=="Aeris-1.0.0rc5-Windows-x64-Setup.exe") | .id' "$RUNNER_TEMP/after.json")
+          curl --fail --location --silent --show-error -H "Authorization: Bearer $GH_TOKEN" -H 'Accept: application/octet-stream' "https://api.github.com/repos/Kgasil/aeris/releases/assets/$asset" -o "$RUNNER_TEMP/retrieved.exe"
+          echo '54ab3ab65672a32dc944259bb291f5c66ed735d4c5d5876641725131c9915aa8  '"$RUNNER_TEMP/retrieved.exe" | sha256sum -c -
+          # Verify that an unauthenticated user cannot obtain the draft asset.
+          public_status=$(curl --silent --show-error --location --output /dev/null --write-out '%{http_code}' "https://github.com/Kgasil/aeris/releases/download/$tag/Aeris-1.0.0rc5-Windows-x64-Setup.exe")
+          test "$public_status" = 404
+          jq --arg code "$public_status" '{id,tag_name,html_url,draft,prerelease,target_commitish,assets:[.assets[]|{name,id,size,digest,state}],unauthenticated_download_http:$code,verified_retrieved_asset:true,release_approved:false}' "$RUNNER_TEMP/after.json" > draft-evidence/draft-status.json
+          cat draft-evidence/draft-status.json
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: aeris-rc5-draft-only-evidence
+          path: draft-evidence/
+          if-no-files-found: warn
+          retention-days: 30
