@@ -1,0 +1,100 @@
+name: Persist exact verified RC5 source snapshot
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/aeris-rc5-persist-source.yml'
+permissions:
+  contents: read
+  actions: read
+concurrency:
+  group: aeris-rc5-source-snapshot
+  cancel-in-progress: false
+jobs:
+  source-only:
+    if: github.repository == 'Kgasil/aeris'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: write
+      actions: read
+    steps:
+      - name: Verify exact archived source and create a new source-only branch
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          test "$GITHUB_REPOSITORY" = 'Kgasil/aeris'
+          archive="$RUNNER_TEMP/rc5-source-evidence.zip"
+          export SNAPSHOT="$RUNNER_TEMP/rc5-source-tree"
+          curl --fail --location --silent --show-error -H "Authorization: Bearer $GH_TOKEN" -H 'Accept: application/vnd.github+json' 'https://api.github.com/repos/Kgasil/aeris/actions/artifacts/15139686297/zip' -o "$archive"
+          echo "47b1eb68f1892c72c2960bafcc01a03dcbc5b1ced55ed86dc0585921c731101b  $archive" | sha256sum -c -
+          python - "$archive" <<'PY'
+          import hashlib, json, os, sys, zipfile, io
+          from pathlib import Path, PurePosixPath
+          root=Path(os.environ['SNAPSHOT'])
+          root.mkdir()
+          def sha(raw): return hashlib.sha256(raw).hexdigest()
+          with zipfile.ZipFile(sys.argv[1]) as z:
+              raw=z.read('Aeris-1.0.0rc5-integrated-source.zip')
+              manifest_raw=z.read('integrated-source-manifest.json')
+              provenance_raw=z.read('source-provenance.json')
+              assert sha(raw)=='fe393db2e8903ae9c181d23639729204bad96fefcbdc60de4c7cec2170debc18'
+              assert sha(manifest_raw)=='5cd25579bc1e3c6f2acb4711754237a7d4eefcab124bcc2605b6e5b041c2c265'
+              manifest=json.loads(manifest_raw)['source_files']
+              assert len(manifest)==362
+              with zipfile.ZipFile(io.BytesIO(raw)) as source:
+                  assert len(source.namelist())==len(manifest) and set(source.namelist())==set(manifest)
+                  for name,expected in manifest.items():
+                      p=PurePosixPath(name)
+                      assert not p.is_absolute() and not any(v.lower() in ('.git','.github','..') for v in p.parts)
+                      assert '\\' not in name and '\x00' not in name
+                      data=source.read(name)
+                      assert sha(data)==expected
+                      # Source only: no candidate executable, runtime DLL, installer, or credentials.
+                      assert p.suffix.lower() not in ('.exe','.dll','.pyd','.msi','.pfx','.pem','.key')
+                      target=root.joinpath(*p.parts)
+                      target.parent.mkdir(parents=True,exist_ok=True)
+                      target.write_bytes(data)
+              d=root/'integration-evidence'; d.mkdir()
+              (d/'source-provenance.json').write_bytes(provenance_raw)
+              (d/'integrated-source-manifest.json').write_bytes(manifest_raw)
+              (root/'SOURCE-SNAPSHOT.md').write_text(
+                  '# Aeris Desktop RC5 — experimental source snapshot\n\n'
+                  '362 original source files, verified SHA-256 against the exact archive from CI 45863779585. '
+                  'This branch is source code for maintenance, not a stable release or approved installer. '
+                  'No new third-party license grant is implied. Do not distribute binaries before rights, trust and client checks. '
+                  'The historical main branch and public RC1 source release remain unchanged by this source-only branch.\n\n'
+                  '[Current validation status](https://kgasil.github.io/aeris/release-status.html) · '
+                  '[Source reconstruction and evidence](https://github.com/Kgasil/aeris/blob/main/validation/functional/ROADMAP.md)\n',
+                  encoding='utf-8')
+          PY
+          cd "$SNAPSHOT"
+          git init --initial-branch=desktop-rc5-source
+          git config core.autocrlf false
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add -f -- .
+          git commit -m "Consolidate exact verified Aeris 1.0.0rc5 source for maintenance"
+          python - <<'PY'
+          import hashlib,json,subprocess
+          from pathlib import Path
+          manifest=json.loads(Path('integration-evidence/integrated-source-manifest.json').read_bytes())['source_files']
+          files=set(subprocess.check_output(['git','ls-tree','-r','--name-only','HEAD']).decode().splitlines())
+          assert files==set(manifest)|{'SOURCE-SNAPSHOT.md','integration-evidence/source-provenance.json','integration-evidence/integrated-source-manifest.json'}
+          for name,expected in manifest.items():
+              actual=hashlib.sha256(subprocess.check_output(['git','cat-file','blob','HEAD:'+name])).hexdigest()
+              assert actual==expected, name
+          print('Verified all 362 source blobs in Git commit.')
+          PY
+          gh auth setup-git --hostname github.com
+          git remote add origin https://github.com/Kgasil/aeris.git
+          if git ls-remote --exit-code --heads origin refs/heads/desktop-rc5-source; then
+            echo 'Ref already exists; refusing to overwrite'
+            exit 1
+          else
+            test "$?" -eq 2
+          fi
+          git push origin HEAD:refs/heads/desktop-rc5-source
+          git rev-parse HEAD
