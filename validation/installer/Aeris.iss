@@ -62,4 +62,4 @@ begin
   else
     WizardForm.NextButton.Caption := SetupMessage(msgButtonNext);
 end;
-; No autorun, updater, file associations, forced restart or user-data deletion.
+{ No autorun, updater, file associations, forced restart or user-data deletion. }
