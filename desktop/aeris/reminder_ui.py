@@ -10,11 +10,12 @@ class ReminderWindow:
     def __init__(self, hub):
         self.hub = hub; self.store = hub.reminder_store
         self.window = tk.Toplevel(hub.root)
-        self.window.title('Aeris Reminder'); self.window.geometry('720x480'); self.window.minsize(600,420)
+        self.window.title('Aeris Reminder'); self.window.geometry('760x540'); self.window.minsize(600,420)
         self.window.bind('<Escape>', lambda _: self.window.destroy())
-        f = ttk.Frame(self.window,padding=14); f.pack(fill='both',expand=True)
-        ttk.Label(f,text='Aeris Reminder',font=('Segoe UI',18)).pack(anchor='w')
-        ttk.Label(f,text='Lembretes temporários enquanto o Aeris estiver aberto.').pack(anchor='w',pady=(0,8))
+        f = ttk.Frame(self.window,padding=18); f.pack(fill='both',expand=True)
+        ttk.Label(f,text='Meus lembretes',font=('Segoe UI',21,'bold')).pack(anchor='w')
+        ttk.Label(f,text='Receba lembretes enquanto o Aeris estiver aberto. Os registros são temporários.').pack(anchor='w',pady=(0,8))
+        ttk.Label(f,text='Lembretes da sessão',font=('Segoe UI',11,'bold')).pack(anchor='w',pady=(4,5))
         area=ttk.Frame(f); area.pack(fill='both',expand=True)
         self.tree=ttk.Treeview(area,columns=('title','due','state','alert'),show='headings',selectmode='browse')
         for col,label,width in [('title','Lembrete',240),('due','Vencimento local',155),('state','Estado',90),('alert','Alerta',65)]:
@@ -23,15 +24,15 @@ class ReminderWindow:
         self.tree.pack(side='left',fill='both',expand=True); scroll.pack(side='right',fill='y')
         self.tree.bind('<<TreeviewSelect>>',self.select)
         self.title=tk.StringVar(self.window); self.minutes=tk.StringVar(self.window,'25'); self.alert=tk.BooleanVar(self.window,False)
-        ttk.Label(f,text='Descrição (até 200 caracteres)').pack(anchor='w',pady=(6,0))
+        ttk.Label(f,text='O que você quer lembrar? (até 200 caracteres)',font=('Segoe UI',11,'bold')).pack(anchor='w',pady=(6,0))
         ttk.Entry(f,textvariable=self.title).pack(fill='x')
         opts=ttk.Frame(f); opts.pack(fill='x',pady=5)
         ttk.Label(opts,text='Daqui a (minutos):').pack(side='left')
         ttk.Entry(opts,textvariable=self.minutes,width=8).pack(side='left',padx=5)
-        ttk.Checkbutton(opts,text='Mostrar alerta visual genérico',variable=self.alert).pack(side='left')
+        ttk.Checkbutton(opts,text='Exibir alerta visual sem o conteúdo',variable=self.alert).pack(side='left')
         actions=ttk.Frame(f); actions.pack(fill='x')
-        for label,cmd in [('Adicionar',self.add),('Reprogramar selecionado',self.edit),('Cancelar',self.cancel),('Excluir',self.delete)]:
-            ttk.Button(actions,text=label,command=cmd).pack(side='left',fill='x',expand=True,padx=2)
+        for label,cmd in [('Criar lembrete',self.add),('Reprogramar selecionado',self.edit),('Cancelar',self.cancel),('Excluir',self.delete)]:
+            ttk.Button(actions,text=label,command=cmd,style='Aeris.Primary.TButton' if label=='Criar lembrete' else 'TButton').pack(side='left',fill='x',expand=True,padx=2)
         self.status=tk.StringVar(self.window)
         ttk.Label(f,textvariable=self.status,wraplength=560).pack(anchor='w',pady=5)
         self.render()
