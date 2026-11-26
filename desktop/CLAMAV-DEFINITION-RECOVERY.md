@@ -1,0 +1,9 @@
+# ClamAV definition recovery — isolated validation
+
+Previous run [45892124629](https://github.com/Kgasil/aeris/actions/runs/45892124629), candidate 985c50e9865ddc1f241fee131db505e2994455a5, evidence artifact 15152551149, ZIP SHA-256 6207d72e6f025900ed0749b46280894b9638eaabadd2eebc800bcd3f1e2ebd4b independently verified, CRC clean. FreshClam downloaded remote version 28194. sigtool verified its signature; build timestamp 2026-11-25T06:26Z, age 137544 seconds, exceeds 86400. No candidate scan executed. Post-attempt hashes unchanged. This is not evidence of infection or clearance.
+
+The isolated branch avoids triggering the existing regression and interface workflows. First verify official DNS TXT (diagnostic), download the pinned official scanner and use FreshClam with official CDN and DNS. No unofficial mirrors, no forced downloads, no rate-limit bypass, no loosening of the 24h requirement. If preflight is inconclusive, skip all build/assurance/homologation/scan steps. If verified fresh, build once from the unchanged app source (prior binaries were not retained), preserving mandatory build tests, verify packages and run the scan using the already prepared database on the same runner. Recheck signature and freshness before and throughout scanning. Collect only evidence, not public binaries. No release, signature certification, or gate approval. This new procedure has not yet run on Windows.
+
+Official guidance: https://docs.clamav.net/faq/faq-troubleshoot.html and https://docs.clamav.net/faq/faq-freshclam.html . Repeated downloads cannot generate newer upstream signatures. If the official base remains stale, stop and defer until a new official version exists. No automated recurring download configured.
+
+All app code and the public branch remain unchanged. Existing formal gate is unchanged; preparation does not authorize public distribution.

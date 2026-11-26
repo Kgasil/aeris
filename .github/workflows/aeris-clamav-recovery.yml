@@ -1,0 +1,106 @@
+name: Aeris ClamAV definition recovery and conditional candidate scan
+on:
+  push:
+    branches: [aeris-scan-preflight]
+    paths:
+      - '.github/workflows/aeris-clamav-recovery.yml'
+      - 'distribution/scan-clamav-recovery.ps1'
+permissions:
+  contents: read
+concurrency:
+  group: aeris-clamav-definition-recovery
+  cancel-in-progress: false
+jobs:
+  recovery:
+    if: github.repository == 'Kgasil/aeris' && github.ref == 'refs/heads/aeris-scan-preflight'
+    runs-on: windows-2022
+    timeout-minutes: 50
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - name: Check official database before any build
+        id: preflight
+        shell: pwsh
+        run: |
+          $ErrorActionPreference='Stop'
+          $e=Join-Path $PWD 'candidate-evidence'
+          New-Item -ItemType Directory -Path $e | Out-Null
+          & .\distribution\scan-clamav-recovery.ps1 -PreflightOnly -Evidence $e -PreparedDirectory (Join-Path $env:RUNNER_TEMP 'aeris-clamav-recovery')
+          $r=Get-Content -LiteralPath (Join-Path $e 'clamav-preflight.json') -Raw | ConvertFrom-Json
+          $ready=($r.status -ceq 'DEFINITIONS_READY' -and $r.definitions_fresh -eq $true -and $r.scanner_archive_verified -eq $true)
+          ('ready='+$ready.ToString().ToLowerInvariant()) | Add-Content -LiteralPath $env:GITHUB_OUTPUT
+          if (-not $ready) { Write-Warning 'Official definitions unavailable or stale; no candidate build will run.' }
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065
+        if: steps.preflight.outputs.ready == 'true'
+        with:
+          python-version: '3.14.10'
+          architecture: x64
+      - name: Build candidate without publishing
+        if: steps.preflight.outputs.ready == 'true'
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $evidence = Join-Path $PWD 'candidate-evidence'
+          New-Item -ItemType Directory -Path $evidence -Force | Out-Null
+          $candidates = @()
+          if (${env:ProgramFiles(x86)}) { $candidates += (Join-Path ${env:ProgramFiles(x86)} 'Inno Setup 6\ISCC.exe') }
+          if ($env:LOCALAPPDATA) { $candidates += (Join-Path $env:LOCALAPPDATA 'Programs\Inno Setup 6\ISCC.exe') }
+          $iscc = $candidates | Where-Object { Test-Path -LiteralPath $_ -PathType Leaf } | Select-Object -First 1
+          $mode = if ($iscc) { 'installer-and-portable' } else { 'portable-only' }
+          [pscustomobject]@{commit=$env:GITHUB_SHA; mode=$mode; installer_compiler_found=[bool]$iscc; release_approved=$false} | ConvertTo-Json | Set-Content (Join-Path $evidence 'attempt.json')
+          try {
+            if ($iscc) {
+              & .\distribution\build.ps1 -Iscc $iscc *>&1 | Tee-Object -FilePath (Join-Path $evidence 'build.log')
+            } else {
+              & .\distribution\build.ps1 -PortableOnly *>&1 | Tee-Object -FilePath (Join-Path $evidence 'build.log')
+            }
+            $stages = @(Get-ChildItem -LiteralPath distribution/out -Directory)
+            if ($stages.Count -ne 1) { throw 'Expected exactly one build staging directory' }
+            $stage = $stages[0].FullName
+            foreach ($name in @('SHA256SUMS.txt','AERIS-EXE-SHA256.txt','build-info.json','build-dependencies.txt','runtime-reduction.json')) {
+              Copy-Item -LiteralPath (Join-Path $stage $name) -Destination $evidence
+            }
+            $files = @(Get-ChildItem -LiteralPath $stage -File | Where-Object { $_.Name -match '^Aeris-1\.1\.0rc1-Windows-x64-(Setup\.exe|portable\.zip)$' })
+            $expected = if ($iscc) { 2 } else { 1 }
+            if ($files.Count -ne $expected) { throw 'Candidate artifact count mismatch' }
+            $files | ForEach-Object { [pscustomobject]@{name=$_.Name; bytes=$_.Length; sha256=(Get-FileHash -LiteralPath $_.FullName -Algorithm SHA256).Hash.ToLowerInvariant()} } | ConvertTo-Json -AsArray | Set-Content (Join-Path $evidence 'artifact-inventory.json')
+            if (-not $iscc) { Write-Warning 'Installer not generated: Inno Setup absent. Portable build only.' }
+          } catch {
+            $_ | Out-String | Add-Content (Join-Path $evidence 'build.log')
+            throw
+          }
+      - name: Collect candidate assurance evidence
+        if: steps.preflight.outputs.ready == 'true'
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $stages = @(Get-ChildItem -LiteralPath distribution/out -Directory)
+          if ($stages.Count -ne 1) { throw 'Expected a single fresh build' }
+          $e = Join-Path $PWD 'candidate-evidence'
+          & .\distribution\assurance.ps1 -Stage $stages[0].FullName -Evidence $e
+          python distribution/audit-dependencies.py (Join-Path $e 'build-dependencies.txt') (Join-Path $e 'dependency-advisories.json')
+          if ($LASTEXITCODE -ne 0) { throw 'Known advisory requires review' }
+      - name: Homologate installer on disposable hosted runner
+        if: steps.preflight.outputs.ready == 'true'
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $stage = @(Get-ChildItem -LiteralPath distribution/out -Directory)
+          if ($stage.Count -ne 1) { throw 'Expected a single fresh build' }
+          & .\distribution\homologate-candidate.ps1 -Stage $stage[0].FullName -Evidence (Join-Path $PWD 'candidate-evidence') -ConfirmDisposableRunner
+      - name: Independent ClamAV scan of exact candidate bytes
+        if: steps.preflight.outputs.ready == 'true'
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $stages = @(Get-ChildItem -LiteralPath distribution/out -Directory)
+          if ($stages.Count -ne 1) { throw 'Expected a single fresh build' }
+          & .\distribution\scan-clamav-recovery.ps1 -Stage $stages[0].FullName -Evidence (Join-Path $PWD 'candidate-evidence') -PreparedDirectory (Join-Path $env:RUNNER_TEMP 'aeris-clamav-recovery')
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: aeris-clamav-recovery-evidence
+          path: candidate-evidence/
+          if-no-files-found: error
+          retention-days: 14
