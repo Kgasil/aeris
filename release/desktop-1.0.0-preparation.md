@@ -1,6 +1,6 @@
 # Aeris Desktop 1.0.0 — preparação de lançamento
 
-**Não publicado.** O RC3 experimental está aprovado na CI, mas não equivale a 1.0.0 estável. A extensão 1.0.0 continua independente e disponível.
+**Não publicado.** O RC4 experimental está aprovado na CI de build e instalação limpa, mas não equivale a 1.0.0 estável. A extensão 1.0.0 continua independente e disponível.
 
 ## Checklist de liberação
 | Gate | Situação | Evidência ou ação |
@@ -12,7 +12,7 @@
 | Antimalware | Pendente | Executar [procedimento de scan](../validation/installer/SCAN.md) no candidato exato, com proteção ativa |
 | Assinatura digital | Pendente | Definir processo de Authenticode e verificar assinatura; não afirmar certificação. RC3 unsigned |
 | Windows 10/11 | Pendente | Executar [kit cliente](../validation/windows-client/README.md) em duas VMs suportadas, contas comuns |
-| Atualização, recuperação e funções nativas | Parcial | Revalidar no candidato exato; falhas durante instalação, outra conta, ACLs e UI instalada pendentes |
+| Atualização, recuperação e funções nativas | Parcial | [RC3→RC4](../downloads/rc3-rc4-upgrade-evidence.json) passou; 44 DLLs permanecem após atualização direta. Reinstalação limpa preservou dados fictícios; testar cliente, interrupção, outra conta e ACLs |
 | IA, áudio, OCR e acessibilidade cliente | Parcial | Validar funções opcionais, consentimento, dispositivos, Tesseract Windows, Narrator e escala |
 | Versão estável 1.0.0 | Bloqueada | Criar build versionado somente com gates anteriores encaminhados; repetir testes e scan no binário final |
 
@@ -37,3 +37,6 @@ Aeris Desktop 1.0.0 — Eficiência e Simplicidade. Primeira versão estável pl
 [RC4 45852772215](https://github.com/Kgasil/aeris/actions/runs/45852772215) falhou antes de empacotar: 413 testes, 408 aprovados, quatro ignorados e uma falha em `test_native_mutex_cross_process_and_abrupt_exit` após terminar o processo filho. Diagnóstico ZIP 15134333469, SHA-256 `ef8979dac1d89feccf9c127d50f4ed3a53699832a7902f353542d13164830a66`, conferido; fonte mostra que a criação do mutex usa CreateMutexW e detecta ERROR_ALREADY_EXISTS. Hipótese: o executável Python do venv Windows é um redirecionador, e encerrar o launcher pode deixar o detentor real vivo. Corrigido o teste (5fce70a) para usar sys._base_executable e exigir que o PID de prontidão seja o PID do filho antes de terminá-lo. Não alterada implementação do mutex nem removida asserção. [CI nativa 45853291522](https://github.com/Kgasil/aeris/actions/runs/45853291522) aprovada; [RC4 45853309017](https://github.com/Kgasil/aeris/actions/runs/45853309017) em revalidação completa, incluindo venv. Redução de DLLs ainda não comprovada; nenhum Setup RC4 disponível da execução falha.
 
 [Scanner 45852715374](https://github.com/Kgasil/aeris/actions/runs/45852715374) voltou a falhar antes do scan (FreshClam não conseguiu ler configuração temporária). Correção 9c26883 usa configuração e base padrão do pacote Ubuntu, aguarda atualização existente ou chama FreshClam normalmente, exige data de build das definições diárias de até 24 h. [CI 45853334717](https://github.com/Kgasil/aeris/actions/runs/45853334717) iniciada. Não desativar proteções nem alegar scan limpo. RC3 preservado; Windows cliente, direitos, decisão de assinatura e scan do candidato final permanecem pendentes. Não publicar.
+
+## Situação atual do RC4 — 26/11/2026
+[Build RC4](../downloads/windows-rc4-reduced-runtime-evidence.json): 409/413 testes Windows, quatro skips, 47 hashes, 27 binários e 17 avisos. Dois VCRUNTIME correspondem à instalação Python de build, sem autorização legal implícita. [Atualização exata](../downloads/rc3-rc4-upgrade-evidence.json): oito manifestos idênticos, reinstalação limpa aprovada, 44 arquivos antigos em atualização direta. Migração documentada, sem exclusão automática. ClamAV RC3 bloqueado por definições com mais de 24h; scan RC4 ainda não executado. Revisão complementar RC4 iniciada. Não gerar ou publicar estável até decisões de direitos, assinatura e testes em Windows cliente; nenhum certificado ou credencial deve ser compartilhado no chat.
