@@ -31,3 +31,7 @@ Fontes: [Python 3.12.16](https://www.python.org/downloads/release/python-31216/)
 - Publicar apenas os bytes analisados (sem rebuild após aprovação). Caso assine ou altere o instalador, conferir novos hashes e reavaliar o artefato resultante. Não criar release estável antes da validação restante.
 
 **Conclusão:** revisão documental e ação corretiva de runtime iniciadas. Licenças, malware scan, atualização do compilador e decisão de assinatura continuam pendentes. A etapa 05 não foi autorizada.
+
+## Revalidação do runtime — 26/11/2026
+
+[Run 45845715571](https://github.com/Kgasil/aeris/actions/runs/45845715571) confirmou CPython 3.14.10 x64 e OpenSSL 3.5.9 (29 Sep 2026) no ambiente de build. A suíte executou 399 testes: 394 aprovados, quatro ignorados e um erro de asserção em `tests.test_timeline.TimelineTests.test_validation`. Nenhum instalador novo foi produzido nesta execução. O código original aceita formato textual de hora com dois dígitos e delega intervalos ao parser do runtime; o teste inclui 24:00, que deve ser rejeitado. A correção torna explícitos os intervalos de 00–23 horas e 00–59 minutos, preservando a validação de calendário, os testes existentes e o arquivo ZIP histórico. A CI executa ainda os casos positivos 00:00 e 23:59 antes da suíte completa. Commit 34ead92; [revalidação 45845977466](https://github.com/Kgasil/aeris/actions/runs/45845977466) iniciada. As versões efetivas no bundle, avisos, assinatura, scanner, compilador Inno e autorização continuam pendentes; não interpretar o runtime de build como prova do binário final.
