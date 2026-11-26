@@ -6,6 +6,20 @@ Set-StrictMode -Version Latest
 if ($env:OS -ne 'Windows_NT' -or $env:PROCESSOR_ARCHITECTURE -ne 'AMD64') { throw 'Windows x64 required.' }
 $root = Split-Path -Parent $PSScriptRoot
 $desktop = Join-Path $root 'desktop'
+# Resolve and validate Inno Setup before any build work; portable needs no ISCC.
+if (-not $PortableOnly) {
+    if (-not $Iscc) {
+        $candidates = @()
+        if (${env:ProgramFiles(x86)}) { $candidates += (Join-Path ${env:ProgramFiles(x86)} 'Inno Setup 6\ISCC.exe') }
+        if ($env:LOCALAPPDATA) { $candidates += (Join-Path $env:LOCALAPPDATA 'Programs\Inno Setup 6\ISCC.exe') }
+        $Iscc = $candidates | Where-Object { Test-Path -LiteralPath $_ -PathType Leaf } | Select-Object -First 1
+    }
+    if (-not $Iscc -or -not (Test-Path -LiteralPath $Iscc -PathType Leaf)) { throw 'Inno Setup ISCC.exe not found; use -Iscc or -PortableOnly.' }
+    $Iscc = (Resolve-Path -LiteralPath $Iscc).Path
+    if ((Get-AuthenticodeSignature -LiteralPath $Iscc).Status -ne 'Valid') { throw 'Inno Setup compiler signature not valid; review source.' }
+    $innoLicense = Join-Path (Split-Path -Parent $Iscc) 'LICENSE.TXT'
+    if (-not (Test-Path -LiteralPath $innoLicense -PathType Leaf)) { throw 'Inno Setup license missing.' }
+}
 $out = Join-Path $PSScriptRoot 'out'
 # Unique staging path: no recursive deletion of a user-selected directory.
 $stage = Join-Path $out ([guid]::NewGuid().ToString('N'))
@@ -21,7 +35,9 @@ $python = Join-Path $venv 'Scripts\python.exe'
 Invoke-Checked $python @('-m','pip','--disable-pip-version-check','install','-r',(Join-Path $PSScriptRoot 'requirements-build.txt'))
 Push-Location $desktop
 try {
+    Invoke-Checked $python @('-m','compileall','-q','aeris','tests','main.py')
     Invoke-Checked $python @('-m','unittest','discover','-v')
+    Invoke-Checked $python @('main.py','--self-test-full')
     $version = & $python -c 'from aeris import __version__; print(__version__)'
     if ($LASTEXITCODE -ne 0 -or $version -notmatch '^\d+\.\d+\.\d+(a|rc)\d+$') { throw 'Invalid build version' }
     $dist = Join-Path $stage 'dist'
@@ -76,18 +92,15 @@ try {
         if (-not (Test-Path -LiteralPath $notice -PathType Leaf)) { throw "Missing reviewed upstream notice: $name" }
         Copy-Item -LiteralPath $notice -Destination $notices
     }
-    Copy-Item -LiteralPath (Join-Path (Split-Path -Parent $Iscc) 'LICENSE.TXT') -Destination (Join-Path $notices 'InnoSetup-6.7.4.txt')
+    if (-not $PortableOnly) {
+        Copy-Item -LiteralPath $innoLicense -Destination (Join-Path $notices 'InnoSetup-LICENSE.txt')
+    }
     & $python -m pip freeze --all | Set-Content -LiteralPath (Join-Path $stage 'build-dependencies.txt') -Encoding ascii
     if ($LASTEXITCODE -ne 0) { throw 'Failed to record build dependencies' }
     $zip = Join-Path $stage "Aeris-$version-Windows-x64-portable.zip"
     Invoke-Checked $python @('-m','aeris.release_check','pack',$bundle,$zip)
     $artifacts = @($zip)
     if (-not $PortableOnly) {
-        if (-not $Iscc) {
-            $candidates = @((Join-Path ${env:ProgramFiles(x86)} 'Inno Setup 6\ISCC.exe'),(Join-Path $env:LOCALAPPDATA 'Programs\Inno Setup 6\ISCC.exe'))
-            $Iscc = $candidates | Where-Object { Test-Path -LiteralPath $_ -PathType Leaf } | Select-Object -First 1
-        }
-        if (-not $Iscc -or -not (Test-Path -LiteralPath $Iscc -PathType Leaf)) { throw 'Inno Setup ISCC.exe not found; use -Iscc or -PortableOnly.' }
         Invoke-Checked $Iscc @("/DAppVersion=$version","/DBundleDir=$bundle","/O$stage",(Join-Path $PSScriptRoot 'Aeris.iss'))
         $setup = Join-Path $stage "Aeris-$version-Windows-x64-Setup.exe"
         if (-not (Test-Path -LiteralPath $setup -PathType Leaf)) { throw 'Missing installer' }
@@ -99,5 +112,7 @@ try {
     if ($PortableOnly) { $verifyArgs += '--portable-only' }
     Invoke-Checked $python $verifyArgs
     (Get-FileHash -LiteralPath $exe -Algorithm SHA256).Hash.ToLowerInvariant() | Set-Content -LiteralPath (Join-Path $stage 'AERIS-EXE-SHA256.txt') -Encoding ascii
+    $buildInfo = [pscustomobject]@{version=$version; python_version=(& $python --version); portable_only=[bool]$PortableOnly; signed=$false; release_approved=$false}
+    $buildInfo | ConvertTo-Json | Set-Content -LiteralPath (Join-Path $stage 'build-info.json') -Encoding utf8
     Write-Host "Build outputs (unsigned preview): $stage"
 } finally { Pop-Location }
