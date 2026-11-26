@@ -96,8 +96,8 @@ The local source candidate has 50 tools. 393 unit tests and 60 graphical scripts
 
 ### Download do candidato / Source candidate download
 
-- [ZIP completo / Complete ZIP](https://github.com/Kgasil/aeris/raw/refs/heads/main/downloads/Aeris-Desktop-v1.0.0rc1-fix1-codigo-fonte.zip)
-- [SHA-256](downloads/SHA256SUMS.txt)
+- [ZIP completo / Complete ZIP](https://github.com/Kgasil/aeris/releases/download/v1.0.0rc1/Aeris-1.0.0rc1-source.zip)
+- [SHA-256](https://github.com/Kgasil/aeris/releases/download/v1.0.0rc1/SHA256SUMS.txt)
 
 Windows: Python 3.12 or 3.13 with Tcl/Tk, extract ZIP, open `desktop`, run `py -3 main.py`. See included `distribution/build.ps1` for build instructions. Test with dummy data; native Windows validation is not yet approved.
 
@@ -111,7 +111,7 @@ The third run reached 394 passed, four skipped and one error (399 total). Window
 
 ### Windows CI — packaging fix 2
 
-The [fourth run](https://github.com/Kgasil/aeris/actions/runs/45729575816) passed 395 unit tests, with four skips and no errors or failures. PyInstaller could not locate the catalog because the source path was relative to the generated spec directory. The workflow now applies a checked, build-only absolute-path adjustment. The published Fix 1 ZIP is unchanged; the executable and installer remain unapproved. Linux regression on the local corrected source: 393 passing tests, six skips.
+The [fourth run](https://github.com/Kgasil/aeris/actions/runs/45729575816) passed 395 unit tests, with four skips and no errors or failures. PyInstaller could not locate the catalog because the source path was relative to the generated spec directory. The workflow now applies a checked, build-only absolute-path adjustment. The historical Fix 1 ZIP is unchanged; the executable and installer remain unapproved. Linux regression on the local corrected source: 393 passing tests, six skips.
 
 ### Portable Windows preview — successful CI
 
@@ -123,4 +123,4 @@ The [fourth run](https://github.com/Kgasil/aeris/actions/runs/45729575816) passe
 
 ## Primeira prévia pública / First public preview
 
-**25/11/2026 · v1.0.0rc1.** [Notas de lançamento](release/rc1-notes.md) · [GitHub Releases](https://github.com/Kgasil/aeris/releases). Public source preview; experimental binaries remain temporary CI artifacts. Stable binary distribution is blocked pending validation and licensing review.
+**25/11/2026 · v1.0.0rc1.** [Notas de lançamento](release/rc1-notes.md) · [GitHub Releases](https://github.com/Kgasil/aeris/releases/tag/v1.0.0rc1). Public source preview; experimental binaries remain temporary CI artifacts. Stable binary distribution is blocked pending validation and licensing review.
