@@ -81,7 +81,7 @@ class Conversation(CompanionWindow):
         self.voice=VoiceSession(); self.voice_timer=None
         self.vision=VisionSession(); self.vision_timer=None; self.vision_expiry=None; self.vision_badge=None
         self.session=CopilotSession(hub); self.action_input=None; self.screen=None; self.photo=None
-        self.capture_timer=None; self.screen_question=None; self.meeting_active=False
+        self.capture_timer=None; self.screen_question=None; self.visual_invalid=False; self.meeting_active=False
         self.meeting_timer=None; self.meeting_generation=0; self.meeting_chunks=[]
         self.meeting_source='mic'; self.meeting_model=None; self.meeting_badge=None; self.meeting_review=None
         self.window=w=ttk.Frame(parent,padding=(18,12)); w.bind('<Destroy>',self.destroyed,add='+')
@@ -139,6 +139,10 @@ class Conversation(CompanionWindow):
         self.count=tk.StringVar(w,'0 / 4000 caracteres'); ttk.Label(left,textvariable=self.count,style='Experience.Muted.TLabel').pack(anchor='e')
         self.input.bind('<<Modified>>',self.input_changed); self.input.edit_modified(False)
         self.input.bind('<Control-Return>',self.keyboard_send)
+        self.visual_notice=ttk.Frame(left,padding=6,style='Experience.Card.TFrame')
+        self.visual_notice_text=tk.StringVar(w,'')
+        ttk.Label(self.visual_notice,textvariable=self.visual_notice_text,wraplength=330,style='Experience.Card.TLabel').pack(fill='x')
+        ttk.Button(self.visual_notice,text='Usar texto sem imagem',command=self.release_question).pack(anchor='w',pady=(4,0))
         row=ttk.Frame(left); row.pack(fill='x',pady=6)
         self.send_button=ttk.Button(row,text='Enviar',style='Experience.Primary.TButton',command=self.send); self.send_button.pack(side='right')
         self.mic_button=ttk.Button(row,text='Ditar',command=self.listen); self.mic_button.pack(side='left')
@@ -253,9 +257,11 @@ class Conversation(CompanionWindow):
         return not (self.closed or self.busy or self.voice.active or self.vision.active or self.meeting_active or self.capture_timer is not None)
     def send(self):
         if not self.idle(): return
+        if self.visual_invalid:
+            self.status.set('A captura mudou. Escolha Usar texto sem imagem ou limpe o rascunho.'); return
         if self.screen_question is not None:
             if self.screen_question.matches(self.screen,self.model.get().strip()): self.analyze(); return
-            self.detach_question(); self.status.set('Captura ou modelo alterado. Revise a pergunta antes de enviar.'); return
+            self.detach_question(); self.status.set('Captura ou modelo alterado. Revise o rascunho antes de enviar.'); return
         # Recognized local commands use the same reviewed action path, without a model.
         try: parse_command(self.input.get('1.0','end-1c'))
         except ValueError: pass
@@ -366,6 +372,11 @@ class Conversation(CompanionWindow):
             if not self.proposal_panel.winfo_manager(): self.proposal_panel.pack(fill='x',pady=4)
         else: self.proposal_panel.pack_forget()
         free=self.idle()
+        linked=self.screen_question is not None or self.visual_invalid
+        if linked:
+            self.visual_notice_text.set('Captura não disponível. Confirme se deseja usar apenas o texto.' if self.visual_invalid else 'Pergunta vinculada à captura. Revise antes de enviar.')
+            if not self.visual_notice.winfo_manager(): self.visual_notice.pack(fill='x',pady=4,before=self.input)
+        else: self.visual_notice.pack_forget()
         if self.voice.active:
             mode={'listen':'Voz · ouvindo','chat':'Voz · pensando','speak':'Voz · respondendo'}[self.voice.phase]
         elif self.vision.active: mode='Tela · acompanhamento autorizado'
@@ -384,14 +395,14 @@ class Conversation(CompanionWindow):
         self.input.configure(state='disabled' if self.voice.active else 'normal')
         for button in (self.send_button,self.mic_button,self.prepare_button,self.suggest_button,self.capture_button,self.meeting_start,self.detect_button):
             button.configure(state='normal' if free else 'disabled')
-        self.hint_button.configure(state='normal' if free else 'disabled')
-        self.route_button.configure(state='normal' if free else 'disabled')
+        for button in (self.hint_button,self.route_button,self.prepare_button,self.suggest_button):
+            button.configure(state='normal' if free and not linked else 'disabled')
         self.speak_button.configure(state='normal' if free and self.history else 'disabled')
         self.stop_button.configure(state='normal' if not free else 'disabled')
         self.meeting_stop.configure(state='normal' if self.meeting_active else 'disabled')
         self.meeting_loopback.configure(state='normal' if free else 'disabled')
         self.minutes_button.configure(state='normal' if free else 'disabled')
-        self.analyze_button.configure(state='normal' if (free or (self.vision.active and not self.busy)) and self.screen else 'disabled')
+        self.analyze_button.configure(state='normal' if (free or (self.vision.active and not self.busy)) and self.screen and not self.visual_invalid else 'disabled')
         self.visual_mic.configure(state='normal' if (free or (self.vision.active and not self.busy)) and self.screen else 'disabled')
         self.accept_button.configure(state='normal' if free and self.candidate and self.hub.permissions.allowed(COPILOT_RUN) and self.hub.permissions.allowed(COMPANION_CHAT) else 'disabled')
         self.confirm_button.configure(state='normal' if free and self.session.pending else 'disabled')
@@ -426,9 +437,12 @@ class Conversation(CompanionWindow):
     def input_changed(self,event=None):
         if self.input.edit_modified():
             self.session.cancel(); self.action_input=None; self.preview.set('')
+        if not self.input.get('1.0','end-1c').strip(): self.detach_question(completed=True)
         super().input_changed(event); self.update_hint(); self.refresh()
     def update_hint(self):
         draft=self.input.get('1.0','end-1c')
+        if self.screen_question is not None or self.visual_invalid:
+            self.ai_hint=None; self.hint_name=None; self.hint_panel.pack_forget(); return
         if self.ai_hint and self.ai_hint[0]!=draft: self.ai_hint=None
         self.hint_name=self.ai_hint[1] if self.ai_hint else task_hint(draft)
         if self.hint_name:
@@ -439,7 +453,7 @@ class Conversation(CompanionWindow):
         else:
             self.hint_panel.pack_forget()
     def route_tool(self):
-        if not self.idle(): return
+        if not self.idle() or self.screen_question is not None or self.visual_invalid: return
         original=self.input.get('1.0','end-1c')
         try:
             text=validate_message(original)
@@ -489,17 +503,18 @@ class Conversation(CompanionWindow):
         if not self.hub.permissions.allowed(COMPANION_CHAT): self.close_meeting_review()
         super().permissions_changed()
     def suggest(self):
-        if not self.idle(): return
+        if not self.idle() or self.screen_question is not None or self.visual_invalid: return
         if not self.model.get().strip():
             if not self.ai_open: self.toggle_ai_settings()
             self.configure_ai(); return
         if self.ensure_tool('Copilot') and self.authorize(COMPANION_CHAT,'Enviar apenas seu pedido ao modelo local?') and self.authorize(COPILOT_RUN,'Permitir preparar ações locais para sua confirmação?'):
             super().suggest()
     def accept_candidate(self):
+        if not self.idle() or self.screen_question is not None or self.visual_invalid: return
         super().accept_candidate()
         if self.input.get('1.0','end-1c'): self.status.set('Revise o pedido e clique Preparar ação. Nada foi executado.')
     def prepare_action(self):
-        if not self.idle() or self.screen_question is not None: return
+        if not self.idle() or self.screen_question is not None or self.visual_invalid: return
         self.session.cancel(); self.preview.set('')
         text=self.input.get('1.0','end-1c')
         try: proposal=parse_command(text)
@@ -511,7 +526,7 @@ class Conversation(CompanionWindow):
         except (ValueError,PermissionError) as e: self.status.set(str(e)); return
         self.action_input=text; self.preview.set(p.preview); self.status.set('Revise a ação abaixo e confirme somente se estiver correta.'); self.refresh()
     def confirm_action(self):
-        if not self.idle() or self.screen_question is not None: return
+        if not self.idle() or self.screen_question is not None or self.visual_invalid: return
         if self.action_input!=self.input.get('1.0','end-1c'):
             self.session.cancel(); self.action_input=None; self.preview.set(''); self.status.set('Pedido alterado. Prepare novamente.'); self.refresh(); return
         self.action_input=None
@@ -541,7 +556,7 @@ class Conversation(CompanionWindow):
         badge.geometry(f'+{max(0,badge.winfo_screenwidth()-badge.winfo_reqwidth()-30)}+32')
         self.vision.begin()
         self.vision_expiry=self.window.after(MAX_SECONDS*1000,self.vision_expired)
-        self.vision_next()
+        self.vision_timer=self.window.after(150,self.vision_next); self.refresh()
     def vision_expired(self):
         if self.vision_expiry is not None:
             self.window.after_cancel(self.vision_expiry); self.vision_expiry=None
@@ -605,9 +620,16 @@ class Conversation(CompanionWindow):
             self.hub.root.after_cancel(self.capture_timer); self.capture_timer=None; self.hub.root.deiconify()
         if self.busy and self.kind in ('screen','vision','visual_question'): super().stop()
         self.refresh()
-    def detach_question(self):
+    def detach_question(self,*,completed=False):
+        if self.screen_question is not None and not completed: self.visual_invalid=True
         self.screen_question=None
+        if completed: self.visual_invalid=False
         if hasattr(self,'visual_status'): self.visual_status.set('')
+    def release_question(self):
+        if not self.idle(): return
+        self.detach_question(completed=True)
+        self.status.set('Rascunho desvinculado. Nenhum texto ou imagem foi enviado.')
+        self.update_hint(); self.refresh()
     def ask_screen_voice(self):
         if self.closed or self.busy or self.voice.active or self.meeting_active or self.capture_timer is not None or not self.screen: return
         if not self.hub.permissions.allowed(COMPANION_SCREEN): return
@@ -621,7 +643,7 @@ class Conversation(CompanionWindow):
         raw=self.screen
         if not self.authorize(COMPANION_MIC,'Usar o microfone para ditar uma pergunta sobre a captura revisada? Nenhuma imagem será enviada neste passo.'): return
         if not self.idle() or self.screen is not raw or model!=self.model.get().strip() or self.input.get('1.0','end-1c').strip() or not self.hub.permissions.allowed(COMPANION_SCREEN) or not self.hub.permissions.allowed(COMPANION_MIC): return
-        self.detach_question()
+        self.detach_question(completed=True)
         pending=VisualQuestion(raw,model)
         try:
             if worker_for(self.hub).busy: raise OSError('Outra operação local ativa.')
@@ -643,6 +665,8 @@ class Conversation(CompanionWindow):
         self.status.set('MICROFONE ATIVO · dite sua pergunta sobre a captura.')
     def analyze(self):
         if self.closed or self.busy or self.meeting_active or self.voice.active or self.capture_timer is not None or not self.screen or not self.hub.permissions.allowed(COMPANION_SCREEN): return
+        if self.visual_invalid or (self.screen_question is not None and not self.screen_question.matches(self.screen,self.model.get().strip())):
+            self.detach_question(); self.status.set('Captura ou modelo alterado. Revise o rascunho.'); self.refresh(); return
         if self.vision.active: self.stop_vision('Acompanhamento pausado para revisar a captura.')
         if not self.model.get().strip():
             if not self.ai_open: self.toggle_ai_settings()
@@ -656,7 +680,7 @@ class Conversation(CompanionWindow):
         if self.screen is not raw or revision!=self.hub.permissions.revision or model!=self.model.get().strip() or question!=(self.input.get('1.0','end-1c').strip() or 'Explique o que aparece nesta imagem e como posso continuar.') or not self.hub.permissions.allowed(COMPANION_CHAT): return
         if not self.idle() or not self.hub.permissions.allowed(COMPANION_SCREEN): return
         if self.start(COMPANION_SCREEN,lambda:(question,describe_screen(model,question,raw)),kind='vision'):
-            self.detach_question(); self.input.delete('1.0','end')
+            self.detach_question(completed=True); self.input.delete('1.0','end')
             self.status.set('Analisando uma captura, não a tela ao vivo…')
     def append_answer(self):
         if self.history and self.history[-1][0]=='assistant': self.note.insert('end',('\n\n' if self.note.get('1.0','end-1c') else '')+self.history[-1][1])
@@ -702,7 +726,7 @@ class Conversation(CompanionWindow):
         ttk.Button(panel,text='Parar transcrição',command=self.stop_meeting).pack(fill='x',pady=(5,0))
         badge.update_idletasks(); badge.geometry(f'+{max(0,badge.winfo_screenwidth()-badge.winfo_reqwidth()-30)}+32')
         badge.bind('<Unmap>',lambda e:self.stop_meeting() if e.widget is badge and self.meeting_active else None,add='+')
-        self.meeting_text.configure(state='disabled'); self.meeting_next(); self.refresh()
+        self.meeting_text.configure(state='disabled'); self.meeting_timer=self.window.after(150,self.meeting_next); self.refresh()
     def meeting_next(self):
         self.meeting_timer=None
         if not self.meeting_active or not self.hub.permissions.allowed(self.meeting_cap()) or len(self.meeting_chunks)>=20 or self.meeting_badge is None or not self.meeting_badge.winfo_viewable(): self.stop_meeting(); return
@@ -873,7 +897,7 @@ class Conversation(CompanionWindow):
                     draft=pending.draft(text,self.screen,self.model.get().strip(),mic_allowed=self.hub.permissions.allowed(COMPANION_MIC),screen_allowed=self.hub.permissions.allowed(COMPANION_SCREEN),empty_editor=not self.input.get('1.0','end-1c').strip())
                 except ValueError as exc: self.status.set(str(exc))
                 else:
-                    self.screen_question=pending; self.input.insert('1.0',draft)
+                    self.screen_question=pending; self.visual_invalid=False; self.input.insert('1.0',draft)
                     self.visual_status.set('Pergunta vinculada à captura. Revise e envie.')
                     self.status.set('Revise a pergunta transcrita e clique Enviar ou Analisar captura com IA.')
             else: self.status.set('Não foi possível reconhecer a pergunta por voz.')
@@ -902,6 +926,7 @@ class Conversation(CompanionWindow):
         return super().dirty() or self.voice.active or self.vision.active or bool(self.screen or self.note.get('1.0','end-1c') or self.meeting_text.get('1.0','end-1c') or self.meeting_active)
     def destroyed(self,event):
         if event.widget is self.window:
+            self.closed=True; self.meeting_active=False
             self.voice.stop(); self.vision.stop()
             if self.meeting_badge is not None:
                 try: self.meeting_badge.destroy()
