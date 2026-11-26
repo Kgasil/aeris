@@ -1,0 +1,90 @@
+name: Aeris RC5 distribution review (no publish)
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/aeris-rc5-distribution-review.yml'
+      - 'validation/performance/extract-rc5.py'
+permissions:
+  contents: read
+  actions: read
+jobs:
+  clamav:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - name: Retrieve and verify exact RC5 bytes
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          mkdir -p scan-evidence
+          curl --fail --location --silent --show-error -H "Authorization: Bearer $GH_TOKEN" -H 'Accept: application/vnd.github+json' https://api.github.com/repos/Kgasil/aeris/actions/artifacts/15138829732/zip -o "$RUNNER_TEMP/rc5.zip"
+          python validation/verify-ci-artifact.py "$RUNNER_TEMP/rc5.zip" --expected-sha256 09aa2076cac6f9bc8a543869027fe2617f0590fd4509a6f18261def0e797ba9a > scan-evidence/integrity.json
+          python validation/performance/extract-rc5.py "$RUNNER_TEMP/rc5.zip" "$RUNNER_TEMP/rc5-portable" > scan-evidence/portable-integrity.json
+          mkdir "$RUNNER_TEMP/rc5-assets"
+          for name in Aeris-1.0.0rc5-Windows-x64-Setup.exe Aeris-1.0.0rc5-Windows-x64-portable.zip; do
+            unzip -p "$RUNNER_TEMP/rc5.zip" "$name" > "$RUNNER_TEMP/rc5-assets/$name"
+          done
+          cd "$RUNNER_TEMP/rc5-assets"
+          printf '%s\n' '54ab3ab65672a32dc944259bb291f5c66ed735d4c5d5876641725131c9915aa8  Aeris-1.0.0rc5-Windows-x64-Setup.exe' 'ffbda95354b563e1d6a1b8f90fc43184a197585488c3da8609ac6970ffee9701  Aeris-1.0.0rc5-Windows-x64-portable.zip' | sha256sum -c -
+      - name: Install scanner and fetch current definitions
+        shell: bash
+        run: |
+          set -euo pipefail
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends clamav clamav-freshclam
+          # Do not race the package's updater or weaken the freshness gate.
+          if systemctl is-active --quiet clamav-freshclam; then
+            for i in $(seq 1 12); do
+              sudo journalctl -u clamav-freshclam --no-pager -n 100 > scan-evidence/freshclam.log
+              if grep -Ei 'daily\.(cvd|cld).*(up.to.date|updated)' scan-evidence/freshclam.log; then break; fi
+              sleep 5
+            done
+          else
+            sudo freshclam --stdout 2>&1 | tee scan-evidence/freshclam.log
+          fi
+          clamscan --database=/var/lib/clamav --version | tee scan-evidence/version.txt
+          daily=$(find /var/lib/clamav -maxdepth 1 \( -name daily.cvd -o -name daily.cld \) -print -quit)
+          test -n "$daily"
+          sigtool --info "$daily" | tee scan-evidence/daily-info.txt
+          grep -F 'Verification OK.' scan-evidence/daily-info.txt
+          python - <<'PY'
+          from datetime import datetime, timezone
+          from pathlib import Path
+          import json, re
+          line = re.search(r"(?m)^Build time:\s*(.+)$", Path("scan-evidence/daily-info.txt").read_text())
+          if not line:
+              raise SystemExit("Missing database build time")
+          raw = line.group(1).strip()
+          parsed = datetime.strptime(raw, "%d %b %Y %H:%M %z")
+          age = (datetime.now(timezone.utc)-parsed.astimezone(timezone.utc)).total_seconds()
+          ok = 0 <= age <= 86400
+          Path("scan-evidence/definition-freshness.json").write_text(json.dumps({"build_utc": parsed.isoformat(), "age_seconds": round(age), "fresh": ok, "max_age_seconds": 86400, "release_approved": False}, indent=2))
+          if not ok:
+              raise SystemExit("Daily definitions not within 24 hours; scan blocked")
+          PY
+      - name: Scan exact installer, archive and verified extracted portable files
+        shell: bash
+        run: |
+          set -euo pipefail
+          # Do not execute binaries, submit samples, remove detections, or modify the artifacts.
+          clamscan --database=/var/lib/clamav --recursive=yes --scan-archive=yes --alert-exceeds-max=yes --max-filesize=100M --max-scansize=400M --max-files=20000 --max-recursion=30 "$RUNNER_TEMP/rc5-assets" "$RUNNER_TEMP/rc5-portable" 2>&1 | tee scan-evidence/clamav-scan.log
+          grep -E '^Infected files: 0$' scan-evidence/clamav-scan.log
+          if grep -Ei '(^|[[:space:]])(ERROR|FOUND)([[:space:]]|$)' scan-evidence/clamav-scan.log; then exit 1; fi
+          python validation/verify-ci-artifact.py "$RUNNER_TEMP/rc5.zip" --expected-sha256 09aa2076cac6f9bc8a543869027fe2617f0590fd4509a6f18261def0e797ba9a > scan-evidence/post-scan-integrity.json
+          cd "$RUNNER_TEMP/rc5-assets"
+          printf '%s\n' '54ab3ab65672a32dc944259bb291f5c66ed735d4c5d5876641725131c9915aa8  Aeris-1.0.0rc5-Windows-x64-Setup.exe' 'ffbda95354b563e1d6a1b8f90fc43184a197585488c3da8609ac6970ffee9701  Aeris-1.0.0rc5-Windows-x64-portable.zip' | sha256sum -c -
+          printf '%s\n' '{"status":"SCAN_COMPLETED_REVIEW_REQUIRED","scanner":"ClamAV","scope":"exact RC5 installer and portable archive plus extracted portable files","defender_client":"NOT_TESTED","release_approved":false}' > "$GITHUB_WORKSPACE/scan-evidence/status.json"
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: aeris-rc5-clamav-evidence
+          path: scan-evidence/
+          if-no-files-found: warn
+          retention-days: 30
