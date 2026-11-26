@@ -1,0 +1,84 @@
+{
+  "run": 45853309017,
+  "commit": "df49cbec147ccff11ce814850aa507639bdccc7b",
+  "artifact_id": 15134209156,
+  "artifact_sha256": "34e010bb31a574211185f9b6729669c1b7a794856fdbbf10ae425b665aba6d8b",
+  "artifact_bytes": 26545012,
+  "artifact_expires": "2026-12-26T15:53:44Z",
+  "scope": "Experimental RC4; clean Windows Server 2022 CI, no client certification or distribution approval",
+  "unit_tests": {
+    "total": 413,
+    "passed": 409,
+    "skipped": 4,
+    "failures": 0,
+    "seconds": 14.48
+  },
+  "installer": {
+    "bytes": 12750346,
+    "sha256": "eacbccd22ffeb8b2961fe838c321c61bc63445c08da6aea97b4ed3aa5e09452a",
+    "inno_setup": "6.7.4"
+  },
+  "portable": {
+    "bytes": 13728258,
+    "sha256": "133ee4b5f861535740dca98639d6e4ed4c4fcc15079362434d203b61f498574f",
+    "manifest_files_verified": 47,
+    "hash_mismatches": 0,
+    "binaries": 27,
+    "notices": 17
+  },
+  "exe_sha256": "05272bdfa2be694cba686171a91a55d51c9ff014344b91ba33fe77a47be5b37e",
+  "source": {
+    "bytes": 592607,
+    "sha256": "f52c8f065cb02b7052daffe79d57b58346528fd164688a847cc0aa8a57379efe"
+  },
+  "runtime_reduction": {
+    "removed": 44,
+    "remaining_microsoft_dlls": [
+      {
+        "name": "VCRUNTIME140.dll",
+        "sha256": "d1f4225df2cd877dbf130d5668a021dce3f94118455ff5ec952061c30afc9ce7",
+        "exact_python_match": true
+      },
+      {
+        "name": "VCRUNTIME140_1.dll",
+        "sha256": "a7146c08f89fe5b04541ab507cdb59ff7b44534d4ba3c668a426c6450a03434e",
+        "exact_python_match": true
+      }
+    ],
+    "scope": "Build-stage removal and byte comparison with pinned Python installation; not proof of redistribution rights"
+  },
+  "checks": {
+    "independent_outer_and_asset_hashes": "PASS",
+    "independent_manifest_hashes": "PASS",
+    "install": "PASS",
+    "reinstall_same_version": "PASS",
+    "uninstall": "PASS",
+    "synthetic_data_preserved": "PASS",
+    "shortcut_targets": "PASS",
+    "shortcut_cleanup": "PASS",
+    "silent_no_launch": "PASS",
+    "installed_notice_hashes": "PASS",
+    "reinstalled_notice_hashes": "PASS",
+    "runtime_reduction": "PASS"
+  },
+  "defender": {
+    "antivirus_enabled": true,
+    "real_time_protection_enabled": false,
+    "malware_scan": "NOT_TESTED"
+  },
+  "clamav_rc3": {
+    "run": 45853565160,
+    "artifact_id": 15134354214,
+    "artifact_sha256": "99aacabeece5e485f6d226f73a4d8ab408c9872f315cdb8d49cabbab1b2efd29",
+    "engine": "1.5.4",
+    "daily_version": 28194,
+    "daily_build_utc": "2026-11-25T06:26:00Z",
+    "signature_verification": "PASS",
+    "freshness": "FAIL",
+    "scan": "NOT_TESTED"
+  },
+  "rc3_to_rc4_upgrade": "NOT_TESTED",
+  "client_windows": "NOT_TESTED",
+  "redistribution_approved": false,
+  "release_approved": false
+}
