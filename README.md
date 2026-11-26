@@ -9,11 +9,13 @@ Light · Modular · Privacy-conscious
 
 [Website](https://kgasil.github.io/aeris/) · [Português](#português) · [English](#english)
 
+> **Marco 1.0 — Aeris Extension 1.0.0.** 16 ferramentas, 50 testes automatizados aprovados, instalação manual gratuita via GitHub. Desktop 1.0.0rc1 continua em prévia experimental. [Baixar extensão / Download extension](https://github.com/Kgasil/aeris/raw/refs/heads/main/downloads/Aeris-Extension-v1.0.0-install.zip) · [Tutorial](https://github.com/Kgasil/aeris/tree/main/extension).
+
 ## Português
 
 O Aeris é um projeto da K&G Vision para criar ferramentas leves, discretas e úteis ao cotidiano. A proposta reúne um aplicativo desktop para Windows e uma extensão para navegadores Chromium, com módulos opcionais e processamento local sempre que possível.
 
-**Situação atual: candidato de código-fonte 1.0.0rc1 publicado.** 50 protótipos desktop foram construídos localmente. O website oferece seis demonstrações interativas; a branch `develop` ainda contém a versão inicial 0.1.0a4. O pacote completo está disponível abaixo; o instalador final permanece pendente.
+**Situação atual: extensão 1.0.0 publicada para instalação manual; Desktop 1.0.0rc1 em prévia pública de código-fonte.** 50 protótipos desktop foram construídos localmente. O website oferece seis demonstrações interativas; a branch `develop` ainda contém a versão inicial 0.1.0a4. O pacote completo está disponível abaixo; o instalador final permanece pendente.
 
 [Experimente no navegador](https://kgasil.github.io/aeris/demo.html) · [Instalação e downloads](https://kgasil.github.io/aeris/#instalacao)
 
@@ -42,11 +44,11 @@ Os 50 protótipos locais foram consolidados no candidato de código-fonte. Não 
 - Processamento local quando viável, permissões explícitas e proteção de informações.
 - Nenhuma captura de áudio, tela ou informação sensível sem autorização.
 - Funcionalidades locais inicialmente gratuitas, sem anúncios ou conta obrigatória, como objetivo de projeto.
-- Validação antes da distribuição pública; nenhum resultado de desempenho medido ou data de lançamento anunciada.
+- Validação contínua; a extensão 1.0.0 está disponível para instalação manual, sem alegação de desempenho certificado.
 
 ## English
 
-Aeris is designed around one principle: technology should work for you, not interrupt you. Our proposed lightweight Windows desktop app and Chromium extension aim to make everyday productivity feel effortless. It aims to make everyday tasks simpler with optional modules, on-demand execution, local-first processing where feasible and explicit permissions.
+Aeris is designed around one principle: technology should work for you, not interrupt you. Our lightweight Windows desktop prototype and manually distributed Chromium extension aim to make everyday productivity feel effortless with optional modules, on-demand execution, local-first processing where feasible and explicit permissions.
 
 The catalog comprises 50 desktop prototypes built locally. The site includes six simplified interactive demos. The published develop branch still contains the early 0.1.0a4 source; the complete source ZIP is now published; the final installer is pending.
 
@@ -60,15 +62,17 @@ One free edition, including optional AI, with no ads or mandatory Aeris account,
 
 Open `index.html` in a browser. No build step or backend is needed. The website uses GitHub Pages from `main` at `/ (root)`. The early desktop source is in `develop`; `demo.html` and `assets/web-lab.js` power the browser lab.
 
-## Ecosystem / Ecossistema
+## Ecosystem / Ecossistema — Marco 1.0
 
 | Project | Website | Repository | Current stage / Etapa atual |
 | --- | --- | --- | --- |
 | K&G Vision | [Institutional](https://kgasil.github.io/) | [Source](https://github.com/Kgasil/kgasil.github.io) | Independent initiative / Iniciativa independente |
-| Project Genesis | [Wisdom & Application / Sabedoria e Aplicação](https://kgasil.github.io/genesis/) | [Source](https://github.com/Kgasil/genesis) | 75 private study PDFs; [interactive public library](https://kgasil.github.io/genesis/biblioteca.html) / 75 PDFs de estudo privados; [biblioteca pública interativa](https://kgasil.github.io/genesis/biblioteca.html) |
-| Project Vision | [Security and Development](https://kgasil.github.io/vision/) | [Source](https://github.com/Kgasil/vision) | Local demonstration lab / Laboratório demonstrativo local |
-| Project Aeris | [Discreet & Efficient. / Discreto e Eficiente.](https://kgasil.github.io/aeris/) | [Source](https://github.com/Kgasil/aeris) | Desktop RC1; Extension 1.0.0 available for manual installation / Desktop RC1; Extensão 1.0.0 disponível para instalação manual |
-| Project Lilium | [Strategy & Growth / Estratégia e Crescimento](https://kgasil.github.io/lilium/) | [Source](https://github.com/Kgasil/lilium) | Web Lab 1.0 public demo; Desktop v0.14.0 controlled preview; [Mini v0.1.1](https://github.com/Kgasil/lilium/tree/main/extension) GitHub-only experimental extension. / Web Lab 1.0 público; Desktop v0.14.0 em prévia controlada; Mini v0.1.1 experimental pelo GitHub. |
+| Project Genesis | [Wisdom & Application / Sabedoria e Aplicação](https://kgasil.github.io/genesis/) | [Source](https://github.com/Kgasil/genesis) | **1.0 — Editorial & Library / Acervo e biblioteca.** 75 private study PDFs; [public interactive library](https://kgasil.github.io/genesis/biblioteca.html) / 75 PDFs privados; biblioteca pública interativa, sem cursos ou certificados. |
+| Project Vision | [Security & Development / Segurança e Desenvolvimento](https://kgasil.github.io/vision/) | [Source](https://github.com/Kgasil/vision) | **1.0 — Public Research Lab / Laboratório público.** Technical baseline V10.2; local demonstrations / Base técnica V10.2; demonstrações locais, não serviços de produção. |
+| Project Aeris | [Discreet & Efficient / Discreto e Eficiente](https://kgasil.github.io/aeris/) | [Source](https://github.com/Kgasil/aeris) | **1.0 — Extension 1.0.0.** [Manual installation / Instalação manual](https://github.com/Kgasil/aeris/tree/main/extension); Desktop 1.0.0rc1 remains a preview / permanece em prévia. |
+| Project Lilium | [Strategy & Growth / Estratégia e Crescimento](https://kgasil.github.io/lilium/) | [Source](https://github.com/Kgasil/lilium) | **1.0 — Web Lab.** Public demo / demonstração pública; Desktop v0.14.0 controlled preview / prévia controlada; [Mini v0.1.1](https://github.com/Kgasil/lilium/tree/main/extension) experimental. |
+
+**Version note / Nota de versão:** 1.0 identifies the first completed public-facing project milestone of the ecosystem, not a uniform software release tag. Genesis is an editorial milestone; Vision retains technical baseline V10.2; Aeris 1.0.0 applies to Extension; Lilium 1.0 applies to Web Lab. / 1.0 identifica o primeiro marco público do ecossistema, não uma tag de software uniforme. Genesis é um marco editorial; Vision mantém a base V10.2; Aeris 1.0.0 refere-se à extensão; Lilium 1.0 refere-se ao Web Lab. Desktop previews are not stable releases / Prévias Desktop não são versões estáveis.
 
 **Learn · Build · Simplify · Transform / Aprender · Construir · Simplificar · Transformar**
 
@@ -92,7 +96,7 @@ Official visual lockup: **K&G** above **Vision**; individual project symbols are
 
 ## Release preparation / Preparação de lançamento — 1.0.0rc1
 
-The local source candidate has 50 tools. 393 unit tests and 60 graphical scripts passed on Linux; six Windows-only tests were skipped in Linux. No stable Windows installer has been released, and the complete source package is now available in `downloads/`. The public Web Lab and complete source ZIP are available. The browser extension is a separate project stage.
+The local source candidate has 50 tools. 393 unit tests and 60 graphical scripts passed on Linux; six Windows-only tests were skipped in Linux. No stable Windows installer has been released, and the complete source package is now available in `downloads/`. The public Web Lab and complete source ZIP are available. The browser extension has its own 1.0.0 manual distribution, separate from this Desktop release candidate.
 
 [Release status / Estado da versão](https://kgasil.github.io/aeris/release-status.html)
 
@@ -129,7 +133,7 @@ The [fourth run](https://github.com/Kgasil/aeris/actions/runs/45729575816) passe
 
 ## Aeris Extension — 1.0.0
 
-16 ferramentas em um candidato Manifest V3. 50 testes Node aprovados; sintaxe JavaScript, hashes e reconstrução determinística conferidos. A versão 1.0.0 preserva a lógica RC2 testada pelo responsável. / 16 tools, 50 passing Node tests, verified syntax, checksums and reproducible install package. Version 1.0.0 preserves the RC2 logic. ZIPs disponíveis no GitHub; validação nativa independente e publicação em lojas pendentes. / ZIPs available on GitHub; independent native browser validation and store publication pending. [Instruções / Instructions](https://kgasil.github.io/aeris/extension-preview.html) · [Laboratório de validação / Validation lab](https://kgasil.github.io/aeris/extension-validation.html).
+16 ferramentas na extensão Manifest V3. 50 testes Node aprovados; sintaxe JavaScript, hashes e reconstrução determinística conferidos. A versão 1.0.0 preserva a lógica RC2 testada pelo responsável. / 16 tools, 50 passing Node tests, verified syntax, checksums and reproducible install package. Version 1.0.0 preserves the RC2 logic. ZIPs disponíveis no GitHub; validação nativa independente e publicação em lojas pendentes. / ZIPs available on GitHub; independent native browser validation and store publication pending. [Instruções / Instructions](https://kgasil.github.io/aeris/extension-preview.html) · [Laboratório de validação / Validation lab](https://kgasil.github.io/aeris/extension-validation.html).
 
 
 ### Instalação manual / Manual installation
