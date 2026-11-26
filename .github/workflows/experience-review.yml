@@ -5,6 +5,9 @@ on:
   workflow_dispatch:
 permissions:
   contents: read
+concurrency:
+  group: aeris-experience-review
+  cancel-in-progress: true
 jobs:
   review:
     runs-on: windows-2022
@@ -48,12 +51,13 @@ jobs:
           with tempfile.TemporaryDirectory() as d:
               root=tk.Tk()
               hub=ExperienceHub(root,Settings(Path(d)/"settings.json"))
-              root.geometry("1240x800+10+10")
               root.update()
               root.lift()
               root.update()
               time.sleep(.5)
               root.update()
+              assert hub.conversation.send_button.winfo_rooty()+hub.conversation.send_button.winfo_height() <= root.winfo_rooty()+root.winfo_height(), "Send control clipped"
+              assert hub.conversation.capture_button.winfo_rooty()+hub.conversation.capture_button.winfo_height() <= root.winfo_rooty()+root.winfo_height(), "Capture control clipped"
               data=read_capture(capture_process())
               Path(os.environ["AERIS_EVIDENCE"],"experience-home.png").write_bytes(data)
               hub.navigate("catalog")
