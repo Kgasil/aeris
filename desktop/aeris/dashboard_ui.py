@@ -15,16 +15,18 @@ def label(value,limit=45):
 class DashboardWindow(DataWindow):
     permission=DASHBOARD_READ
     title='Aeris Dashboard'
-    description='Agregações locais por categoria. Selecione CSV fictício e confira separadores.'
+    display_title='Indicadores e gráficos'
+    description='Compare grupos de um CSV por contagem, soma ou média. Use dados fictícios.'
     def __init__(self,hub):
         self.dataset=None; self.summary=None
         super().__init__(hub)
-        self.window.geometry('820x740'); self.window.minsize(650,600)
+        self.window.geometry('900x790'); self.window.minsize(650,600)
         self.report.configure(height=5)
         frame=self.report.master
         options=ttk.Frame(frame.master); options.pack(fill='x',before=frame,pady=4)
-        ttk.Label(options,text='Categoria').pack(side='left')
+        ttk.Label(options,text='Agrupar por').pack(side='left')
         self.group_box=ttk.Combobox(options,state='disabled',width=18); self.group_box.pack(side='left',padx=4)
+        ttk.Label(options,text='Cálculo').pack(side='left')
         self.mode_box=ttk.Combobox(options,values=MODES,state='disabled',width=10); self.mode_box.pack(side='left',padx=4); self.mode_box.set(MODES[0])
         ttk.Label(options,text='Métrica').pack(side='left')
         self.metric_box=ttk.Combobox(options,state='disabled',width=18); self.metric_box.pack(side='left',padx=4)
@@ -33,13 +35,14 @@ class DashboardWindow(DataWindow):
         self.canvas=tk.Canvas(frame.master,height=260,highlightthickness=0,bg=PALETTES[hub.settings.appearance.theme]['field'])
         self.canvas.pack(fill='x',before=frame,pady=4)
         self.canvas.bind('<Configure>',lambda _:self.draw())
+        self.draw()
         self.controls()
     def parse(self,path,delimiter,decimal,cancelled):
         return dataset_file(path,delimiter,decimal,cancelled=cancelled)
     def show(self,text):
         self.dataset=None; self.summary=None
         if hasattr(self,'canvas'):
-            self.canvas.delete('all'); self.group_box.set(''); self.metric_box.set(''); self.group_box.configure(values=()); self.metric_box.configure(values=()); self.metric_indices=[]; self.controls()
+            self.canvas.delete('all'); self.group_box.set(''); self.metric_box.set(''); self.group_box.configure(values=()); self.metric_box.configure(values=()); self.metric_indices=[]; self.controls(); self.draw()
         super().show(text)
     def controls(self):
         super().controls()
@@ -79,7 +82,9 @@ class DashboardWindow(DataWindow):
     def draw(self):
         if not hasattr(self,'canvas'): return
         c=self.canvas; c.delete('all'); p=PALETTES[self.hub.settings.appearance.theme]; c.configure(bg=p['field'])
-        if self.summary is None or not self.summary.groups: return
+        if self.summary is None or not self.summary.groups:
+            c.create_text(max(c.winfo_width(),200)/2,max(c.winfo_height(),100)/2,text='Selecione e analise um CSV para visualizar os indicadores.' if self.dataset is None else 'Nenhum grupo para exibir.',width=max(180,c.winfo_width()-30),justify='center',fill=p['deep'],font=('Segoe UI',10))
+            return
         groups=self.summary.groups[:DISPLAY_GROUPS]; w=max(c.winfo_width(),500); h=max(c.winfo_height(),260)
         left=150; right=w-105; top=24; row=(h-top-8)/len(groups)
         lo=min(0,min(g.value for g in groups)); hi=max(0,max(g.value for g in groups)); span=hi-lo
