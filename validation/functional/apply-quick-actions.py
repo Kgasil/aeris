@@ -126,6 +126,8 @@ def apply(root):
     def reverse_result(self):
         if self.last_result is None: return
         value=format(self.last_result.value,'f')
+        if len(value)>64:
+            self.status.set('Resultado excede o limite de entrada para inverter.'); return
         a,b=self.source.get(),self.target.get()
         self.source.set(b); self.target.set(a); self.amount.set(value)
         self.run()""")
@@ -135,6 +137,15 @@ def apply(root):
     files["convert_ui.py"]=s
     for name,code in files.items(): compile(code,name,"exec")
     for name,code in files.items(): (root/name).write_bytes(code.encode("utf-8"))
+    # Autofill intentionally requires explicit field selection now; adapt only the
+    # existing smoke setup, preserving its copy and permission assertions.
+    smoke=root.parent/"tests"/"smoke_autofill.py"
+    raw=smoke.read_bytes()
+    if hashlib.sha256(raw).hexdigest()!="22a1b1436515b08d7ddcfae05ba86b9dc596eae5811afe2237249880c424c3a7":
+        raise ValueError("Unexpected Autofill smoke")
+    code=replace(raw.decode("utf-8").replace("\r\n","\n"),"ui.save(); ui.show_preview()","ui.save(); ui.requested['name'].set(True); ui.show_preview()")
+    compile(code,"smoke_autofill.py","exec")
+    smoke.write_bytes(code.encode("utf-8"))
     print("Quick Actions: four RC4 files and cumulative Memory editor refined")
 
 if __name__=="__main__": apply(sys.argv[1])
