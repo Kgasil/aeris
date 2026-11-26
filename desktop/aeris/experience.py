@@ -8,6 +8,7 @@ import tkinter as tk
 from tkinter import ttk,messagebox
 from aeris.hub import Hub, COLORS
 from aeris.experience_help import HELP
+from aeris.intelligence import recommend_tool
 from aeris.companion_ui import CompanionWindow
 from aeris.companion import chat,validate_message,speech_process,MAX_HISTORY
 from aeris.copilot import CopilotSession,parse_command
@@ -109,7 +110,7 @@ class Conversation(CompanionWindow):
         ttk.Label(self.hint_panel,textvariable=self.hint_text,wraplength=330,justify='left',style='Experience.Card.TLabel').pack(fill='x')
         self.hint_button=ttk.Button(self.hint_panel,text='Conhecer ferramenta',command=self.open_hint)
         self.hint_button.pack(anchor='w',pady=(4,0))
-        self.hint_name=None
+        self.hint_name=None; self.ai_hint=None
         self.input=tk.Text(left,wrap='word',height=3,font=('Segoe UI',11),padx=12,pady=8,relief='flat',highlightthickness=1); self.input.pack(fill='x',pady=(12,3))
         self.count=tk.StringVar(w,'0 / 4000 caracteres'); ttk.Label(left,textvariable=self.count,style='Experience.Muted.TLabel').pack(anchor='e')
         self.input.bind('<<Modified>>',self.input_changed); self.input.edit_modified(False)
@@ -121,13 +122,14 @@ class Conversation(CompanionWindow):
         row=ttk.Frame(left); row.pack(fill='x')
         self.speak_button=ttk.Button(row,text='Ouvir resposta',command=self.speak); self.speak_button.pack(side='left')
         self.advanced_open=False
+        self.route_button=ttk.Button(row,text='Encontrar ferramenta',command=self.route_tool); self.route_button.pack(side='left',padx=4)
         self.advanced_toggle=ttk.Button(row,text='Mais opções',command=self.toggle_advanced); self.advanced_toggle.pack(side='right')
         self.advanced=ttk.Frame(left)
         self.auto_speak=tk.BooleanVar(w,False)
         self.auto_button=ttk.Checkbutton(self.advanced,text='Ler respostas automaticamente',variable=self.auto_speak); self.auto_button.pack(anchor='w')
         row=ttk.Frame(self.advanced); row.pack(fill='x')
         self.prepare_button=ttk.Button(row,text='Preparar ação',command=self.prepare_action); self.prepare_button.pack(side='left')
-        self.suggest_button=ttk.Button(row,text='Interpretar com IA',command=self.suggest); self.suggest_button.pack(side='left',padx=4)
+        self.suggest_button=ttk.Button(row,text='Preparar ação com IA',command=self.suggest); self.suggest_button.pack(side='left',padx=4)
         self.proposal_panel=ttk.Frame(left,padding=5,style='Experience.Card.TFrame')
         self.candidate_label=tk.StringVar(w,''); ttk.Label(self.proposal_panel,textvariable=self.candidate_label,wraplength=310,justify='left',style='Experience.Card.TLabel').pack(anchor='w')
         self.preview=tk.StringVar(w,''); ttk.Label(self.proposal_panel,textvariable=self.preview,wraplength=310,justify='left',style='Experience.Card.TLabel').pack(anchor='w')
@@ -188,7 +190,7 @@ class Conversation(CompanionWindow):
         if not self.hub.enabled(name): self.hub.toggle_tool(name)
         return self.hub.enabled(name)
     def model_changed(self,*args):
-        self.session.cancel(); self.action_input=None; self.preview.set(''); super().model_changed(*args)
+        self.session.cancel(); self.action_input=None; self.preview.set(''); self.ai_hint=None; self.update_hint(); super().model_changed(*args)
         self.ai_state.set('IA local · '+self.model.get().strip()[:48] if self.model.get().strip() else 'IA local · escolha um modelo')
     def detect_models(self):
         if self.busy or self.meeting_active: return
@@ -226,6 +228,7 @@ class Conversation(CompanionWindow):
         for button in (self.send_button,self.mic_button,self.prepare_button,self.suggest_button,self.capture_button,self.meeting_start,self.detect_button):
             button.configure(state='normal' if free else 'disabled')
         self.hint_button.configure(state='normal' if free else 'disabled')
+        self.route_button.configure(state='normal' if free else 'disabled')
         self.speak_button.configure(state='normal' if free and self.history else 'disabled')
         self.stop_button.configure(state='normal' if not free else 'disabled')
         self.meeting_stop.configure(state='normal' if self.meeting_active else 'disabled')
@@ -254,7 +257,7 @@ class Conversation(CompanionWindow):
         self.meeting_text.configure(state='normal'); self.meeting_text.delete('1.0','end')
         self.meeting_chunks.clear()
         self.auto_speak.set(False)
-        self.update_hint()
+        self.ai_hint=None; self.update_hint()
         self.status.set('Sessão limpa. Resultados pendentes descartados; registros protegidos preservados.')
         self.refresh()
     def reset_chat(self):
@@ -265,14 +268,34 @@ class Conversation(CompanionWindow):
             self.session.cancel(); self.action_input=None; self.preview.set('')
         super().input_changed(event); self.update_hint(); self.refresh()
     def update_hint(self):
-        self.hint_name=task_hint(self.input.get('1.0','end-1c'))
+        draft=self.input.get('1.0','end-1c')
+        if self.ai_hint and self.ai_hint[0]!=draft: self.ai_hint=None
+        self.hint_name=self.ai_hint[1] if self.ai_hint else task_hint(draft)
         if self.hint_name:
             name=self.hint_name
-            self.hint_text.set('Sugestão de ferramenta: '+NAMES[name]+'\n'+HELP[name][0])
+            self.hint_text.set(('Sugestão da IA local: ' if self.ai_hint else 'Sugestão de ferramenta: ')+NAMES[name]+'\n'+HELP[name][0])
             if not self.hint_panel.winfo_manager():
                 self.hint_panel.pack(fill='x',pady=(5,0),before=self.input)
         else:
             self.hint_panel.pack_forget()
+    def route_tool(self):
+        if self.busy or self.meeting_active or self.capture_timer is not None: return
+        original=self.input.get('1.0','end-1c')
+        try:
+            text=validate_message(original)
+            if len(text)>1000: raise ValueError('Descreva sua necessidade em até 1.000 caracteres.')
+        except ValueError as exc: self.status.set(str(exc)); return
+        if task_hint(original):
+            self.update_hint(); self.status.set('Confira a sugestão local. Nenhuma ferramenta foi aberta.'); return
+        if not self.model.get().strip():
+            if not self.ai_open: self.toggle_ai_settings()
+            self.configure_ai(); return
+        model=self.model.get().strip()
+        if not self.authorize(COMPANION_CHAT,'Enviar somente este pedido ao modelo local para recomendar uma ferramenta? Não inclui histórico, tela ou arquivos.'): return
+        if original!=self.input.get('1.0','end-1c') or model!=self.model.get().strip(): return
+        self.ai_hint=None; self.update_hint()
+        if self.start(COMPANION_CHAT,lambda:(original,model,recommend_tool(model,text)),kind='route'):
+            self.status.set('Procurando uma ferramenta adequada. Nenhuma ação será executada.')
     def open_hint(self):
         if not self.hint_name or self.busy or self.meeting_active:
             return
@@ -294,6 +317,8 @@ class Conversation(CompanionWindow):
                 break
     def permissions_changed(self):
         self.session.cancel(); self.action_input=None; self.preview.set('')
+        if not self.hub.permissions.allowed(COMPANION_CHAT):
+            self.ai_hint=None; self.update_hint()
         if not self.hub.permissions.allowed(COMPANION_SCREEN): self.discard_screen()
         if self.meeting_active and not self.hub.permissions.allowed(COMPANION_MIC): self.stop_meeting()
         super().permissions_changed()
@@ -433,7 +458,7 @@ class Conversation(CompanionWindow):
         super().stop()
         if self.hub.root.state()=='withdrawn': self.hub.root.deiconify()
     def poll(self):
-        if self.kind not in ('screen','vision','meeting','models'): return super().poll()
+        if self.kind not in ('screen','vision','meeting','models','route'): return super().poll()
         self.timer=None
         if self.closed: return
         try: job,ok,result=self.results.get_nowait()
@@ -442,7 +467,16 @@ class Conversation(CompanionWindow):
         kind=self.kind
         if kind=='screen': self.hub.root.deiconify()
         valid=job==self.job and self.hub.permissions.allowed(self.cap)
-        if valid and kind=='models':
+        if valid and kind=='route':
+            if ok:
+                original,model,name=result
+                if original==self.input.get('1.0','end-1c') and model==self.model.get().strip():
+                    self.ai_hint=(original,name) if name else None
+                    self.update_hint()
+                    self.status.set('Confira a ferramenta sugerida.' if name else 'Nenhuma ferramenta adequada encontrada. Você pode conversar normalmente.')
+                else: self.status.set('Pedido ou modelo alterado. Sugestão descartada.')
+            else: self.status.set('Não foi possível obter uma sugestão válida do modelo local.')
+        elif valid and kind=='models':
             if ok and result:
                 self.model_entry.configure(values=result)
                 if len(result)==1 and not self.model.get().strip(): self.model.set(result[0])
