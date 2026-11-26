@@ -44,6 +44,8 @@ O Aeris é um projeto da K&G Vision para criar ferramentas leves, discretas e ú
 
 Edição única gratuita, incluindo o AI Companion opcional (Ollama instalado separadamente).
 
+**Próxima atualização — preparação integrada de IA / Next update — integrated AI setup:** implementação disponível no candidato, em validação. O instalador publicado ainda exige configuração manual. O novo assistente oferece instalação oficial do Ollama via WinGet, escolha entre modelo leve de texto (~1 GB) e modelo multimodal (~3,2 GB), download autorizado, configuração local e teste de saudação. Voz e áudio interno têm requisitos próprios; WinGet e espaço suficiente são necessários. / Integrated optional setup is implemented in the candidate and under validation; the public installer still requires manual configuration. The new workflow offers consent-based Ollama installation via WinGet, local model selection and download, and a synthetic greeting test. Voice and internal audio have separate requirements. [Validação / Validation](https://github.com/Kgasil/aeris/actions/runs/45894745423) · [Documentação / Documentation](https://github.com/Kgasil/aeris/blob/c2320ddb124bae6a904b9997dd7003769efbd213/desktop/AI-SETUP.md).
+
 ### Catálogo de protótipos
 
 | Categoria | Ferramentas previstas |
