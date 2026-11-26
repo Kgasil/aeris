@@ -23,6 +23,13 @@ Light · Modular · Privacy-conscious
 
 ## Português
 
+### Instalação simples — Desktop Windows x64
+
+[**Acessar downloads do Aeris**](https://kgasil.github.io/aeris/#instalacao) · [Compilações de teste](https://github.com/Kgasil/aeris/actions/workflows/aeris-windows-installer-preview.yml) · [Checklist de lançamento](validation/desktop-release-checklist.md)
+
+O instalador experimental Setup.exe já passou por instalação, reinstalação e desinstalação no Windows Server 2022. Ele inclui o runtime: não exige Python ou terminal. Na prévia atual, baixe o artefato de CI e extraia o Setup.exe; depois abra e confirme a instalação. A publicação permanente do .exe foi preparada e exige revisão de licenças/redistribuição e confiança documentada. O site exibirá o botão direto assim que a prévia for publicada. Sem assinatura digital; use dados fictícios. Windows 10/11 e versão estável ainda pendentes.
+
+
 O Aeris é um projeto da K&G Vision para criar ferramentas leves, discretas e úteis ao cotidiano. A proposta reúne um aplicativo desktop para Windows e uma extensão para navegadores Chromium, com módulos opcionais e processamento local sempre que possível.
 
 **Situação atual: extensão 1.0.0 publicada para instalação manual; Desktop 1.0.0rc1 em prévia pública de código-fonte.** 50 protótipos desktop foram construídos localmente. O website oferece seis demonstrações interativas; a branch `develop` ainda contém a versão inicial 0.1.0a4. O pacote completo está disponível abaixo; o instalador final permanece pendente.
@@ -57,6 +64,9 @@ Os 50 protótipos locais foram consolidados no candidato de código-fonte. Não 
 - Validação contínua; a extensão 1.0.0 está disponível para instalação manual, sem alegação de desempenho certificado.
 
 ## English
+
+[**Aeris Desktop downloads**](https://kgasil.github.io/aeris/#instalacao) · [Test builds](https://github.com/Kgasil/aeris/actions/workflows/aeris-windows-installer-preview.yml) · [Release checklist](validation/desktop-release-checklist.md). The experimental Setup.exe bundles the runtime; no Python or terminal required. The current test artifact requires extraction. A permanent direct executable download is gated on documented redistribution and trust review; the website reveals the direct link only when the preview asset is published. Unsigned preview; use synthetic data only. Windows 10/11 and stable release remain pending.
+
 
 Aeris is designed around one principle: technology should work for you, not interrupt you. Our lightweight Windows desktop prototype and manually distributed Chromium extension aim to make everyday productivity feel effortless with optional modules, on-demand execution, local-first processing where feasible and explicit permissions.
 
@@ -143,7 +153,7 @@ The [fourth run](https://github.com/Kgasil/aeris/actions/runs/45729575816) passe
 
 ## Primeira prévia pública / First public preview
 
-**25/11/2026 · v1.0.0rc1.** [Notas de lançamento](release/rc1-notes.md) · [GitHub Releases](https://github.com/Kgasil/aeris/releases/tag/v1.0.0rc1). Public source preview; experimental binaries remain temporary CI artifacts. Stable binary distribution is blocked pending validation and licensing review.
+**25/11/2026 · v1.0.0rc1.** [Notas de lançamento](release/rc1-notes.md) · [GitHub Releases](https://github.com/Kgasil/aeris/releases/tag/v1.0.0rc1). Public source preview; experimental binaries remain temporary CI artifacts. Stable binary distribution is blocked pending validation and licensing review. A separate opt-in CI publication job is now prepared for an experimental prerelease after documented redistribution and trust review; it does not automatically publish on push.
 
 ## Aeris Extension — 1.0.0
 
