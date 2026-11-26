@@ -1,0 +1,23 @@
+PROJECT AERIS DESKTOP — 1.1.0 RC1 EXPERIMENTAL
+Termos de uso gratuito / Free-use terms
+Revisão de distribuição 1 — minuta para validação, não autoriza publicação.
+
+PORTUGUÊS
+
+K&G Vision disponibiliza esta prévia para instalação e uso gratuitos. Não há conta obrigatória, assinatura ou cobrança. Este aceite não concede licença de redistribuição do código ou das artes próprios, nem limita os direitos que as licenças de terceiros já concedem.
+
+O programa é experimental, sem assinatura digital. Não desative as proteções do Windows. Mantenha cópia de segurança; a desinstalação preserva os dados locais. Não há garantia de funcionamento em todos os equipamentos. Permanecem aplicáveis os direitos legais do usuário, inclusive os que não podem ser excluídos por contrato.
+
+Componentes de terceiros são regidos por suas próprias licenças, preservadas no pacote (PYTHON-LICENSE.txt e NOTICES). Ollama e Tesseract são opcionais, obtidos separadamente.
+
+Código redistribuível Microsoft: mantenha os avisos de direitos autorais, marcas e patentes; não use marcas Microsoft de modo a sugerir autoria ou endosso; não redistribua esse código para executar em plataformas que não sejam sistemas operacionais, runtimes ou plataformas de aplicação Microsoft; não o inclua em programas maliciosos, enganosos ou ilegais. Qualquer redistribuição autorizada deve respeitar as condições aplicáveis da Microsoft e exigir proteção equivalente dos distribuidores e usuários finais. Estas condições específicas não se aplicam ao Python ou ao código próprio do Aeris fora do código Microsoft. Nenhuma autorização adicional de redistribuição é concedida por este documento. As condições completas dos componentes devem ser respeitadas.
+
+ENGLISH
+
+K&G Vision provides this experimental preview for free installation and use. No mandatory account, subscription or fee. Acceptance does not grant permission to redistribute first-party code or artwork, nor restrict rights granted by third-party licenses.
+
+This is an unsigned experimental program. Do not disable Windows protections. Keep backups; uninstall preserves local data. Compatibility with every device is not guaranteed. Mandatory legal rights remain unaffected.
+
+Third-party components are governed by their own licenses preserved in the package (PYTHON-LICENSE.txt and NOTICES). Ollama and Tesseract are optional and obtained separately.
+
+Microsoft Distributable Code: preserve copyright, trademark and patent notices; do not imply Microsoft authorship or endorsement; do not distribute that code to run outside Microsoft operating systems, runtime technologies or application platforms; do not include it in malicious, deceptive or unlawful programs. Any authorized redistribution must comply with applicable Microsoft terms and require equivalent protection from distributors and external end users. These specific restrictions apply to Microsoft Distributable Code, not to Python or first-party Aeris code outside that code. This document grants no additional redistribution rights. Respect the complete applicable component licenses.

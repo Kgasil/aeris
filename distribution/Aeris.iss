@@ -30,6 +30,7 @@ Compression=lzma2
 SolidCompression=yes
 WizardStyle=modern
 InfoBeforeFile=PREVIEW.txt
+LicenseFile=TERMS-REVIEW.txt
 ShowLanguageDialog=auto
 DisableWelcomePage=yes
 DisableReadyPage=yes
@@ -50,6 +51,12 @@ Name: "{autodesktop}\Project Aeris"; Filename: "{app}\Aeris.exe"; WorkingDir: "{
 [Run]
 Filename: "{app}\Aeris.exe"; Description: "{cm:LaunchAeris}"; WorkingDir: "{app}"; Flags: postinstall nowait skipifsilent unchecked runasoriginaluser
 [Code]
+function InitializeSetup(): Boolean;
+begin
+  { Silent deployment requires explicit acceptance of this revision. }
+  Result := not WizardSilent or (ExpandConstant('{param:ACCEPTTERMS|}') = 'RC1-1.1-TERMS1');
+end;
+
 procedure CurPageChanged(CurPageID: Integer);
 begin
   { Preserve the preview disclosure; the tasks page is the final confirmation. }

@@ -1,6 +1,6 @@
 # Upstream notices — candidate Python 3.14.10
 
-Collected from the [CPython 3.14.10 external dependency list](https://github.com/python/cpython/blob/v3.14.10/PCbuild/get_externals.bat) and corresponding upstream versioned sources. These are unmodified upstream texts, not an Aeris license or final redistribution approval. Candidate CI copies the ten .txt files below and the actual Inno Setup 6.7.4 license into NOTICES before computing the manifest.
+Collected from the [CPython 3.14.10 external dependency list](https://github.com/python/cpython/blob/v3.14.10/PCbuild/get_externals.bat) and corresponding upstream versioned sources. These are unmodified upstream texts, not an Aeris license or final redistribution approval. Candidate CI copies the listed upstream .txt files, additional Unicode and LibTomMath notices, and the license of the actual Inno Setup compiler (6.7.1 in the verified 5d40820 candidate) into NOTICES before computing the manifest.
 
 | File | Source |
 |---|---|

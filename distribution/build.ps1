@@ -71,6 +71,7 @@ try {
     if (-not $process.WaitForExit(90000)) { $process.Kill(); throw 'Packaged self-test timed out' }
     if ($process.ExitCode -ne 0) { throw "Packaged self-test failed: $($process.ExitCode)" }
     Copy-Item -LiteralPath (Join-Path $PSScriptRoot 'PREVIEW.txt') -Destination $bundle
+    Copy-Item -LiteralPath (Join-Path $PSScriptRoot 'TERMS-REVIEW.txt') -Destination $bundle
     # Collect third-party notices supplied with the Python environment; build-only dependencies are not shipped wholesale.
     $base = & $python -c 'import sys; print(sys.base_prefix)'
     if ($LASTEXITCODE -ne 0) { throw 'Unable to identify Python installation' }

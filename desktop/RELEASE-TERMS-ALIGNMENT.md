@@ -1,0 +1,9 @@
+# Release terms alignment — Aeris 1.1.0rc1
+
+The public RC5 terms1 preview already includes an explicit acceptance page and a silent-install acceptance parameter. The candidate branch had only an informational page. This change ports the existing bilingual draft terms with the new candidate identifier, includes them in the portable and installed bundle, requires explicit acceptance of this revision for silent installation, and adds a negative CI test that verifies refusal without installation or data creation. Existing user-mode installation path, application ID, uninstall behavior and application code are unchanged.
+
+Sources: [previous terms](https://github.com/Kgasil/aeris/blob/main/validation/installer/RC5-TERMS-REVIEW.txt), [previous installer](https://github.com/Kgasil/aeris/blob/main/validation/installer/Aeris-rc5-terms1.iss), [CPython Windows redistribution conditions](https://github.com/python/cpython/blob/v3.14.10/PC/crtlicense.txt). The draft does not establish legal compliance or grant redistribution rights beyond existing licenses. Owner review still needed.
+
+Prior candidate evidence: https://github.com/Kgasil/aeris/actions/runs/45887990313 . Defender correctly reported skipped setup and ZIP, so package scan remains inconclusive. All previous binary hashes refer only to previous builds. This packaging change requires fresh compile, integrity verification and homologation, including refusal and explicit acceptance. No release gate is newly approved. No release, tag, public site, main or existing installer changed. Never disable protections, bypass warnings or claim complete antivirus clearance.
+
+Portable distribution: terms file accompanies package; no interactive acceptance is implemented for portable execution. Review applicable distribution requirements before making that package public.

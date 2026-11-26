@@ -47,6 +47,15 @@ try {
     $result.checks.package_hashes = 'PASS'
     $exeHash = (Get-Content -LiteralPath (Join-Path $stagePath 'AERIS-EXE-SHA256.txt') -Raw).Trim()
     $setupArgs = @('/SP-',('/DIR="' + $install + '"'),'/TASKS=""')
+    # A silent installer without explicit acceptance must fail before touching data.
+    $denyLog = Join-Path $evidencePath 'terms-refusal.log'
+    $denyArgs = @('/VERYSILENT','/SUPPRESSMSGBOXES','/NORESTART',('/LOG="' + $denyLog + '"')) + $setupArgs
+    $denied = Start-Process -FilePath $setup -ArgumentList $denyArgs -PassThru
+    if (-not $denied.WaitForExit(120000)) { $denied.Kill(); throw 'Terms refusal test timed out' }
+    if ($denied.ExitCode -eq 0 -or (Test-Path -LiteralPath $install) -or (Test-Path -LiteralPath $data)) { throw 'Silent install without explicit terms acceptance was not safely refused' }
+    $result.checks.silent_terms_refusal = 'PASS'
+    # The isolated CI test explicitly accepts this revision for synthetic testing only.
+    $setupArgs += '/ACCEPTTERMS=RC1-1.1-TERMS1'
     Invoke-Installer $setup (Join-Path $evidencePath 'install.log') $setupArgs
     Assert-Hash $exe $exeHash
     $result.checks.install = 'PASS'
@@ -68,6 +77,8 @@ try {
             $count++
         }
         $result.checks.installed_manifest_files = $count
+        Assert-Hash (Join-Path $install 'TERMS-REVIEW.txt') (Get-FileHash -LiteralPath (Join-Path $PSScriptRoot 'TERMS-REVIEW.txt') -Algorithm SHA256).Hash.ToLowerInvariant()
+        $result.checks.installed_terms = 'PASS'
     } finally { $archive.Dispose() }
     if (Test-Path -LiteralPath $data) { throw 'Unexpected data created before synthetic test' }
     New-Item -ItemType Directory -Path $data | Out-Null
