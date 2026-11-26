@@ -1,6 +1,6 @@
 # Aeris Extension 1.0.0 — Como instalar / Installation
 
-**Discreto e Eficiente. · by K&G Vision**
+**Eficiência e Simplicidade. · by K&G Vision**
 
 Extensão gratuita, Manifest V3, com 16 ferramentas. Distribuição manual para avaliação, fora das lojas de extensões. Os ZIPs 1.0.0 estão publicados no GitHub. [**Baixar extensão / Download extension**](https://github.com/Kgasil/aeris/raw/refs/heads/main/downloads/Aeris-Extension-v1.0.0-install.zip) · [Código-fonte completo / Full source](https://github.com/Kgasil/aeris/raw/refs/heads/main/downloads/Aeris-Extension-v1.0.0-completa.zip). Não use arquivos de terceiros.
 
