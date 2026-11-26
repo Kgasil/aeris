@@ -549,6 +549,16 @@ class ExperienceHub(Hub):
         found=super().open_search_result(result)
         if found and result.source=='Ferramentas': self.navigate('catalog')
         return found
+    def open_tool(self,name):
+        super().open_tool(name)
+        if name not in self.tool_buttons or not self.enabled(name):
+            return
+        instance=getattr(self,name.lower()+'_window',None)
+        if not self.alive(instance):
+            return
+        window=instance.window
+        if isinstance(window,tk.Toplevel):
+            window.title('Aeris | '+NAMES.get(name,name))
     def open_friendly(self,name):
         if not self.enabled(name): self.toggle_tool(name)
         if self.enabled(name): self.open_tool(name)
