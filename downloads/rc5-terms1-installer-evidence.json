@@ -1,0 +1,36 @@
+{
+  "version": "1.0.0rc5",
+  "revision": "terms1",
+  "run": 45866232131,
+  "workflow_commit": "33e923f2757fbde48494699dee16c011de7517fb",
+  "conclusion": "success",
+  "artifact_id": 15139892917,
+  "artifact_sha256": "74b6b7f76a3ac5dbc6ce3f926b979c020f001434a30937420664d2d30a069131",
+  "artifact_expires": "2026-12-26T17:16:25Z",
+  "setup": {
+    "name": "Aeris-1.0.0rc5-Windows-x64-Setup-terms1.exe",
+    "bytes": 12795620,
+    "sha256": "f5499cc2383e4d3a0acee8a0d84e173fa1a44a098ac0ba478c1febbcfe4e774b",
+    "signed": false
+  },
+  "terms_sha256": "49b19bcbf14768cc538c5ad60eee195d38bf1f88fbe3c9ffcc2bfbd9f219ff88",
+  "app_exe_sha256": "4cb9ed45a6e9cce9c1f86a9d71e6f915aba987ab3532e034e34bd9300b7d0025",
+  "portable_sha256": "ffbda95354b563e1d6a1b8f90fc43184a197585488c3da8609ac6970ffee9701",
+  "independent_integrity": "PASS",
+  "checks": {
+    "silent_missing_consent": "PASS",
+    "silent_wrong_consent": "PASS",
+    "accepted_install": "PASS",
+    "same_version_reinstall": "PASS",
+    "all_48_bundle_files_identical": "PASS",
+    "installed_terms_hash": "PASS",
+    "packaged_self_test": "PASS",
+    "uninstall": "PASS",
+    "synthetic_data_preserved": "PASS",
+    "interactive_client": "NOT_TESTED"
+  },
+  "owner_declaration": "Authorization to distribute own code/art and free non-commercial purpose confirmed by owner; not independent third-party rights verification.",
+  "license_review": "PENDING",
+  "scan": "PENDING",
+  "release_approved": false
+}
