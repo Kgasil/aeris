@@ -1,5 +1,5 @@
 
-> **Aeris Desktop RC5 — prévia pública experimental gratuita.** [Download, avisos e SHA-256](https://github.com/Kgasil/aeris/releases/tag/aeris-desktop-1.0.0rc5-terms1-preview). Instalador x64 12,80 MB, sem Python externo, conta ou terminal. Sem assinatura digital; scan antimalware válido, Windows cliente e revisão dos termos de terceiros pendentes. Use apenas ambiente descartável e dados fictícios, analise com proteção atualizada e não contorne bloqueios. Não é versão estável.
+> **Aeris Desktop RC5 — prévia pública experimental gratuita.** [Download, avisos e SHA-256](https://github.com/Kgasil/aeris/releases/tag/aeris-desktop-1.0.0rc5-terms1-preview). Instalador x64 12,80 MB, sem Python externo, conta ou terminal. Microsoft Defender: nenhuma ameaça detectada em análise diagnóstica em 26/11/2026. Sem assinatura digital; Windows cliente e revisão dos termos de terceiros pendentes. Use apenas ambiente descartável e dados fictícios, analise com proteção atualizada e não contorne bloqueios. Não é versão estável.
 
 <p align="center"><a href="https://kgasil.github.io/aeris/"><img src="assets/readme-cover.svg" alt="Project Aeris — official project identity" width="760"></a></p>
 
@@ -217,3 +217,5 @@ ZIPs publicados no GitHub. Não publicado nas lojas. / ZIPs published on GitHub.
 ## Disponibilização experimental (26/11/2026)
 
 A pedido explícito do titular, a revisão terms1 foi disponibilizada publicamente para testes. [CI de publicação](https://github.com/Kgasil/aeris/actions/runs/45866976810) confirmou download anônimo e SHA-256. O executável é idêntico ao RC5; somente o instalador recebeu aceite dos termos. Os avisos de revisão pendente permanecem aplicáveis. Sem aprovação estável ou alegação de segurança.
+
+**Defender (26/11/2026):** instalador público exato, ZIP portátil e 47 arquivos do manifesto extraído verificados; nenhuma ameaça detectada. Controle EICAR detectado corretamente, definições 1.463.481.0 atualizadas, hashes pós-scan conferidos. Análise personalizada diagnóstica em Windows Server 2022 CI, sem proteção em tempo real no runner, sem execução do Aeris ou mudança de políticas. [Evidências](downloads/rc5-defender-diagnostic-evidence.json) · [CI](https://github.com/Kgasil/aeris/actions/runs/45867805450). Resultado pontual, não certificação ou garantia de segurança; SmartScreen pode alertar por ausência de assinatura.
