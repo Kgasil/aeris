@@ -6,6 +6,7 @@ on:
     paths:
       - '.github/workflows/aeris-windows-preview.yml'
       - 'downloads/Aeris-Desktop-v1.0.0rc1-fix1-codigo-fonte.zip'
+      - 'validation/test_verify.py'
 permissions:
   contents: read
 concurrency:
@@ -33,6 +34,13 @@ jobs:
           Expand-Archive -LiteralPath $zip -DestinationPath source
           py -3.12-64 -c "import tkinter, sys; assert sys.maxsize > 2**32"
           if ($LASTEXITCODE -ne 0) { throw 'Python x64 verification failed' }
+      - name: Apply tested regression-test compatibility update
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $test = 'validation/test_verify.py'
+          if ((Get-FileHash -LiteralPath $test -Algorithm SHA256).Hash.ToLowerInvariant() -ne 'd54b0258a08369b29559a12275e9071098dd9c750a9d6e2802892691ba3b06ef') { throw 'Regression test hash mismatch' }
+          Copy-Item -LiteralPath $test -Destination 'source/Aeris-Desktop-v1.0.0rc1-fix1/desktop/tests/test_verify.py' -Force
       - name: Build portable preview and run native self-tests
         shell: pwsh
         run: |

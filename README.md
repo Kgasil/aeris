@@ -104,3 +104,7 @@ Windows: Python 3.12 or 3.13 with Tcl/Tk, extract ZIP, open `desktop`, run `py -
 ### Windows compatibility fix 1
 
 The recommended source download now includes the Windows compatibility corrections directly. The first native CI run had 8 failures, 24 errors and 4 skips; the second stopped at patch-file SHA-256 verification before testing. A third run uses the corrected ZIP itself, avoiding checkout newline conversion. See [Windows Actions](https://github.com/Kgasil/aeris/actions). The package is still experimental, not a validated installer.
+
+### Windows CI — regression test compatibility
+
+The third run reached 394 passed, four skipped and one error (399 total). Windows denied replacement of an open file. The next CI run overlays `validation/test_verify.py` onto the verified Fix 1 archive, preserving security assertions and independently testing a completed replacement. Application code and published source ZIP remain unchanged. Local Linux regression: 393 passed, six skipped.
