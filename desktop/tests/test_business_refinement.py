@@ -75,6 +75,10 @@ class BusinessRefinement(TestCase):
         self.assertIn('Cobertura dos registros: 60.00%',report)
         ui.decimal.set(',')
         self.assertIsNone(ui.dataset); self.assertIsNone(ui.summary); self.assertFalse(ui.canvas.find_all())
+        ui.canvas.configure(height=280); self.root.update()
+        self.assertFalse(ui.canvas.find_all(), 'Resize must not redraw an invalidated dataset')
+        ui.render_result(dataset_text('g,v\nC,4\nD,8\n'))
+        self.assertTrue(ui.canvas.find_all(), 'New valid data should draw normally')
     def test_report_rejects_changed_aggregation_before_copy(self):
         ui=self.open('Report')
         for p in (REPORT_READ,REPORT_COPY): self.h.permissions.set(p,True)
