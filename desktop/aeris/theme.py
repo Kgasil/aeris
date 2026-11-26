@@ -3,8 +3,8 @@ import tkinter as tk
 from tkinter import ttk
 
 PALETTES = {
-    'Claro': dict(air='#F6FAF7', soft='#DCEFE3', natural='#8FC7A3', forest='#508D70', deep='#285640', muted='#CFDFD5', field='#FFFFFF', selected='#DCEFE3', select_text='#285640'),
-    'Escuro': dict(air='#172820', soft='#21392C', natural='#8FC7A3', forest='#A5D7B4', deep='#E3F1E7', muted='#456453', field='#101E17', selected='#345641', select_text='#F0FAF3'),
+    'Claro': dict(air='#F0F5F2', soft='#E0ECE5', natural='#8FC7A3', forest='#30694F', deep='#203D30', muted='#B8CEC1', field='#FFFFFF', selected='#DCEFE3', select_text='#285640'),
+    'Escuro': dict(air='#172820', soft='#243D30', natural='#8FC7A3', forest='#A5D7B4', deep='#E3F1E7', muted='#456453', field='#101E17', selected='#345641', select_text='#F0FAF3'),
 }
 
 
@@ -13,12 +13,22 @@ def configure(root, name):
     style = ttk.Style(root)
     style.theme_use('clam')
     style.configure('.', background=p['air'], foreground=p['deep'], fieldbackground=p['field'], bordercolor=p['muted'], troughcolor=p['soft'], lightcolor=p['muted'], darkcolor=p['muted'], font=('Segoe UI', 10))
-    style.configure('TButton', background=p['soft'], padding=5)
+    style.configure('TButton', background=p['soft'], padding=(10,6), borderwidth=1, relief='flat')
     style.map('TButton', background=[('active', p['selected'])], foreground=[('disabled', p['muted'])])
     style.configure('TCheckbutton', background=p['air'])
     style.map('TCheckbutton', background=[('active', p['air'])], foreground=[('disabled', p['muted'])])
     style.configure('TCombobox', selectbackground=p['selected'], selectforeground=p['select_text'])
     style.map('TCombobox', fieldbackground=[('readonly', p['field'])], foreground=[('readonly', p['deep'])])
+    style.configure('TEntry', padding=(7,5))
+    style.configure('TCombobox', padding=(7,5))
+    style.configure('TNotebook', borderwidth=0)
+    style.configure('TNotebook.Tab', padding=(12,7))
+    style.map('TNotebook.Tab', background=[('selected',p['field']),('active',p['selected'])])
+    style.configure('TLabelframe', padding=8, borderwidth=1, relief='solid')
+    style.configure('TLabelframe.Label', font=('Segoe UI',10,'bold'), foreground=p['deep'])
+    style.configure('Treeview', rowheight=26, background=p['field'], fieldbackground=p['field'], foreground=p['deep'])
+    style.configure('Treeview.Heading', font=('Segoe UI',10,'bold'), padding=(6,5))
+    style.map('Treeview', background=[('selected',p['selected'])], foreground=[('selected',p['select_text'])])
     style.configure('Aeris.TCombobox', padding=5)
     root.option_add('*TCombobox*Listbox.background', p['field'])
     root.option_add('*TCombobox*Listbox.foreground', p['deep'])
