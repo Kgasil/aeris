@@ -1,0 +1,41 @@
+name: Aeris desktop experience validation
+on:
+  push:
+    branches: [desktop-experience]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  regression:
+    if: github.ref == 'refs/heads/desktop-experience'
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-latest, ubuntu-latest]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: desktop
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Prepare virtual display
+        if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y xvfb xauth python3-tk
+      - name: Compile Python sources
+        run: python -m compileall -q aeris tests main.py
+      - name: Windows regression
+        if: runner.os == 'Windows'
+        run: python -m unittest discover -s tests -v
+      - name: Linux regression
+        if: runner.os == 'Linux'
+        run: xvfb-run -a python -m unittest discover -s tests -v
+      - name: Windows integrated UI smoke test
+        if: runner.os == 'Windows'
+        run: python -c "from aeris.distribution import self_test; self_test(full=True)"
+      - name: Linux integrated UI smoke test
+        if: runner.os == 'Linux'
+        run: xvfb-run -a python -c "from aeris.distribution import self_test; self_test(full=True)"
