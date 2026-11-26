@@ -31,6 +31,18 @@
   },
   "owner_declaration": "Authorization to distribute own code/art and free non-commercial purpose confirmed by owner; not independent third-party rights verification.",
   "license_review": "PENDING",
-  "scan": "PENDING",
+  "scan": {
+    "run": 45866416436,
+    "artifact_id": 15139968195,
+    "artifact_sha256": "eeb5842b31fb7b7e3025dec554ebc1e7f0fae29edc5ff683171e606ac7e022ae",
+    "integrity": "PASS",
+    "engine": "ClamAV 1.5.4",
+    "daily": 28194,
+    "build_utc": "2026-11-25T06:26:00Z",
+    "database_signature": "PASS",
+    "freshness": "FAIL",
+    "status": "NOT_TESTED",
+    "reason": "Official updater still supplied a database more than 24 hours old; scan step skipped."
+  },
   "release_approved": false
 }
