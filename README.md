@@ -64,7 +64,7 @@ One free edition, including optional AI, with no ads or mandatory Aeris account,
 
 Open `index.html` in a browser. No build step or backend is needed. The website uses GitHub Pages from `main` at `/ (root)`. The early desktop source is in `develop`; `demo.html` and `assets/web-lab.js` power the browser lab.
 
-## Ecosystem / Ecossistema — Marco 1.0
+## GRAAL — Ecosystem / Ecossistema · Marco 01
 
 | Project | Website | Repository | Current stage / Etapa atual |
 | --- | --- | --- | --- |
