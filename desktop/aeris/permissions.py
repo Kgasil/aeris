@@ -49,7 +49,9 @@ COMPANION_CHAT = 'companion.chat'
 COMPANION_MIC = 'companion.mic'
 COMPANION_SPEAK = 'companion.speak'
 COMPANION_SCREEN = 'companion.screen'
+MEETING_LOOPBACK = 'meeting.loopback'
 CAPABILITIES = {
+    MEETING_LOOPBACK: ('Reuniões → Áudio interno', 'Capturar em blocos a saída de áudio padrão do Windows após consentimento, incluindo outros sons do sistema. Transcrever localmente sem salvar áudio em arquivo.'),
     COMPANION_SCREEN: ('Assistente → Tela', 'Capturar a tela principal após ação explícita, ou iniciar acompanhamento autorizado de até 5 minutos e 20 capturas. Enviar somente a imagem revisada ao modelo local de visão mediante confirmação separada.'),
     INTEGRATION_RUN: ('Integrações entre ferramentas', 'Transferir registros salvos entre Meeting, Checklist, Reminder, Learn, Flashcards e Research após prévia e confirmação.'),
     COMPANION_CHAT: ('Assistente → IA local', 'Enviar mensagens e histórico da conversa ou uma solicitação isolada de sugestão de comando ao servidor Ollama local.'),
