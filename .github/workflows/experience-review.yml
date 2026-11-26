@@ -1,0 +1,73 @@
+name: Aeris Experience source and interface review
+on:
+  push:
+    branches: [desktop-experience]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  review:
+    runs-on: windows-2022
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065
+        with:
+          python-version: '3.14.10'
+      - name: Test new experience and existing regressions
+        shell: pwsh
+        run: |
+          $ErrorActionPreference='Stop'
+          New-Item -ItemType Directory -Path evidence | Out-Null
+          $e=(Resolve-Path evidence).Path
+          Push-Location desktop
+          try {
+            py -3.14-64 -m compileall -q aeris
+            if ($LASTEXITCODE -ne 0) {throw 'Compilation failed'}
+            py -3.14-64 -m unittest -v tests.test_experience 2>&1 | Tee-Object -FilePath "$e/experience-tests.log"
+            if ($LASTEXITCODE -ne 0) {throw 'Experience tests failed'}
+            py -3.14-64 -m unittest discover -v 2>&1 | Tee-Object -FilePath "$e/regression.log"
+            if ($LASTEXITCODE -ne 0) {throw 'Regression failed'}
+            if (Select-String -Path "$e/experience-tests.log","$e/regression.log" -Pattern 'Exception in Tkinter callback|main thread is not in main loop|Tcl_AsyncDelete' -Quiet) {throw 'Tk lifecycle error'}
+          } finally {Pop-Location}
+      - name: Capture actual new interface with synthetic content
+        shell: pwsh
+        run: |
+          $ErrorActionPreference='Stop'
+          $env:AERIS_EVIDENCE=(Resolve-Path evidence).Path
+          Push-Location desktop
+          try {
+            @'
+          import os, tempfile, tkinter as tk, time
+          from pathlib import Path
+          from aeris.experience import ExperienceHub
+          from aeris.settings import Settings
+          from aeris.screen_context import capture_process, read_capture
+          with tempfile.TemporaryDirectory() as d:
+              root=tk.Tk()
+              hub=ExperienceHub(root,Settings(Path(d)/"settings.json"))
+              root.geometry("1240x800+10+10")
+              root.update()
+              root.lift()
+              root.update()
+              time.sleep(.5)
+              root.update()
+              data=read_capture(capture_process())
+              Path(os.environ["AERIS_EVIDENCE"],"experience-home.png").write_bytes(data)
+              hub.navigate("catalog")
+              root.update()
+              time.sleep(.3)
+              root.update()
+              Path(os.environ["AERIS_EVIDENCE"],"experience-catalog.png").write_bytes(read_capture(capture_process()))
+              root.destroy()
+          '@ | py -3.14-64 -
+            if ($LASTEXITCODE -ne 0) {throw 'Interface capture failed'}
+          } finally {Pop-Location}
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: aeris-experience-review
+          path: evidence/
+          if-no-files-found: warn
