@@ -10,9 +10,9 @@ class FlashcardsWindow:
         self.revealed = False; self.reviewed_card=None
         self.window = tk.Toplevel(hub.root); self.window.title('Aeris Flashcards'); self.window.geometry('800x740'); self.window.minsize(620,620)
         self.window.protocol('WM_DELETE_WINDOW',self.close); self.window.bind('<Escape>',lambda _: self.close())
-        f=ttk.Frame(self.window,padding=12); f.pack(fill='both',expand=True)
-        ttk.Label(f,text='Aeris Flashcards',font=('Segoe UI',18)).pack(anchor='w')
-        ttk.Label(f,text='Revisão espaçada nesta sessão. Nenhum cartão é salvo em disco.').pack(anchor='w')
+        f=ttk.Frame(self.window,padding=18); f.pack(fill='both',expand=True)
+        ttk.Label(f,text='Cartões de estudo',font=('Segoe UI',21,'bold')).pack(anchor='w')
+        ttk.Label(f,text='Pratique perguntas e respostas com revisão espaçada. Cartões mantidos nesta sessão.').pack(anchor='w')
         self.query=tk.StringVar(self.window); self.deck_filter=tk.StringVar(self.window); self.due_only=tk.BooleanVar(self.window)
         bar=ttk.Frame(f); bar.pack(fill='x',pady=5)
         ttk.Label(bar,text='Busca').pack(side='left'); ttk.Entry(bar,textvariable=self.query,width=18).pack(side='left',fill='x',expand=True)
@@ -28,18 +28,18 @@ class FlashcardsWindow:
         sb=ttk.Scrollbar(area,command=self.tree.yview); self.tree.configure(yscrollcommand=sb.set); self.tree.pack(side='left',fill='both',expand=True); sb.pack(side='right',fill='y')
         bar=ttk.Frame(f); bar.pack(fill='x',pady=4)
         ttk.Button(bar,text='Editar selecionado',command=self.load_selected).pack(side='left',padx=2)
-        ttk.Button(bar,text='Revisar próximo disponível',command=self.start_review).pack(side='left',padx=2)
+        ttk.Button(bar,text='Começar revisão',command=self.start_review,style='Aeris.Primary.TButton').pack(side='left',padx=2)
         self.tabs=ttk.Notebook(f); self.tabs.pack(fill='both',expand=True)
-        edit=ttk.Frame(self.tabs,padding=8); review=ttk.Frame(self.tabs,padding=8); self.tabs.add(edit,text='Cadastro'); self.tabs.add(review,text='Revisão'); self.review_tab=review; self.edit_tab=edit
+        edit=ttk.Frame(self.tabs,padding=8); review=ttk.Frame(self.tabs,padding=8); self.tabs.add(edit,text='Criar cartão'); self.tabs.add(review,text='Estudar'); self.review_tab=review; self.edit_tab=edit
         self.deck=tk.StringVar(self.window,'Geral'); self.editor_label=tk.StringVar(self.window,'Novo cartão')
         ttk.Label(edit,textvariable=self.editor_label,font=('Segoe UI',12,'bold')).pack(anchor='w')
         ttk.Label(edit,text='Baralho').pack(anchor='w'); ttk.Entry(edit,textvariable=self.deck).pack(fill='x')
         for label,attr in [('Pergunta','question'),('Resposta','answer')]:
-            ttk.Label(edit,text=label).pack(anchor='w'); text=tk.Text(edit,height=3,wrap='word'); text.pack(fill='both',expand=True); setattr(self,attr,text)
+            ttk.Label(edit,text=label).pack(anchor='w'); text=tk.Text(edit,height=3,wrap='word',padx=10,pady=8,relief='flat',highlightthickness=1); text.pack(fill='both',expand=True); setattr(self,attr,text)
         bar=ttk.Frame(edit); bar.pack(fill='x',pady=4)
-        for label,cmd in [('Novo / limpar',self.new),('Salvar',self.save),('Excluir aberto',self.delete)]: ttk.Button(bar,text=label,command=cmd).pack(side='left',fill='x',expand=True,padx=2)
-        self.review_text=tk.Text(review,height=9,wrap='word',state='disabled'); self.review_text.pack(fill='both',expand=True)
-        self.reveal_button=ttk.Button(review,text='Mostrar resposta',command=self.reveal,state='disabled'); self.reveal_button.pack(fill='x',pady=4)
+        for label,cmd in [('Novo / limpar',self.new),('Salvar',self.save),('Excluir aberto',self.delete)]: ttk.Button(bar,text=label,command=cmd,style='Aeris.Primary.TButton' if label=='Salvar' else 'TButton').pack(side='left',fill='x',expand=True,padx=2)
+        self.review_text=tk.Text(review,height=9,wrap='word',state='disabled',font=('Segoe UI',12),padx=16,pady=14,relief='flat',highlightthickness=1); self.review_text.pack(fill='both',expand=True)
+        self.reveal_button=ttk.Button(review,text='Mostrar resposta',command=self.reveal,style='Aeris.Primary.TButton',state='disabled'); self.reveal_button.pack(fill='x',pady=4)
         bar=ttk.Frame(review); bar.pack(fill='x'); self.rating_buttons=[]
         for rating in RATINGS:
             b=ttk.Button(bar,text=rating,command=lambda r=rating:self.rate(r),state='disabled'); b.pack(side='left',fill='x',expand=True,padx=2); self.rating_buttons.append(b)
