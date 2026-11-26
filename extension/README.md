@@ -4,7 +4,7 @@
 
 Extensão gratuita, Manifest V3, com 16 ferramentas. Distribuição manual para avaliação, fora das lojas de extensões. Os ZIPs 1.0.0 estão publicados no GitHub. [**Baixar extensão / Download extension**](https://github.com/Kgasil/aeris/raw/refs/heads/main/downloads/Aeris-Extension-v1.0.0-install.zip) · [Código-fonte completo / Full source](https://github.com/Kgasil/aeris/raw/refs/heads/main/downloads/Aeris-Extension-v1.0.0-completa.zip). Não use arquivos de terceiros.
 
-**Marco 1.0 do Project Aeris:** esta versão refere-se à extensão; o Desktop permanece em 1.0.0rc1. [Visão geral do projeto](../README.md).
+**Marco 1.0 do Project Aeris:** esta versão refere-se à extensão; o código-fonte público Desktop permanece em RC1, e o candidato RC4 foi validado em CI; lançamento estável adiado. [Visão geral do projeto](../README.md).
 
 ## Chrome
 
