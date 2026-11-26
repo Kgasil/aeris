@@ -44,3 +44,15 @@ altgraph 0.17.5; packaging 26.4; pefile 2024.8.26; pip 25.0.1; pyinstaller 6.19.
 4. Manter o gate de publicação fechado. Não usar este arquivo como referência de aprovação; ele registra lacunas, não uma liberação.
 
 Conclusão: inventário histórico produzido, hashes conferidos, lacunas identificadas. Revisão final de componentes incorporados, direitos e termos próprios permanece aberta. A etapa 02 (instalador simplificado) pode avançar de forma independente sem publicar binários.
+
+## Etapa 04 — novo instalador simplificado (26/11/2026)
+
+[Run 45844861678](https://github.com/Kgasil/aeris/actions/runs/45844861678), artifact 15130517282: [evidência e hashes](../downloads/windows-simplified-preview-evidence.json). O arquivo externo, o Setup.exe, o ZIP portátil, o executável interno e todos os 1.002 arquivos do manifesto foram verificados independentemente após download. Comparação de manifestos com o artefato histórico: nenhuma entrada adicionada ou removida; somente Aeris.exe e _internal/base_library.zip mudaram. Os 68 binários e seis avisos continuam presentes. Portanto, as lacunas de licença da etapa 01 permanecem; não há aprovação implícita por igualdade de inventário.
+
+- Setup.exe e Aeris.exe não possuem tabela de certificados PE; a CI também relata NotSigned para Aeris.exe. Não há comprovação de assinatura. Não contornar SmartScreen/Defender.
+- Log de instalação: modo administrativo **No**, raiz HKEY_CURRENT_USER, modo 64-bit **Yes**. A conta da CI tinha privilégios administrativos; teste com usuário comum em Windows 10/11 permanece pendente.
+- A CI comprovou instalação, reinstalação, desinstalação, atalhos, ausência de abertura silenciosa e preservação de dados fictícios. Não comprova segurança completa, instalação interativa ou atualização entre versões.
+- Não foi realizado malware scan: ambiente sem scanner configurado e atualizado. A análise estática de integridade não substitui antivírus ou análise de vulnerabilidades.
+- Publicação deve usar **exatamente** os bytes revisados, sem recompilar depois da aprovação. Registrar SHA-256 do artefato e dos dois downloads, evidência de scanner, licença/avisos e decisão de assinatura vinculada àquele artefato. Um campo de texto genérico não constitui aprovação.
+
+Status: revisão técnica inicial concluída; autorização de redistribuição, análise de vulnerabilidades/malware e decisão formal de confiança continuam pendentes. Não publicar a prévia permanente até fechar esses gates.
