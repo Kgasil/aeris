@@ -1,1 +1,2 @@
+22e8843c3f823d4358766ad44905d5e13265cb47ab36dc10dbb42fc3760c9153  Aeris-Desktop-v1.0.0rc1-fix1-codigo-fonte.zip
 719a258eb08c7a795ae70f4fd616c2fbb54f9736f86046a3a33a6e86e02424af  Aeris-Desktop-v1.0.0rc1-codigo-fonte.zip

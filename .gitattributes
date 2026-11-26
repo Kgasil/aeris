@@ -1,0 +1,2 @@
+validation/*.py text eol=lf
+downloads/*.zip binary

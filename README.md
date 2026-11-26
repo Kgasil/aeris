@@ -34,7 +34,7 @@ Edição única gratuita, incluindo o AI Companion opcional (Ollama instalado se
 | Files | Documents, Organizer, Drop, Compare, Lens |
 | Security | Privacy, Link, Verify, Permissions, Metadata |
 
-Os 50 protótipos locais foram consolidados no candidato de código-fonte. Não é uma versão Windows validada. 392 testes unitários e 60 scripts gráficos passaram em Linux; seis testes nativos Windows permanecem pendentes. [Estado da versão candidata](https://kgasil.github.io/aeris/release-status.html).
+Os 50 protótipos locais foram consolidados no candidato de código-fonte. Não é uma versão Windows validada. 393 testes unitários e 60 scripts gráficos passaram em Linux; a revalidação nativa Windows permanece pendente. [Estado da versão candidata](https://kgasil.github.io/aeris/release-status.html).
 
 ### Princípios de desenvolvimento
 
@@ -90,13 +90,17 @@ Official visual lockup: **K&G** above **Vision**; individual project symbols are
 
 ## Release preparation / Preparação de lançamento — 1.0.0rc1
 
-The local source candidate has 50 tools. 392 unit tests and 60 graphical scripts passed on Linux; six Windows-only tests were skipped. No Windows installer has been compiled or validated, and the complete source package is now available in `downloads/`. The public Web Lab and complete source ZIP are available. The browser extension is a separate project stage.
+The local source candidate has 50 tools. 393 unit tests and 60 graphical scripts passed on Linux; six Windows-only tests were skipped in Linux. No Windows installer has been compiled or validated, and the complete source package is now available in `downloads/`. The public Web Lab and complete source ZIP are available. The browser extension is a separate project stage.
 
 [Release status / Estado da versão](https://kgasil.github.io/aeris/release-status.html)
 
 ### Download do candidato / Source candidate download
 
-- [ZIP completo / Complete ZIP](https://github.com/Kgasil/aeris/raw/refs/heads/main/downloads/Aeris-Desktop-v1.0.0rc1-codigo-fonte.zip)
+- [ZIP completo / Complete ZIP](https://github.com/Kgasil/aeris/raw/refs/heads/main/downloads/Aeris-Desktop-v1.0.0rc1-fix1-codigo-fonte.zip)
 - [SHA-256](downloads/SHA256SUMS.txt)
 
-Windows: Python 3.12 or 3.13 with Tcl/Tk, extract ZIP, open `desktop`, run `py -3 main.py`. See included `distribution/build.ps1` for build instructions. Test with dummy data; no native Windows validation yet.
+Windows: Python 3.12 or 3.13 with Tcl/Tk, extract ZIP, open `desktop`, run `py -3 main.py`. See included `distribution/build.ps1` for build instructions. Test with dummy data; native Windows validation is not yet approved.
+
+### Windows compatibility fix 1
+
+The recommended source download now includes the Windows compatibility corrections directly. The first native CI run had 8 failures, 24 errors and 4 skips; the second stopped at patch-file SHA-256 verification before testing. A third run uses the corrected ZIP itself, avoiding checkout newline conversion. See [Windows Actions](https://github.com/Kgasil/aeris/actions). The package is still experimental, not a validated installer.

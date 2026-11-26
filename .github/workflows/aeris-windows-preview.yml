@@ -5,8 +5,7 @@ on:
     branches: [main]
     paths:
       - '.github/workflows/aeris-windows-preview.yml'
-      - 'downloads/Aeris-Desktop-v1.0.0rc1-codigo-fonte.zip'
-      - 'validation/windows-fix1.py'
+      - 'downloads/Aeris-Desktop-v1.0.0rc1-fix1-codigo-fonte.zip'
 permissions:
   contents: read
 concurrency:
@@ -28,34 +27,26 @@ jobs:
         shell: pwsh
         run: |
           $ErrorActionPreference = 'Stop'
-          $zip = 'downloads/Aeris-Desktop-v1.0.0rc1-codigo-fonte.zip'
-          $expected = '719a258eb08c7a795ae70f4fd616c2fbb54f9736f86046a3a33a6e86e02424af'
+          $zip = 'downloads/Aeris-Desktop-v1.0.0rc1-fix1-codigo-fonte.zip'
+          $expected = '22e8843c3f823d4358766ad44905d5e13265cb47ab36dc10dbb42fc3760c9153'
           if ((Get-FileHash -LiteralPath $zip -Algorithm SHA256).Hash.ToLowerInvariant() -ne $expected) { throw 'Source hash mismatch' }
           Expand-Archive -LiteralPath $zip -DestinationPath source
           py -3.12-64 -c "import tkinter, sys; assert sys.maxsize > 2**32"
           if ($LASTEXITCODE -ne 0) { throw 'Python x64 verification failed' }
-      - name: Apply reviewed Windows compatibility fix
-        shell: pwsh
-        run: |
-          $ErrorActionPreference = 'Stop'
-          $patch = 'validation/windows-fix1.py'
-          if ((Get-FileHash -LiteralPath $patch -Algorithm SHA256).Hash.ToLowerInvariant() -ne '6f3a0811fa8dfa6333866f1771562e727a2c140430015e5e7f13a1404e3248f0') { throw 'Patch hash mismatch' }
-          py -3.12-64 $patch source/Aeris-Desktop-v1.0.0rc1
-          if ($LASTEXITCODE -ne 0) { throw 'Patch application failed' }
       - name: Build portable preview and run native self-tests
         shell: pwsh
         run: |
           $ErrorActionPreference = 'Stop'
-          & .\source\Aeris-Desktop-v1.0.0rc1\distribution\build.ps1 -PortableOnly
+          & .\source\Aeris-Desktop-v1.0.0rc1-fix1\distribution\build.ps1 -PortableOnly
       - name: Collect unsigned test artifacts
         shell: pwsh
         run: |
           $ErrorActionPreference = 'Stop'
-          $out = 'source/Aeris-Desktop-v1.0.0rc1/distribution/out'
+          $out = 'source/Aeris-Desktop-v1.0.0rc1-fix1/distribution/out'
           $dirs = @(Get-ChildItem -LiteralPath $out -Directory)
           if ($dirs.Count -ne 1) { throw 'Expected exactly one build' }
           $stage = $dirs[0].FullName
-          $root = 'source/Aeris-Desktop-v1.0.0rc1'
+          $root = 'source/Aeris-Desktop-v1.0.0rc1-fix1'
           $exe = Join-Path $stage 'dist/Aeris/Aeris.exe'
           $hash = (Get-Content -LiteralPath (Join-Path $stage 'AERIS-EXE-SHA256.txt') -Raw).Trim()
           $report = & "$root/distribution/validate-windows.ps1" -AerisExe $exe -ExpectedExeSha256 $hash -Mode Portable -ConfirmTestVM
