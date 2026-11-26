@@ -45,7 +45,7 @@ def self_test(full=False):
     import tempfile
     from pathlib import Path
     import tkinter as tk
-    from aeris.hub import Hub
+    from aeris.experience import ExperienceHub
     from aeris.registry import load_catalog
     from aeris.settings import Settings
     modules = load_catalog()
@@ -57,11 +57,17 @@ def self_test(full=False):
             root.withdraw()
             errors = []
             root.report_callback_exception = lambda kind, value, tb: errors.append(value)
-            hub = Hub(root, Settings(Path(directory) / 'settings.json'))
+            hub = ExperienceHub(root, Settings(Path(directory) / 'settings.json'))
             root.update_idletasks()
             root.update()
             if len(hub.modules) != 50:
                 raise RuntimeError('Incomplete Hub')
+            if not hub.conversation.idle():
+                raise RuntimeError('Unexpected activity on startup')
+            for view in ('screen','notes','meeting','catalog','chat'):
+                hub.navigate(view)
+                root.update()
+                if hub.view != view: raise RuntimeError('Navigation failed: '+view)
             if full:
                 # Opening windows only: no clipboard, external files, audio, AI or user records.
                 from dataclasses import replace
