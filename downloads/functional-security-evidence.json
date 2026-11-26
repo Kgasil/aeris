@@ -1,0 +1,25 @@
+{
+  "run": 45862942949,
+  "commit": "6a9606c70dddfbb5bb7317ec881870ee58f18605",
+  "artifact_id": 15139865063,
+  "artifact_sha256": "e71c1bf88a85e2060532ea444945db230dab008f98457d6fcb791bf4b76c075f",
+  "independent_digest": "PASS",
+  "changed_source_hashes_verified": 54,
+  "new_tests": {
+    "passed": 7,
+    "skipped": 0,
+    "seconds": 5.362,
+    "unraisable_tk_cleanup_exceptions": 2
+  },
+  "full_regression": {
+    "total": 477,
+    "passed": 473,
+    "skipped": 4,
+    "failures": 0,
+    "seconds": 30.343
+  },
+  "smokes": 54,
+  "smokes_result": "PASS",
+  "scope": "Source/Tk on Windows Server 2022, no packaged executable or Windows client. Security targeted test log includes two Variable.__del__ RuntimeError messages; investigate fixture lifecycle before final approval.",
+  "release_approved": false
+}
