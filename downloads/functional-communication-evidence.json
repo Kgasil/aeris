@@ -1,0 +1,24 @@
+{
+  "run": 45858787976,
+  "commit": "09a6c26451fc15c21380f23b90ac848474d3c662",
+  "artifact_id": 15137795338,
+  "artifact_sha256": "32763eeeb83cce786500dfe2a71604ef5c47b5b43dbd1f432e1309a0b7807b4e",
+  "independent_digest": "PASS",
+  "changed_source_hashes_verified": 25,
+  "new_tests": {
+    "passed": 6,
+    "skipped": 0,
+    "seconds": 2.924
+  },
+  "full_regression": {
+    "total": 443,
+    "passed": 439,
+    "skipped": 4,
+    "failures": 0,
+    "seconds": 20.99
+  },
+  "smokes": 29,
+  "smokes_result": "PASS",
+  "scope": "Cumulative source overlays and real Tk in Windows Server 2022 CI; synthetic data and intercepted external effects; not packaged or Windows client certification",
+  "release_approved": false
+}
