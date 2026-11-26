@@ -1,0 +1,63 @@
+{
+  "run": 45851073073,
+  "commit": "99bfd8bbd8150e3e602105f36e8156a316101f74",
+  "independent_artifact_digest_checks": "PASS",
+  "packaged": {
+    "artifact_id": 15134406762,
+    "sha256": "ad43f9cf6479afd084e3151789bc2bdc759fb94e7d3f4d8d0495bbe11ea1a3eb",
+    "rc2_exe_sha256": "1cfc9f494feb5d5b15646fef4c1dbbe6490377326abf59a309e0c56e4db551a4",
+    "manifest_files": 91,
+    "os": "Windows Server 2022 Datacenter",
+    "build": 20348,
+    "logical_processors": 4,
+    "ram_bytes": 17174360064,
+    "samples": [
+      {
+        "startup_seconds": 1.135,
+        "idle_cpu_percent_one_core": 0,
+        "peak_sampled_working_set_bytes": 41414656,
+        "shutdown_seconds": 0.053
+      },
+      {
+        "startup_seconds": 0.229,
+        "idle_cpu_percent_one_core": 0,
+        "peak_sampled_working_set_bytes": 41549824,
+        "shutdown_seconds": 0.057
+      },
+      {
+        "startup_seconds": 0.225,
+        "idle_cpu_percent_one_core": 0,
+        "peak_sampled_working_set_bytes": 41664512,
+        "shutdown_seconds": 0.048
+      }
+    ],
+    "status": "PASS",
+    "scope": "Fresh process launches, not cold OS boot; responding window proxy; five idle samples each"
+  },
+  "source_ui": {
+    "artifact_id": 15134227099,
+    "sha256": "80b05f7872feec7c017e1ea8346881de7ba172cef629c9e1acb3114c8bd856e0",
+    "source_version": "1.0.0rc1",
+    "accessibility_tests": 6,
+    "accessibility_passed": 6,
+    "accessibility_smoke": "PASS",
+    "idle_samples": 12,
+    "idle_cpu_percent_one_core_max": 0,
+    "peak_sampled_rss_bytes": 48865280,
+    "lifecycle": {
+      "cycles": 5,
+      "windows": 65,
+      "retained_objects": 0,
+      "closed_hub_references": 0,
+      "rss_initial_bytes": 39747584,
+      "rss_after_bytes": 50823168,
+      "rss_growth_bytes": 11075584
+    },
+    "status": "PASS"
+  },
+  "client_windows": "NOT_TESTED",
+  "narrator": "NOT_TESTED",
+  "os_high_contrast": "NOT_TESTED",
+  "client_scaling": "NOT_TESTED",
+  "release_approved": false
+}
