@@ -11,7 +11,7 @@ class VaultWindow:
         self.window.protocol('WM_DELETE_WINDOW',self.close)
         self.window.bind('<Escape>',lambda _:self.close())
         self.window.bind('<Destroy>', self.destroyed, add='+')
-        self.frame=ttk.Frame(self.window,padding=14); self.frame.pack(fill='both',expand=True)
+        self.frame=ttk.Frame(self.window,padding=18); self.frame.pack(fill='both',expand=True)
         self.render_locked()
 
     def destroyed(self,event):
@@ -23,9 +23,9 @@ class VaultWindow:
 
     def render_locked(self):
         self.reset_frame()
-        ttk.Label(self.frame,text='Vault · bloqueado',font=('Segoe UI',18)).pack(anchor='w',pady=8)
+        ttk.Label(self.frame,text='Cofre local · bloqueado',font=('Segoe UI',21,'bold')).pack(anchor='w',pady=8)
         ttk.Label(self.frame,text='Proteção DPAPI vinculada à conta Windows atual. Não é uma senha mestra. Use apenas dados fictícios nesta pré-alpha.',wraplength=365).pack(anchor='w',pady=8)
-        ttk.Button(self.frame,text='Desbloquear nesta sessão',command=self.unlock).pack(fill='x',pady=8)
+        ttk.Button(self.frame,text='Desbloquear nesta sessão',command=self.unlock,style='Aeris.Primary.TButton').pack(fill='x',pady=8)
         ttk.Button(self.frame,text='Fechar',command=self.close).pack(fill='x')
 
     def unlock(self):
@@ -33,7 +33,7 @@ class VaultWindow:
         except (OSError,ValueError,TypeError,KeyError):
             messagebox.showerror('Vault','Não foi possível abrir o cofre. O arquivo existente não foi substituído. Verifique a conta Windows e se outra instância está aberta.',parent=self.window); return
         self.reset_frame()
-        ttk.Label(self.frame,text='Vault · aberto',font=('Segoe UI',18)).pack(anchor='w')
+        ttk.Label(self.frame,text='Cofre local · desbloqueado',font=('Segoe UI',21,'bold')).pack(anchor='w')
         ttk.Label(self.frame,text='Salve explicitamente. Não use senhas, dados bancários ou dados reais nesta versão.',wraplength=365).pack(anchor='w',pady=4)
         self.listbox=tk.Listbox(self.frame,height=5,exportselection=False); self.listbox.pack(fill='x')
         self.listbox.bind('<<ListboxSelect>>',self.select)
@@ -42,10 +42,10 @@ class VaultWindow:
         self.title=tk.StringVar(self.window); ttk.Label(self.frame,text='Título').pack(anchor='w')
         ttk.Entry(self.frame,textvariable=self.title).pack(fill='x')
         ttk.Label(self.frame,text='Conteúdo').pack(anchor='w')
-        self.body=tk.Text(self.frame,height=6,wrap='word',undo=False); self.body.pack(fill='both',expand=True)
+        self.body=tk.Text(self.frame,height=6,wrap='word',undo=False,padx=10,pady=8,relief='flat',highlightthickness=1); self.body.pack(fill='both',expand=True)
         actions=ttk.Frame(self.frame); actions.pack(fill='x',pady=5)
         for label,cmd in [('Novo',self.new),('Salvar',self.save),('Excluir',self.delete),('Bloquear',self.lock)]:
-            ttk.Button(actions,text=label,command=cmd).pack(side='left',padx=2)
+            ttk.Button(actions,text=label,command=cmd,style='Aeris.Primary.TButton' if label=='Salvar' else 'TButton').pack(side='left',padx=2)
         self.window.bind('<Control-s>',self.keyboard_save)
         self.refresh()
         from aeris.theme import apply_tree
