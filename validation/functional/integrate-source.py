@@ -7,14 +7,16 @@ import hashlib
 import json
 import subprocess
 import sys
+import zipfile
 
 PHASES=("core","productivity","memory","quick-actions","communication","learning","intelligence","business","files","security")
 def sha(path):
     return hashlib.sha256(path.read_bytes()).hexdigest()
 
-def integrate(desktop, evidence):
+def integrate(desktop, evidence, snapshot):
     desktop=Path(desktop).resolve()
     evidence=Path(evidence).resolve()
+    snapshot=Path(snapshot).resolve()
     here=Path(__file__).resolve().parent
     if (desktop/"aeris"/"__init__.py").read_text(encoding="utf-8").strip()!='__version__ = "1.0.0rc5"':
         raise ValueError("Expected reconstructed RC5 build metadata")
@@ -53,7 +55,19 @@ def integrate(desktop, evidence):
     inventory={p.relative_to(desktop.parent).as_posix():sha(p) for p in paths}
     evidence.mkdir(parents=True,exist_ok=True)
     (evidence/"integrated-source-manifest.json").write_text(json.dumps({"reviewed_source":files,"source_files":inventory,"scope":"exact assembled source before packaging; no public release approval"},indent=2)+"\n",encoding="utf-8")
-    print(f"All {len(files)} reviewed files match Security evidence; ten phases integrated into {len(inventory)} source files.")
+    if snapshot.exists(): raise FileExistsError(snapshot)
+    with zipfile.ZipFile(snapshot,"x",compression=zipfile.ZIP_DEFLATED,compresslevel=9) as archive:
+        for path in paths:
+            key=path.relative_to(desktop.parent).as_posix()
+            info=zipfile.ZipInfo(key,(2026,11,26,0,0,0))
+            info.external_attr=0o100644<<16
+            raw=path.read_bytes()
+            if hashlib.sha256(raw).hexdigest()!=inventory[key]: raise ValueError("Source changed during archiving: "+key)
+            archive.writestr(info,raw,compress_type=zipfile.ZIP_DEFLATED,compresslevel=9)
+    with zipfile.ZipFile(snapshot) as archive:
+        if set(archive.namelist())!=set(inventory) or len(archive.namelist())!=len(inventory): raise ValueError("Snapshot inventory mismatch")
+        if any(hashlib.sha256(archive.read(name)).hexdigest()!=expected for name,expected in inventory.items()): raise ValueError("Snapshot byte mismatch")
+        print(f"All {len(files)} reviewed files match Security evidence; ten phases integrated into {len(inventory)} source files.")
 
 if __name__=="__main__":
-    integrate(sys.argv[1],sys.argv[2])
+    integrate(sys.argv[1],sys.argv[2],sys.argv[3])
