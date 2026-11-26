@@ -25,14 +25,14 @@ Light · Modular · Privacy-conscious
 
 ### Instalação simples — Desktop Windows x64
 
-[**Acessar downloads do Aeris**](https://kgasil.github.io/aeris/#instalacao) · [Compilações de teste](https://github.com/Kgasil/aeris/actions/workflows/aeris-windows-installer-preview.yml) · [Checklist de lançamento](validation/desktop-release-checklist.md)
+[**Acessar downloads do Aeris**](https://kgasil.github.io/aeris/#instalacao) · [Compilações de teste](https://github.com/Kgasil/aeris/actions/workflows/aeris-integrated-candidate.yml) · [Checklist de lançamento](validation/desktop-release-checklist.md)
 
 O instalador experimental Setup.exe já passou por instalação, reinstalação e desinstalação no Windows Server 2022. Ele inclui o runtime: não exige Python ou terminal. Na prévia atual, baixe o artefato de CI e extraia o Setup.exe; depois abra e confirme a instalação. O novo instalador simplificado passou em CI; a publicação permanente exige revisão de licenças/redistribuição e confiança vinculada ao artefato exato. O site exibirá o botão direto assim que a prévia for publicada. Sem assinatura digital; use dados fictícios. Windows 10/11 e versão estável ainda pendentes.
 
 
 O Aeris é um projeto da K&G Vision para criar ferramentas leves, discretas e úteis ao cotidiano. A proposta reúne um aplicativo desktop para Windows e uma extensão para navegadores Chromium, com módulos opcionais e processamento local sempre que possível.
 
-**Situação atual: extensão 1.0.0 publicada para instalação manual; Desktop 1.0.0rc1 em prévia pública de código-fonte.** 50 protótipos desktop foram construídos localmente. O website oferece seis demonstrações interativas; a branch `develop` ainda contém a versão inicial 0.1.0a4. O pacote completo está disponível abaixo; o instalador final permanece pendente.
+**Situação atual: extensão 1.0.0 disponível para instalação manual; Desktop RC1 em prévia pública de código-fonte e RC3 aprovado em CI (experimental).** 50 protótipos desktop foram construídos localmente. O website oferece seis demonstrações interativas; a branch `develop` ainda contém a versão inicial 0.1.0a4. O pacote completo está disponível abaixo; o instalador final permanece pendente.
 
 [Experimente no navegador](https://kgasil.github.io/aeris/demo.html) · [Instalação e downloads](https://kgasil.github.io/aeris/#instalacao)
 
@@ -65,7 +65,7 @@ Os 50 protótipos locais foram consolidados no candidato de código-fonte. Não 
 
 ## English
 
-[**Aeris Desktop downloads**](https://kgasil.github.io/aeris/#instalacao) · [Test builds](https://github.com/Kgasil/aeris/actions/workflows/aeris-windows-installer-preview.yml) · [Release checklist](validation/desktop-release-checklist.md). The experimental Setup.exe bundles the runtime; no Python or terminal required. The current test artifact requires extraction. A permanent direct executable download is gated on documented redistribution and trust review; the website reveals the direct link only when the preview asset is published. Unsigned preview; use synthetic data only. Windows 10/11 and stable release remain pending.
+[**Aeris Desktop downloads**](https://kgasil.github.io/aeris/#instalacao) · [Test builds](https://github.com/Kgasil/aeris/actions/workflows/aeris-integrated-candidate.yml) · [Release checklist](validation/desktop-release-checklist.md). The experimental Setup.exe bundles the runtime; no Python or terminal required. The current test artifact requires extraction. A permanent direct executable download is gated on documented redistribution and trust review; the website reveals the direct link only when the preview asset is published. Unsigned preview; use synthetic data only. Windows 10/11 and stable release remain pending.
 
 
 Aeris is designed around one principle: technology should work for you, not interrupt you. Our lightweight Windows desktop prototype and manually distributed Chromium extension aim to make everyday productivity feel effortless with optional modules, on-demand execution, local-first processing where feasible and explicit permissions.
@@ -182,3 +182,9 @@ ZIPs publicados no GitHub. Não publicado nas lojas. / ZIPs published on GitHub.
 ### Simplified installer — successful CI (26/11/2026)
 
 [Run 45844861678](https://github.com/Kgasil/aeris/actions/runs/45844861678) passed 395 native unit tests (four skipped), packaging, install/reinstall/uninstall, shortcut checks and synthetic-data preservation. [Temporary test artifact](https://github.com/Kgasil/aeris/actions/runs/45844861678/artifacts/15130517282) expires December 26, 2026. [Verified hashes and evidence](downloads/windows-simplified-preview-evidence.json). Unsigned, synthetic data only; permanent publication remains gated on licensing and trust review. Windows 10/11 interactive validation pending.
+
+## Desktop RC3 — revisão integrada / Integrated review (26/11/2026)
+
+[CI RC3](https://github.com/Kgasil/aeris/actions/runs/45851387942) · [Evidências e hashes / Evidence and hashes](downloads/windows-integrated-rc3-evidence.json) · [Preparação do lançamento / Release preparation](release/desktop-1.0.0-preparation.md).
+
+409 de 413 testes aprovados, quatro ignorados com motivos registrados; instalação, reinstalação, desinstalação e 91 hashes verificados em Windows Server 2022. RC3 não é release pública nem 1.0.0 estável. Windows 10/11, direitos, scan real e decisão de assinatura pendentes. / 409 of 413 tests passed, four documented skips; install, reinstall, uninstall and 91 hashes verified. RC3 is not a public or stable release. Client Windows, redistribution, malware scan and signing decision pending.
