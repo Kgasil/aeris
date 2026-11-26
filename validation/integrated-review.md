@@ -24,3 +24,5 @@ O workflow mantém a lista de testes ignorados visível por meio de unittest -v.
 - Checklist de site, README, download, hashes, canal de reporte e documentação das limitações.
 
 Status: RC3 aprovado em CI, 409/413 testes; [evidências verificadas](../downloads/windows-integrated-rc3-evidence.json). Revisão dos quatro skips e desempenho RC3 exato em [CI 45851971299](https://github.com/Kgasil/aeris/actions/runs/45851971299). [Preparação de lançamento](../release/desktop-1.0.0-preparation.md) registrada. Sem acesso às VMs cliente ou aprovação de distribuição, a etapa 13 permanece bloqueada.
+
+Revisão complementar concluída: [evidências RC3](../downloads/rc3-final-review-evidence.json). Os quatro skips passaram em Ubuntu, totalizando 413 testes distintos aprovados entre ambientes aplicáveis. RC3 portátil cumpriu os mesmos limites de performance. Restam os gates de cliente, atualização no candidato final, direitos, antimalware e assinatura; não declarar etapa integralmente concluída.
