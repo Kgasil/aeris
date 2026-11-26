@@ -17,8 +17,8 @@ Objetivo: oferecer um Setup.exe autossuficiente, gratuito, com instalação simp
 
 | Etapa | Entrega | Critério de conclusão | Status |
 | --- | --- | --- | --- |
-| 01 | Auditoria de distribuição e inventário de dependências | Inventário dos componentes realmente empacotados, versões, termos, avisos e lacunas de redistribuição | Próxima |
-| 02 | Instalador simplificado | Revisar Inno Setup, instalação por usuário, idioma, atalhos, abertura opcional, desinstalação e ausência de dependências manuais; preservar AppId e dados | Pendente |
+| 01 | Auditoria de distribuição e inventário de dependências | Inventário dos componentes realmente empacotados, versões, termos, avisos e lacunas de redistribuição | Em andamento — inventário verificado; direitos e avisos pendentes |
+| 02 | Instalador simplificado | Revisar Inno Setup, instalação por usuário, idioma, atalhos, abertura opcional, desinstalação e ausência de dependências manuais; preservar AppId e dados | Próxima tarefa independente |
 | 03 | Build e CI de instalação | Validar novo workflow, gerar Setup.exe, hashes, logs e evidências; investigar falhas e testes ignorados | Pendente |
 | 04 | Segurança e confiança da distribuição | Revisão dos binários, permissões, malware scan, hashes, decisão documentada sobre Authenticode e autorização de redistribuição; nenhuma alegação falsa de assinatura | Pendente |
 | 05 | Prévia permanente | Publicar prerelease experimental versionada somente após aprovação da redistribuição e confiança; testar download direto e fallback do site | Pendente |
@@ -43,3 +43,5 @@ Objetivo: oferecer um Setup.exe autossuficiente, gratuito, com instalação simp
 ## Registro de andamento
 
 - 26/11/2026 — Roadmap criado; etapa 01 é a próxima. Nenhum teste novo executado nesta atualização.
+
+- 26/11/2026 — Etapa 01: [auditoria de distribuição](validation/desktop-distribution-audit.md) (8185ffd) e [verificador de manifesto](validation/audit-desktop-bundle.py) (71adb95) registrados. Artefato histórico baixado; três hashes e 1.002 arquivos conferidos. Inventário identifica 68 binários e seis arquivos de avisos/licenças. Revisão de direitos, versões incorporadas e avisos permanece em aberto; não publicar. Próxima tarefa independente: etapa 02, sem liberar distribuição.
