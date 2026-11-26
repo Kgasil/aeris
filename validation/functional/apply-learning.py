@@ -25,10 +25,16 @@ def apply(root):
     s=replace(s,"        self.progress=ttk.Progressbar(f,maximum=100); self.progress.pack(fill='x',pady=6)", """        self.progress=ttk.Progressbar(f,maximum=100); self.progress.pack(fill='x',pady=6)
         self.pending_only=tk.BooleanVar(self.window,False)
         ttk.Checkbutton(f,text='Somente tópicos pendentes',variable=self.pending_only,command=self.render).pack(anchor='w')""")
-    s=replace(s,"        i=self.selector.current(); plans=self.store.list()\n        if not 0<=i<len(plans): raise ValueError('Selecione ou crie uma trilha.')\n        return plans[i].id", """        title=self.selector.get()
-        for plan in self.store.list():
-            if plan.title==title: return plan.id
+    s=replace(s,"        i=self.selector.current(); plans=self.store.list()\n        if not 0<=i<len(plans): raise ValueError('Selecione ou crie uma trilha.')\n        return plans[i].id", """        i=self.selector.current()
+        if 0<=i<len(self.plan_rows):
+            ident,title=self.plan_rows[i]
+            try: plan=self.store.get(ident)
+            except KeyError: plan=None
+            if plan is not None and plan.title==title==self.selector.get(): return ident
         raise ValueError('Selecione ou crie uma trilha.')""")
+    s=replace(s,"        self.refresh()\n\n    def plan_id", "        self.plan_rows=()\n        self.refresh()\n\n    def plan_id")
+    s=replace(s,"        self.selector.configure(values=[p.title for p in plans])","        self.plan_rows=tuple((p.id,p.title) for p in plans)\n        self.selector.configure(values=[p.title for p in plans])")
+    s=replace(s,"self.window.geometry('720x500'); self.window.minsize(570,420)","self.window.geometry('760x540'); self.window.minsize(640,460)")
     s=replace(s,"        self.tree.delete(*self.tree.get_children()); done=total=used=planned=0", """        selected=self.tree.selection()
         if topic_id is None and selected: topic_id=selected[0]
         self.tree.delete(*self.tree.get_children()); done=total=used=planned=0""")
