@@ -13,7 +13,7 @@ Light · Modular · Privacy-conscious
 
 O Aeris é um projeto da K&G Vision para criar ferramentas leves, discretas e úteis ao cotidiano. A proposta reúne um aplicativo desktop para Windows e uma extensão para navegadores Chromium, com módulos opcionais e processamento local sempre que possível.
 
-**Situação atual: pré-alpha.** 50 protótipos desktop foram construídos localmente. O website oferece seis demonstrações interativas; a branch `develop` ainda contém a versão inicial 0.1.0a4. O instalador final e a publicação do pacote completo permanecem pendentes.
+**Situação atual: candidato de código-fonte 1.0.0rc1 (local).** 50 protótipos desktop foram construídos localmente. O website oferece seis demonstrações interativas; a branch `develop` ainda contém a versão inicial 0.1.0a4. O instalador final e a publicação do pacote completo permanecem pendentes.
 
 [Experimente no navegador](https://kgasil.github.io/aeris/demo.html) · [Instalação e downloads](https://kgasil.github.io/aeris/#instalacao)
 
@@ -34,7 +34,7 @@ Edição única gratuita, incluindo o AI Companion opcional (Ollama instalado se
 | Files | Documents, Organizer, Drop, Compare, Lens |
 | Security | Privacy, Link, Verify, Permissions, Metadata |
 
-Os 50 protótipos locais ainda estão em consolidação. Não são uma versão final validada.
+Os 50 protótipos locais foram consolidados no candidato de código-fonte. Não é uma versão Windows validada. 392 testes unitários e 60 scripts gráficos passaram em Linux; seis testes nativos Windows permanecem pendentes. [Estado da versão candidata](https://kgasil.github.io/aeris/release-status.html).
 
 ### Princípios de desenvolvimento
 
@@ -87,3 +87,9 @@ Official visual lockup: **K&G** above **Vision**; individual project symbols are
 [Lilium Interactive Lab / Laboratório interativo](https://kgasil.github.io/lilium/#lab) · [Insights CSV demo](https://kgasil.github.io/lilium/demo.html) — browser-based synthetic exercises; no connected AI or commercial offering.
 
 **25 NOV 2026 — Lilium development milestone / Marco de desenvolvimento:** [Comunicado / Announcement](https://kgasil.github.io/lilium/#novidades) · 100 Python + 401 Node.js checks passed; remediated Windows preview, not public V1.0. / 501 verificações aprovadas; prévia corrigida, aceitação manual pendente.
+
+## Release preparation / Preparação de lançamento — 1.0.0rc1
+
+The local source candidate has 50 tools. 392 unit tests and 60 graphical scripts passed on Linux; six Windows-only tests were skipped. No Windows installer has been compiled or validated, and the complete local source package is not yet in this repository. The public Web Lab and early source remain available. The browser extension is a separate project stage.
+
+[Release status / Estado da versão](https://kgasil.github.io/aeris/release-status.html)
