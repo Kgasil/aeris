@@ -1,0 +1,126 @@
+name: Aeris functional refinement 09 - Files
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/aeris-functional-files.yml'
+      - 'validation/functional/apply-core.py'
+      - 'validation/functional/test_core_refinement.py'
+      - 'validation/functional/apply-productivity.py'
+      - 'validation/functional/test_productivity_refinement.py'
+      - 'validation/functional/apply-memory.py'
+      - 'validation/functional/test_memory_refinement.py'
+      - 'validation/functional/apply-quick-actions.py'
+      - 'validation/functional/test_quick_actions_refinement.py'
+      - 'validation/functional/apply-communication.py'
+      - 'validation/functional/test_communication_refinement.py'
+      - 'validation/functional/apply-learning.py'
+      - 'validation/functional/test_learning_refinement.py'
+      - 'validation/functional/apply-intelligence.py'
+      - 'validation/functional/test_intelligence_refinement.py'
+      - 'validation/functional/apply-business.py'
+      - 'validation/functional/test_business_refinement.py'
+      - 'validation/functional/apply-files.py'
+      - 'validation/functional/test_files_refinement.py'
+permissions:
+  contents: read
+  actions: read
+jobs:
+  files:
+    runs-on: windows-2022
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065
+        with:
+          python-version: '3.14.10'
+          architecture: x64
+      - name: Verify exact RC4 source and apply cumulative Core through Files changes
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $ErrorActionPreference = 'Stop'
+          New-Item -ItemType Directory -Path files-evidence | Out-Null
+          $archive = Join-Path $env:RUNNER_TEMP 'rc4.zip'
+          $headers = @{Authorization=('Bearer ' + $env:GH_TOKEN);Accept='application/vnd.github+json';'X-GitHub-Api-Version'='2022-11-28'}
+          Invoke-WebRequest -Uri 'https://api.github.com/repos/Kgasil/aeris/actions/artifacts/15134209156/zip' -Headers $headers -OutFile $archive
+          if ((Get-FileHash -LiteralPath $archive -Algorithm SHA256).Hash -ne '34e010bb31a574211185f9b6729669c1b7a794856fdbbf10ae425b665aba6d8b') { throw 'Outer RC4 hash mismatch' }
+          Expand-Archive -LiteralPath $archive -DestinationPath rc4-original
+          $source = 'rc4-original/security-evidence/Aeris-1.0.0rc4-integrated-source.zip'
+          if ((Get-FileHash -LiteralPath $source -Algorithm SHA256).Hash -ne 'f52c8f065cb02b7052daffe79d57b58346528fd164688a847cc0aa8a57379efe') { throw 'RC4 source hash mismatch' }
+          Expand-Archive -LiteralPath $source -DestinationPath refined
+          py -3.14-64 validation/functional/apply-core.py refined/desktop
+          if ($LASTEXITCODE -ne 0) { throw 'Core patch failed' }
+          Copy-Item -LiteralPath validation/functional/test_core_refinement.py -Destination refined/desktop/tests/test_core_refinement.py
+          py -3.14-64 validation/functional/apply-productivity.py refined/desktop
+          if ($LASTEXITCODE -ne 0) { throw 'Productivity patch failed' }
+          Copy-Item -LiteralPath validation/functional/test_productivity_refinement.py -Destination refined/desktop/tests/test_productivity_refinement.py
+          py -3.14-64 validation/functional/apply-memory.py refined/desktop
+          if ($LASTEXITCODE -ne 0) { throw 'Memory patch failed' }
+          Copy-Item -LiteralPath validation/functional/test_memory_refinement.py -Destination refined/desktop/tests/test_memory_refinement.py
+          py -3.14-64 validation/functional/apply-quick-actions.py refined/desktop
+          if ($LASTEXITCODE -ne 0) { throw 'Quick Actions patch failed' }
+          Copy-Item -LiteralPath validation/functional/test_quick_actions_refinement.py -Destination refined/desktop/tests/test_quick_actions_refinement.py
+          py -3.14-64 validation/functional/apply-communication.py refined/desktop
+          if ($LASTEXITCODE -ne 0) { throw 'Communication patch failed' }
+          Copy-Item -LiteralPath validation/functional/test_communication_refinement.py -Destination refined/desktop/tests/test_communication_refinement.py
+          py -3.14-64 validation/functional/apply-learning.py refined/desktop
+          if ($LASTEXITCODE -ne 0) { throw 'Learning patch failed' }
+          Copy-Item -LiteralPath validation/functional/test_learning_refinement.py -Destination refined/desktop/tests/test_learning_refinement.py
+          py -3.14-64 validation/functional/apply-intelligence.py refined/desktop
+          if ($LASTEXITCODE -ne 0) { throw 'Intelligence patch failed' }
+          Copy-Item -LiteralPath validation/functional/test_intelligence_refinement.py -Destination refined/desktop/tests/test_intelligence_refinement.py
+          py -3.14-64 validation/functional/apply-business.py refined/desktop
+          if ($LASTEXITCODE -ne 0) { throw 'Business patch failed' }
+          Copy-Item -LiteralPath validation/functional/test_business_refinement.py -Destination refined/desktop/tests/test_business_refinement.py
+          py -3.14-64 validation/functional/apply-files.py refined/desktop
+          if ($LASTEXITCODE -ne 0) { throw 'Files patch failed' }
+          Copy-Item -LiteralPath validation/functional/test_files_refinement.py -Destination refined/desktop/tests/test_files_refinement.py
+          # Preserve the exact changed source files and hashes, not a public build.
+          $files = @('hub.py','spotlight.py','health_ui.py','backup.py','backup_ui.py','bridge_ui.py','focus_ui.py','workspace_ui.py','checklist_ui.py','reminder.py','routine_ui.py','vault_ui.py','editor.py','timeline_ui.py','ideas_ui.py','bookmarks_ui.py','autofill_ui.py','clipboard_ui.py','expand_ui.py','convert_ui.py','translate_ui.py','voice_ui.py','text_ui.py','email_ui.py','meeting_ui.py','learn_ui.py','research_ui.py','flashcards_ui.py','pronounce_ui.py','accessibility_ui.py','copilot_ui.py','companion_ui.py','context_ui.py','interview_ui.py','search_ui.py','debug_ui.py','data_ui.py','dashboard_ui.py','report_ui.py','report.py','calculator.py','decision_ui.py','documents_ui.py','organizer_ui.py','drop_ui.py','compare_ui.py','lens_ui.py')
+          $out = @()
+          New-Item -ItemType Directory -Path files-evidence/changed-source | Out-Null
+          foreach ($file in $files) {
+            Copy-Item -LiteralPath ("refined/desktop/aeris/" + $file) -Destination files-evidence/changed-source
+            $out += [pscustomobject]@{file=$file;sha256=(Get-FileHash -LiteralPath ("refined/desktop/aeris/" + $file) -Algorithm SHA256).Hash.ToLowerInvariant()}
+          }
+          $out | ConvertTo-Json | Set-Content -LiteralPath files-evidence/source-hashes.json -Encoding utf8
+          Copy-Item -LiteralPath refined/desktop/tests/smoke_autofill.py -Destination files-evidence/smoke-autofill-source.py
+      - name: Run new UI and safety regression tests
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $log = Join-Path $PWD 'files-evidence/files-tests.log'
+          Push-Location refined/desktop
+          try {
+            py -3.14-64 -m unittest -v tests.test_files_refinement 2>&1 | Tee-Object -FilePath $log
+            if ($LASTEXITCODE -ne 0) { throw 'Files functional regression failed' }
+            $s = Get-Content -LiteralPath $log -Raw
+            if ($s -notmatch 'Ran 7 tests' -or $s -match 'skipped=') { throw 'Expected all seven new tests without skips' }
+          } finally { Pop-Location }
+      - name: Full unit regression and existing graphical smoke tests
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $evidence = (Resolve-Path files-evidence).Path
+          Push-Location refined/desktop
+          try {
+            py -3.14-64 -m unittest discover -v 2>&1 | Tee-Object -FilePath (Join-Path $evidence 'full-regression.log')
+            if ($LASTEXITCODE -ne 0) { throw 'Full regression failed' }
+            foreach ($module in @('smoke_spotlight_isolated','smoke_health','smoke_backup','smoke_bridge','smoke_refinement','smoke_focus','smoke_workspace','smoke_checklist','smoke_reminder','smoke_routine','smoke_vault','smoke_bookmarks','smoke_timeline','smoke_ideas','smoke_integration','smoke_permissions','smoke_autofill','smoke_clipboard','smoke_expand','smoke_convert','smoke_translate','smoke_voice','smoke_text','smoke_intelligent_text','smoke_contextual_text','smoke_email','smoke_meeting','smoke_meeting_integration','smoke_pronounce','smoke_learn','smoke_research','smoke_flashcards','smoke_accessibility','smoke_study_integration','smoke_copilot','smoke_companion','smoke_companion_flow','smoke_context','smoke_interview','smoke_debug','smoke_data','smoke_dashboard','smoke_report','smoke_calculator','smoke_decision','smoke_documents','smoke_organizer','smoke_drop','smoke_compare','smoke_lens')) {
+              py -3.14-64 -m "tests.$module" 2>&1 | Tee-Object -FilePath (Join-Path $evidence "$module.log")
+              if ($LASTEXITCODE -ne 0) { throw "Smoke failed: $module" }
+            }
+          } finally { Pop-Location }
+          [pscustomobject]@{scope='Cumulative Core through Files source overlays and real Tk UI in Windows Server CI; no packaged executable or Windows client';new_tests='PASS';full_regression='PASS';smokes='PASS';release_approved=$false} | ConvertTo-Json | Set-Content -LiteralPath files-evidence/status.json -Encoding utf8
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: aeris-functional-files-evidence
+          path: files-evidence/
+          if-no-files-found: warn
+          retention-days: 30
