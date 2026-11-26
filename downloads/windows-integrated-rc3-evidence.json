@@ -1,0 +1,91 @@
+{
+  "scope": "Windows Server 2022 CI, integrated experimental RC3; not stable or release approval",
+  "run": 45851387942,
+  "commit": "4e82fef63ade0f0121f3f269d5642dfa971ed828",
+  "artifact_id": 15132444366,
+  "artifact_sha256": "de81221a8723a9c26f11db293e440c65243f4c4c53e8d2dd2d00afc0e94e270f",
+  "artifact_bytes": 28178090,
+  "artifact_expires": "2026-12-26T15:41:48Z",
+  "unit_tests": {
+    "total": 413,
+    "passed": 409,
+    "skipped": 4,
+    "failures": 0,
+    "seconds": 13.617,
+    "skip_reasons": [
+      {
+        "name": "tests.test_lens.LensTests.test_real_ocr",
+        "reason": "Optional Tesseract not installed",
+        "related_evidence": "downloads/audio-ocr-validation-evidence.json (Linux only)"
+      },
+      {
+        "name": "tests.test_protected_storage.StorageTests.test_no_plaintext_fallback",
+        "reason": "Sem DPAPI apenas fora do Windows"
+      },
+      {
+        "name": "tests.test_safe_input.SafeInputTests.test_fifo_rejected_before_open",
+        "reason": "FIFO test requires POSIX"
+      },
+      {
+        "name": "tests.test_vault.VaultTests.test_non_windows_fails_closed",
+        "reason": "Non-Windows safeguard"
+      }
+    ]
+  },
+  "targeted_tests": {
+    "native_and_loopback": 12,
+    "accessibility_smoke": "PASS",
+    "scope": "Repeated subsets, not added to total"
+  },
+  "installer": {
+    "bytes": 13336924,
+    "sha256": "cd2416ff0530b63f186d9363eb2f974b40f27ba5e6f41a22e63540034d96ac0a",
+    "inno_setup": "6.7.4",
+    "pe_certificate_table_present": false
+  },
+  "portable": {
+    "bytes": 14779615,
+    "sha256": "4f8a6b6cdba4f4b4e43e5547d57cf48012c66f93cb72628c2a1fb7002a58cb23",
+    "manifest_files_verified": 91,
+    "hash_mismatches": 0,
+    "binaries": 71,
+    "notices": 17
+  },
+  "exe_sha256": "94c329abe46a128719f8c951c7a8df2b8936d1550855089c9f0d25ed1cda37f5",
+  "source": {
+    "bytes": 591866,
+    "sha256": "a8a34378b5d1e0d7582c485edb27b002fe7ec239fa0c6e0b63e2bb5a37b03c6d",
+    "files": 352,
+    "version": "1.0.0rc3",
+    "upstream_notice_texts": 12,
+    "build_notice_path_local": true,
+    "includes_native_and_loopback_tests": true
+  },
+  "checks": {
+    "install": "PASS",
+    "reinstall_same_version": "PASS",
+    "uninstall": "PASS",
+    "synthetic_data_preserved": "PASS",
+    "shortcut_targets": "PASS",
+    "shortcut_cleanup": "PASS",
+    "silent_no_launch": "PASS",
+    "installed_notice_hashes": "PASS",
+    "reinstalled_notice_hashes": "PASS",
+    "portable_ui_self_test": "PASS",
+    "installed_ui_self_test": "PASS",
+    "reinstalled_ui_self_test": "PASS",
+    "independent_outer_and_asset_hashes": "PASS",
+    "independent_manifest_hashes": "PASS",
+    "binary_inventory_matches_manifest": "PASS",
+    "source_digest_and_version": "PASS"
+  },
+  "aeris_authenticode": "NotSigned",
+  "defender": {
+    "antivirus_enabled": true,
+    "real_time_protection_enabled": false,
+    "malware_scan": "NOT_TESTED"
+  },
+  "client_windows": "NOT_TESTED",
+  "redistribution_approved": false,
+  "release_approved": false
+}
