@@ -83,7 +83,7 @@ License terms are not yet specified. Public visibility does not grant permission
 
 ## Identidade K&G Vision / K&G Vision identity
 
-<p align="center"><a href="https://kgasil.github.io/"><img src="https://raw.githubusercontent.com/Kgasil/kgasil.github.io/main/assets/brand-banner.svg" alt="K&amp;G Vision — institutional identity" width="420"></a></p>
+<p align="center"><a href="https://kgasil.github.io/"><img src="https://raw.githubusercontent.com/Kgasil/kgasil.github.io/main/assets/brand-banner.svg?v=20261126-2" alt="K&amp;G Vision — institutional identity" width="420"></a></p>
 
 [Versão vertical / Vertical lockup](https://github.com/Kgasil/kgasil.github.io/blob/main/assets/brand-stacked.svg) · [Escudo / Shield](https://github.com/Kgasil/kgasil.github.io/blob/main/assets/kg-symbol.svg)
 
@@ -154,3 +154,5 @@ The [fourth run](https://github.com/Kgasil/aeris/actions/runs/45729575816) passe
 4. Escolha a pasta com `manifest.json` e abra Aeris no menu de extensões.
 
 ZIPs publicados no GitHub. Não publicado nas lojas. / ZIPs published on GitHub. Not published in extension stores.
+
+[![K&G Vision — GRAAL](https://raw.githubusercontent.com/Kgasil/kgasil.github.io/main/assets/kg-symbol.svg?v=20261126-2)](https://kgasil.github.io/) **GRAAL · Marco 01** — identidade integrada / integrated identity.
