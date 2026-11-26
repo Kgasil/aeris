@@ -2,6 +2,8 @@
 
 **Candidato RC4 experimental. Não é release pública.** As validações devem ocorrer em VMs cliente x64 descartáveis, atualizadas, sem dados pessoais. Não instalar em máquina de produção, desativar proteção, criar exclusões ou contornar SmartScreen.
 
+**Orçamento zero:** não compre Windows, VM, certificado ou conta em loja para estes testes. Use apenas ambientes já disponíveis ou voluntários qualificados. Se indisponível, registre NOT_TESTED e mantenha o lançamento estável adiado. [Plano sem custos](zero-cost-plan.md).
+
 ## 1. Obter e verificar o pacote
 
 [CI RC4 45853309017](https://github.com/Kgasil/aeris/actions/runs/45853309017), artefato 15134209156, nome aeris-reduced-runtime-rc4-not-a-release. Expiração registrada 26/12/2026 15:53:44 UTC. [Evidência](../downloads/windows-rc4-reduced-runtime-evidence.json).
