@@ -1,0 +1,119 @@
+name: Aeris RC5 exact public installer Defender review
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/aeris-rc5-defender-review.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+  actions: read
+jobs:
+  scan:
+    runs-on: windows-2022
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065
+        with:
+          python-version: '3.14.10'
+      - name: Check Defender availability and refresh signatures normally
+        shell: pwsh
+        run: |
+          $ErrorActionPreference='Stop'
+          New-Item -ItemType Directory -Path defender-evidence | Out-Null
+          $report=[ordered]@{status='NOT_TESTED'; scope='On-demand Defender scan, isolated Windows Server 2022 CI; no client certification or stable approval';release_approved=$false}
+          try {
+            $before=Get-MpComputerStatus
+            $before | Select-Object AMServiceEnabled,AntivirusEnabled,RealTimeProtectionEnabled,AMRunningMode,AntivirusSignatureVersion,AntivirusSignatureLastUpdated,AMProductVersion,AMEngineVersion | ConvertTo-Json | Set-Content defender-evidence/before.json
+            if (-not $before.AMServiceEnabled -or -not $before.AntivirusEnabled) {throw 'Defender service or antivirus not active'}
+            $platform=Join-Path $env:ProgramData 'Microsoft\Windows Defender\Platform'
+            $cmd=Get-ChildItem -LiteralPath $platform -Directory -ErrorAction SilentlyContinue | Sort-Object LastWriteTime -Descending | ForEach-Object {Join-Path $_.FullName 'MpCmdRun.exe'} | Where-Object {Test-Path -LiteralPath $_ -PathType Leaf} | Select-Object -First 1
+            if (-not $cmd) {$cmd=Join-Path $env:ProgramFiles 'Windows Defender\MpCmdRun.exe'}
+            $sig=Get-AuthenticodeSignature -LiteralPath $cmd
+            if ($sig.Status -ne 'Valid' -or $sig.SignerCertificate.Subject -notmatch 'Microsoft') {throw 'Defender executable signature not verified'}
+            & $cmd -SignatureUpdate 2>&1 | Tee-Object -FilePath defender-evidence/signature-update.log
+            $report.update_exit=$LASTEXITCODE
+            $after=Get-MpComputerStatus
+            $after | Select-Object AMServiceEnabled,AntivirusEnabled,RealTimeProtectionEnabled,AMRunningMode,AntivirusSignatureVersion,AntivirusSignatureLastUpdated,AMProductVersion,AMEngineVersion | ConvertTo-Json | Set-Content defender-evidence/after.json
+            if (-not $after.AMServiceEnabled -or -not $after.AntivirusEnabled -or -not $after.AntivirusSignatureLastUpdated -or $after.AntivirusSignatureLastUpdated -lt (Get-Date).AddHours(-24)) {throw 'Active engine and signatures within 24 hours required'}
+            if ($after.AntivirusSignatureLastUpdated -gt (Get-Date).AddMinutes(5)) {throw 'Unexpected future definitions date'}
+            $report.signature_version=$after.AntivirusSignatureVersion
+            $report.real_time=$after.RealTimeProtectionEnabled
+            $report.status='READY'
+            "DEFENDER_CMD=$cmd" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+          } catch {$report.status='BLOCKED_OR_INCOMPLETE';$report.error=$_.Exception.Message;throw}
+          finally {$report | ConvertTo-Json | Set-Content defender-evidence/preflight.json}
+      - name: Verify anonymous public installer and original portable bundle
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $ErrorActionPreference='Stop'
+          $root=Join-Path $env:RUNNER_TEMP 'AerisExactDefender'
+          New-Item -ItemType Directory -Path $root | Out-Null
+          $setup=Join-Path $root 'Aeris-1.0.0rc5-Windows-x64-Setup-terms1.exe'
+          $outer=Join-Path $env:RUNNER_TEMP 'rc5-integrated.zip'
+          & curl.exe --fail --location --silent --show-error 'https://github.com/Kgasil/aeris/releases/download/aeris-desktop-1.0.0rc5-terms1-preview/Aeris-1.0.0rc5-Windows-x64-Setup-terms1.exe' -o $setup
+          if ($LASTEXITCODE -ne 0) {throw 'Public download failed'}
+          if ((Get-FileHash -LiteralPath $setup -Algorithm SHA256).Hash -ne 'f5499cc2383e4d3a0acee8a0d84e173fa1a44a098ac0ba478c1febbcfe4e774b' -or (Get-Item -LiteralPath $setup).Length -ne 12795620) {throw 'Public Setup mismatch'}
+          & curl.exe --fail --location --silent --show-error -H "Authorization: Bearer $env:GH_TOKEN" -H 'Accept: application/vnd.github+json' 'https://api.github.com/repos/Kgasil/aeris/actions/artifacts/15138829732/zip' -o $outer
+          if ($LASTEXITCODE -ne 0) {throw 'Portable source retrieval failed'}
+          py -3.14-64 validation/performance/extract-rc5.py $outer "$root\extracted" | Tee-Object -FilePath defender-evidence/portable-integrity.json
+          if ($LASTEXITCODE -ne 0) {throw 'Portable integrity failed'}
+          py -3.14-64 -c "import sys,zipfile,pathlib; pathlib.Path(sys.argv[2]).write_bytes(zipfile.ZipFile(sys.argv[1]).read('Aeris-1.0.0rc5-Windows-x64-portable.zip'))" $outer "$root\portable.zip"
+          if ($LASTEXITCODE -ne 0 -or (Get-FileHash -LiteralPath "$root\portable.zip" -Algorithm SHA256).Hash -ne 'ffbda95354b563e1d6a1b8f90fc43184a197585488c3da8609ac6970ffee9701') {throw 'Portable ZIP mismatch'}
+          "AERIS_SCAN_ROOT=$root" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+      - name: Scan exact Setup, ZIP and extracted contents without executing them
+        shell: pwsh
+        run: |
+          $ErrorActionPreference='Stop'
+          $report=[ordered]@{status='NOT_TESTED';scope='On-demand scan only, Windows Server 2022 CI';release_approved=$false}
+          $root=$env:AERIS_SCAN_ROOT
+          $cmd=$env:DEFENDER_CMD
+          $setup=Join-Path $root 'Aeris-1.0.0rc5-Windows-x64-Setup-terms1.exe'
+          $portable=Join-Path $root 'portable.zip'
+          $bundle=Join-Path $root 'extracted\Aeris'
+          try {
+            $pref=Get-MpPreference
+            $pref | Select-Object DisableArchiveScanning,ExclusionPath,ExclusionExtension,ExclusionProcess | ConvertTo-Json -Depth 4 | Set-Content defender-evidence/preferences.json
+            if ($pref.DisableArchiveScanning) {throw 'Archive scanning disabled by runner configuration'}
+            # Ask Defender itself whether each exact target is excluded.
+            $targets=@($setup,$portable,$bundle)+@(Get-ChildItem -LiteralPath $bundle -File -Recurse | Select-Object -ExpandProperty FullName)
+            foreach ($file in $targets) {
+              $check=& $cmd -CheckExclusion -path $file 2>&1
+              $code=$LASTEXITCODE
+              $check | Out-File -LiteralPath defender-evidence/exclusion-checks.log -Append
+              if (($check -join ' ') -notmatch '(?i)is not excluded|not excluded') {throw "Cannot establish scan target is not excluded: $file (exit $code)"}
+            }
+            $started=Get-Date
+            foreach ($target in @(@{label='setup';path=$setup},@{label='portable';path=$portable},@{label='extracted';path=$bundle})) {
+              & $cmd -Scan -ScanType 3 -File $target.path 2>&1 | Tee-Object -FilePath "defender-evidence/$($target.label).log"
+              $code=$LASTEXITCODE
+              $report[$target.label+'_exit']=$code
+              if ($code -ne 0) {throw "Defender scan failed or detected threat: $($target.label)"}
+            }
+            $detections=@(Get-MpThreatDetection | Where-Object {$_.InitialDetectionTime -ge $started.AddMinutes(-2)})
+            ConvertTo-Json -InputObject $detections -Depth 6 | Set-Content defender-evidence/recent-detections.json
+            $events=@(Get-WinEvent -FilterHashtable @{LogName='Microsoft-Windows-Windows Defender/Operational';StartTime=$started.AddSeconds(-5);Id=1000,1001,1002,1005,1116,1117} -ErrorAction SilentlyContinue)
+            $events | Select-Object Id,TimeCreated,Message | ConvertTo-Json -Depth 5 | Set-Content defender-evidence/events.json
+            if ($detections.Count -gt 0 -or @($events|Where-Object {$_.Id -in 1002,1005,1116,1117}).Count -gt 0) {throw 'Detection or incomplete scan event; review required'}
+            if (@($events|Where-Object {$_.Id -eq 1001}).Count -lt 3) {throw 'Three completed scan events not independently confirmed'}
+            if ((Get-FileHash -LiteralPath $setup -Algorithm SHA256).Hash -ne 'f5499cc2383e4d3a0acee8a0d84e173fa1a44a098ac0ba478c1febbcfe4e774b' -or (Get-FileHash -LiteralPath $portable -Algorithm SHA256).Hash -ne 'ffbda95354b563e1d6a1b8f90fc43184a197585488c3da8609ac6970ffee9701') {throw 'Scan targets changed'}
+            $manifest=Get-Content -LiteralPath "$bundle\BUNDLE-MANIFEST.json" -Raw | ConvertFrom-Json -AsHashtable
+            foreach ($key in $manifest.Keys) {if ((Get-FileHash -LiteralPath (Join-Path "$root\extracted" $key) -Algorithm SHA256).Hash -ne $manifest[$key]) {throw "Bundle changed: $key"}}
+            $report.status='SCAN_COMPLETED_REVIEW_REQUIRED'
+            $report.detections=$detections.Count
+            $report.completed_events=@($events|Where-Object {$_.Id -eq 1001}).Count
+            $report.signature_version=(Get-MpComputerStatus).AntivirusSignatureVersion
+            $report.real_time=(Get-MpComputerStatus).RealTimeProtectionEnabled
+          } catch {$report.status='BLOCKED_OR_INCOMPLETE';$report.error=$_.Exception.Message;throw}
+          finally {$report|ConvertTo-Json|Set-Content defender-evidence/scan-status.json}
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: aeris-rc5-defender-review-evidence
+          path: defender-evidence/
+          if-no-files-found: warn
