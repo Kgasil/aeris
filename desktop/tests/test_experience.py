@@ -11,7 +11,8 @@ import tkinter as tk
 from aeris.experience import ExperienceHub
 from aeris.settings import Settings
 from aeris.permissions import COMPANION_SCREEN,COMPANION_MIC,COMPANION_CHAT,COPILOT_RUN
-from aeris.screen_context import validate_png,describe_screen
+from aeris.screen_context import validate_png,describe_screen,installed_models
+from aeris.experience_help import HELP
 
 def tiny_png():
     r=tk.PhotoImage(width=2,height=2); r.put('#285640',to=(0,0,2,2))
@@ -32,9 +33,34 @@ class ExperienceTests(unittest.TestCase):
         self.h.navigate('catalog'); self.root.update(); self.h.query.set('anotações')
         self.assertIn('Capture',[m.name for m in self.h.visible])
         self.h.navigate('chat'); self.assertEqual(self.h.view,'chat')
+    def test_catalog_explains_all_existing_tools_and_advanced_controls_are_hidden(self):
+        self.assertEqual(set(HELP),{m.name for m in self.h.modules})
+        self.assertFalse(self.ui.advanced.winfo_ismapped())
+        self.assertFalse(self.ui.proposal_panel.winfo_ismapped())
+        self.ui.toggle_advanced(); self.root.update(); self.assertTrue(self.ui.advanced.winfo_ismapped())
+        self.ui.toggle_advanced(); self.root.update(); self.assertFalse(self.ui.advanced.winfo_ismapped())
+        self.h.navigate('catalog'); self.h.query.set('dados'); self.h.query.set('Anotações')
+        i=next(i for i,m in enumerate(self.h.visible) if m.name=='Capture')
+        self.h.listbox.selection_clear(0,'end'); self.h.listbox.selection_set(i); self.h.show_selected()
+        self.assertIn('COMO USAR',self.h.example.cget('text')); self.assertIn('título',self.h.example.cget('text'))
+    def test_discover_models_excludes_remote_and_cloud(self):
+        class Response:
+            status=200
+            def read(self,n): return b'{"models":[{"name":"local"},{"name":"local"},{"name":"bad-cloud"},{"name":"remote","remote_host":"https://example.org"}]}'
+        class Connection:
+            def __init__(self,host,port,timeout): assert (host,port)==('127.0.0.1',11434)
+            def request(self,method,path): assert (method,path)==('GET','/api/tags')
+            def getresponse(self): return Response()
+            def close(self): pass
+        self.assertEqual(installed_models(connection_factory=Connection),('local',))
+        with patch('aeris.experience.messagebox.askyesno',return_value=True),patch('aeris.experience.installed_models',return_value=('local',)):
+            self.ui.detect_models()
+            deadline=time.monotonic()+3
+            while self.ui.busy and time.monotonic()<deadline: self.root.update(); time.sleep(.03)
+        self.assertFalse(self.ui.busy); self.assertEqual(self.ui.model.get(),'local')
     def test_inline_action_requires_confirmation_and_rejects_edit(self):
         self.ui.input.insert('1.0','Lembre-me de relatório em 30 minutos'); self.root.update()
-        with patch('aeris.experience.messagebox.askyesno',return_value=True): self.ui.prepare_action()
+        with patch('aeris.experience.messagebox.askyesno',return_value=True): self.ui.send()
         self.assertIsNotNone(self.ui.session.pending); self.assertIsNone(self.h.reminder_store)
         self.ui.input.insert('end','!'); self.ui.confirm_action()
         self.assertIsNone(self.h.reminder_store)
