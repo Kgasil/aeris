@@ -66,7 +66,7 @@ jobs:
           gh api --method POST repos/Kgasil/aeris/releases \
             -f tag_name="$tag" -f target_commitish=bfedb434358ce04d55827d7a057de3edf31c6728 \
             -f name='Aeris Desktop RC5 — RASCUNHO (não publicar)' \
-            -F draft=true -F prerelease=true -F make_latest=false -F body=@"$RUNNER_TEMP/notes.txt" > "$RUNNER_TEMP/release.json"
+            -F draft=true -F prerelease=true -f make_latest=false -F body=@"$RUNNER_TEMP/notes.txt" > "$RUNNER_TEMP/release.json"
           jq -e --arg tag "$tag" '.draft==true and .prerelease==true and .tag_name==$tag' "$RUNNER_TEMP/release.json"
           id=$(jq -r '.id' "$RUNNER_TEMP/release.json")
           [[ "$id" =~ ^[0-9]+$ ]]
