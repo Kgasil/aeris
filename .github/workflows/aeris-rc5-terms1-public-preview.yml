@@ -1,0 +1,85 @@
+name: Publish owner-authorized experimental Aeris RC5 terms1 preview
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/aeris-rc5-terms1-public-preview.yml'
+permissions:
+  contents: read
+  actions: read
+concurrency:
+  group: aeris-rc5-terms1-public-preview
+  cancel-in-progress: false
+jobs:
+  preview:
+    if: github.repository == 'Kgasil/aeris'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: write
+      actions: read
+    steps:
+      - name: Retrieve exact approved-in-CI installer and check all pinned bytes
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p staged preview-evidence
+          tag=aeris-desktop-1.0.0rc5-terms1-preview
+          name=Aeris-1.0.0rc5-Windows-x64-Setup-terms1.exe
+          expected=f5499cc2383e4d3a0acee8a0d84e173fa1a44a098ac0ba478c1febbcfe4e774b
+          gh api repos/Kgasil/aeris/actions/runs/45866232131 --jq '.conclusion' | grep -Fx success
+          curl --fail --location --silent --show-error -H "Authorization: Bearer $GH_TOKEN" -H 'Accept: application/vnd.github+json' https://api.github.com/repos/Kgasil/aeris/actions/artifacts/15139892917/zip -o "$RUNNER_TEMP/terms1.zip"
+          echo "74b6b7f76a3ac5dbc6ce3f926b979c020f001434a30937420664d2d30a069131  $RUNNER_TEMP/terms1.zip" | sha256sum -c -
+          unzip -p "$RUNNER_TEMP/terms1.zip" "$name" > "staged/$name"
+          echo "$expected  $name" > staged/SHA256SUMS.txt
+          (cd staged && sha256sum -c SHA256SUMS.txt && test "$(stat -c %s "$name")" = 12795620)
+          unzip -p "$RUNNER_TEMP/terms1.zip" status.json | python -c 'import json,sys; j=json.load(sys.stdin.buffer); assert all(j[k]=="PASS" for k in ("silent_missing_consent","silent_wrong_consent","accepted_install","same_version_reinstall","all_48_bundle_files_identical","installed_terms_hash","packaged_self_test","uninstall","synthetic_data_preserved")) and j["release_approved"] is False'
+          gh api --paginate repos/Kgasil/aeris/releases > "$RUNNER_TEMP/releases.json"
+          jq -se --arg tag "$tag" 'map(.[]) | all(.tag_name != $tag)' "$RUNNER_TEMP/releases.json"
+          gh api --paginate repos/Kgasil/aeris/tags > "$RUNNER_TEMP/tags.json"
+          jq -se --arg tag "$tag" 'map(.[]) | all(.name != $tag)' "$RUNNER_TEMP/tags.json"
+          cat > "$RUNNER_TEMP/notes.txt" <<'EOF'
+          ## Prévia pública experimental — RC5 (terms1)
+          Distribuição gratuita, não comercial, autorizada pelo titular para testes. Não é versão estável nem aprovada para produção. O Setup revisado inclui aceite de termos e o runtime; não exige Python externo, conta ou terminal. O RC5 original sem aceite continua em rascunho e não deve ser publicado.
+
+          **Antes de executar:** instalador sem assinatura digital; escaneamento antimalware independente não realizado (definições ClamAV vencidas); instalação interativa Windows 10/11 cliente ainda não verificada; revisão de termos de terceiros não concluída. O proprietário autorizou a disponibilização experimental apesar dessas pendências. Isso não certifica segurança, compatibilidade ou conformidade jurídica. Os avisos de minuta e de não aprovação para distribuição no pacote registram seu estado no momento da compilação; esta publicação é exclusivamente uma prévia para avaliação, não uma aprovação estável.
+
+          Verifique SHA-256, analise com proteção atualizada e não execute se houver bloqueio ou resultado inconclusivo. Não desative Defender/SmartScreen. Use apenas ambiente de testes descartável e dados fictícios. Ollama e Tesseract são opcionais, obtidos separadamente.
+
+          ## Public experimental preview
+          Free, non-commercial, owner-authorized evaluation build. Unsigned; no valid independent malware scan; Windows client interactive testing and third-party terms review pending. Not for production. Scan before executing, do not bypass security warnings, and use disposable test environments only.
+
+          Evidence: https://github.com/Kgasil/aeris/blob/main/downloads/rc5-terms1-installer-evidence.json
+          Source: https://github.com/Kgasil/aeris/tree/desktop-rc5-source
+          Installer recipe and terms: https://github.com/Kgasil/aeris/tree/33e923f2757fbde48494699dee16c011de7517fb/validation/installer
+          EOF
+          gh api --method POST repos/Kgasil/aeris/releases -f tag_name="$tag" -f target_commitish=33e923f2757fbde48494699dee16c011de7517fb -f name='Aeris Desktop RC5 — prévia pública experimental' -F draft=true -F prerelease=true -f make_latest=false -F body=@"$RUNNER_TEMP/notes.txt" > "$RUNNER_TEMP/release.json"
+          id=$(jq -er '.id' "$RUNNER_TEMP/release.json")
+          [[ "$id" =~ ^[0-9]+$ ]]
+          jq -e --arg tag "$tag" '.draft==true and .prerelease==true and .tag_name==$tag' "$RUNNER_TEMP/release.json"
+          for asset in "$name" SHA256SUMS.txt; do
+            curl --fail --silent --show-error -X POST -H "Authorization: Bearer $GH_TOKEN" -H 'Content-Type: application/octet-stream' --data-binary @"staged/$asset" "https://uploads.github.com/repos/Kgasil/aeris/releases/$id/assets?name=$asset" > "$RUNNER_TEMP/$asset.json"
+          done
+          gh api "repos/Kgasil/aeris/releases/$id" > "$RUNNER_TEMP/staged.json"
+          jq -e --arg tag "$tag" --arg n "$name" --arg d "sha256:$expected" '.draft==true and .prerelease==true and .tag_name==$tag and (.assets|length)==2 and any(.assets[]; .name==$n and .state=="uploaded" and .size==12795620 and .digest==$d)' "$RUNNER_TEMP/staged.json"
+          asset=$(jq -er --arg n "$name" '.assets[]|select(.name==$n)|.id' "$RUNNER_TEMP/staged.json")
+          curl --fail --location --silent --show-error -H "Authorization: Bearer $GH_TOKEN" -H 'Accept: application/octet-stream' "https://api.github.com/repos/Kgasil/aeris/releases/assets/$asset" -o "$RUNNER_TEMP/retrieved.exe"
+          echo "$expected  $RUNNER_TEMP/retrieved.exe" | sha256sum -c -
+          # Explicit owner request authorizes this exact experimental publication only.
+          gh api --method PATCH "repos/Kgasil/aeris/releases/$id" -F draft=false -F prerelease=true -f make_latest=false > "$RUNNER_TEMP/published.json"
+          jq -e --arg tag "$tag" '.draft==false and .prerelease==true and .tag_name==$tag' "$RUNNER_TEMP/published.json"
+          # Verify anonymous public download; do not send the token to this endpoint.
+          url="https://github.com/Kgasil/aeris/releases/download/$tag/$name"
+          curl --fail --location --silent --show-error --retry 3 --retry-all-errors "$url" -o "$RUNNER_TEMP/public.exe"
+          echo "$expected  $RUNNER_TEMP/public.exe" | sha256sum -c -
+          test "$(stat -c %s "$RUNNER_TEMP/public.exe")" = 12795620
+          jq --arg url "$url" '{id,tag_name,html_url,draft,prerelease,assets:[.assets[]|{name,size,digest,browser_download_url}],anonymous_download_url:$url,anonymous_hash_verified:true,publication_scope:"public experimental preview, owner requested",stable_approved:false,malware_scan:"NOT_TESTED",windows_client:"NOT_TESTED",third_party_terms_review:"PENDING"}' "$RUNNER_TEMP/published.json" > preview-evidence/publication.json
+          cat preview-evidence/publication.json
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: aeris-rc5-terms1-public-preview-evidence
+          path: preview-evidence/
+          if-no-files-found: warn
