@@ -181,7 +181,7 @@ jobs:
           if ([regex]::Matches($s,[regex]::Escape($marker)).Count -ne 1) { throw 'Unexpected notice collection recipe' }
           $extra = @'
               $reviewNotices = Join-Path $env:GITHUB_WORKSPACE 'validation/third-party-notices'
-              $expectedNotices = @('OpenSSL-3.5.9.txt','bzip2-1.0.8.txt','libffi-3.4.4.txt','XZ-5.2.5.txt','XZ-5.2.5-COPYING.LGPLv2.1.txt','Zstandard-1.5.7.txt','zlib-ng-2.2.4.txt','zlib-1.3.2.txt','mpdecimal-4.0.0.txt','libexpat.txt')
+              $expectedNotices = @('OpenSSL-3.5.9.txt','bzip2-1.0.8.txt','libffi-3.4.4.txt','XZ-5.2.5.txt','XZ-5.2.5-COPYING.LGPLv2.1.txt','Zstandard-1.5.7.txt','zlib-ng-2.2.4.txt','zlib-1.3.2.txt','mpdecimal-4.0.0.txt','libexpat.txt','libtommath-tcl-9.0.4.txt','Unicode-16.0.0.txt')
               foreach ($name in $expectedNotices) {
                   $notice = Join-Path $reviewNotices $name
                   if (-not (Test-Path -LiteralPath $notice -PathType Leaf)) { throw "Missing reviewed upstream notice: $name" }
@@ -231,6 +231,19 @@ jobs:
             if ($link.TargetPath -ne (Join-Path $dest 'Aeris.exe')) { throw "Wrong shortcut target: $shortcut" }
           }
           if (Get-Process -Name Aeris -ErrorAction SilentlyContinue) { throw 'Silent installer unexpectedly launched Aeris' }
+          function Confirm-InstalledNotices {
+            $source = Join-Path $stage 'dist/Aeris'
+            $noticePaths = @('PYTHON-LICENSE.txt')
+            $noticePaths += @(Get-ChildItem -LiteralPath (Join-Path $source 'NOTICES') -File | ForEach-Object { Join-Path 'NOTICES' $_.Name })
+            if ($noticePaths.Count -lt 17) { throw 'Expected at least seventeen candidate notices' }
+            foreach ($relative in $noticePaths) {
+              $original = Join-Path $source $relative
+              $actual = Join-Path $dest $relative
+              if (-not (Test-Path -LiteralPath $actual -PathType Leaf)) { throw "Missing installed notice: $relative" }
+              if ((Get-FileHash -LiteralPath $original -Algorithm SHA256).Hash -ne (Get-FileHash -LiteralPath $actual -Algorithm SHA256).Hash) { throw "Installed notice hash mismatch: $relative" }
+            }
+          }
+          Confirm-InstalledNotices
           $installed = Join-Path $dest 'Aeris.exe'
           & $validator -AerisExe $installed -ExpectedExeSha256 $hash -Mode Installed -ConfirmTestVM | Set-Content -LiteralPath preview-evidence/installed-validation.json -Encoding utf8
           New-Item -ItemType Directory -Path $data -Force | Out-Null
@@ -238,6 +251,7 @@ jobs:
           Set-Content -LiteralPath $marker -Value $token -Encoding ascii
           $markerHash = (Get-FileHash -LiteralPath $marker).Hash
           Run-Setup (Join-Path $PWD 'preview-evidence/reinstall.log')
+          Confirm-InstalledNotices
           & $validator -AerisExe $installed -ExpectedExeSha256 $hash -Mode Installed -ConfirmTestVM | Set-Content -LiteralPath preview-evidence/reinstalled-validation.json -Encoding utf8
           if ((Get-FileHash -LiteralPath $marker).Hash -ne $markerHash) { throw 'Reinstallation changed synthetic data' }
           $uninstallers = @(Get-ChildItem -LiteralPath $dest -File -Filter 'unins*.exe')
@@ -249,7 +263,7 @@ jobs:
           if (Test-Path -LiteralPath $installed) { throw 'Installed application remains after uninstall' }
           if ((Test-Path -LiteralPath $startShortcut) -or (Test-Path -LiteralPath $desktopShortcut)) { throw 'Shortcuts remain after uninstall' }
           if ((Get-FileHash -LiteralPath $marker).Hash -ne $markerHash) { throw 'Uninstallation changed synthetic data' }
-          [pscustomobject]@{ install='PASS'; reinstall_same_version='PASS'; uninstall='PASS'; synthetic_data_preserved='PASS'; shortcut_targets='PASS'; shortcut_cleanup='PASS'; silent_no_launch='PASS'; windows=[Environment]::OSVersion.VersionString; scope='Disposable Server 2022 runner; unsigned preview; not Windows 10/11 certification' } | ConvertTo-Json | Set-Content -LiteralPath preview-evidence/setup-validation.json -Encoding utf8
+          [pscustomobject]@{ install='PASS'; reinstall_same_version='PASS'; uninstall='PASS'; synthetic_data_preserved='PASS'; shortcut_targets='PASS'; shortcut_cleanup='PASS'; silent_no_launch='PASS'; installed_notice_hashes='PASS'; reinstalled_notice_hashes='PASS'; windows=[Environment]::OSVersion.VersionString; scope='Disposable Server 2022 runner; unsigned preview; not Windows 10/11 certification' } | ConvertTo-Json | Set-Content -LiteralPath preview-evidence/setup-validation.json -Encoding utf8
           foreach ($name in @('Aeris-1.0.0rc1-Windows-x64-portable.zip','Aeris-1.0.0rc1-Windows-x64-Setup.exe','SHA256SUMS.txt','AERIS-EXE-SHA256.txt','build-dependencies.txt')) {
             Copy-Item -LiteralPath (Join-Path $stage $name) -Destination preview-evidence
           }
