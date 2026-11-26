@@ -19,6 +19,8 @@ def configure(root, name):
     style.map('TCheckbutton', background=[('active', p['air'])], foreground=[('disabled', p['muted'])])
     style.configure('TCombobox', selectbackground=p['selected'], selectforeground=p['select_text'])
     style.map('TCombobox', fieldbackground=[('readonly', p['field'])], foreground=[('readonly', p['deep'])])
+    style.configure('Aeris.Primary.TButton',background='#30694F',foreground='#FFFFFF',padding=(12,7))
+    style.map('Aeris.Primary.TButton',background=[('disabled',p['soft']),('active','#397557'),('!disabled','#30694F')],foreground=[('disabled',p['muted']),('!disabled','#FFFFFF')])
     style.configure('TEntry', padding=(7,5))
     style.configure('TCombobox', padding=(7,5))
     style.configure('TNotebook', borderwidth=0)
