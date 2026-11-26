@@ -16,7 +16,8 @@ on:
       - '.github/workflows/aeris-windows-installer-preview.yml'
       - 'downloads/Aeris-Desktop-v1.0.0rc1-fix1-codigo-fonte.zip'
       - 'validation/test_verify.py'
-      - 'validation/installer/**'
+      - 'validation/installer/Aeris.iss'
+      - 'validation/audit-desktop-bundle.py'
 permissions:
   contents: read
 concurrency:
@@ -75,7 +76,11 @@ jobs:
             $b = @($after | Where-Object { $_ -match ('^' + $key + '=') })
             if ($a.Count -ne 1 -or $b.Count -ne 1 -or $a[0] -cne $b[0]) { throw "Installer invariant changed: $key" }
           }
-          if ($after -match '^\[(Registry|InstallDelete|UninstallDelete|UninstallRun)\]
+          if ($after -match '^\[(Registry|InstallDelete|UninstallDelete|UninstallRun)\]$') { throw 'Unexpected installer side effects' }
+          $run = @($after | Where-Object { $_ -match '^Filename: ' })
+          if ($run.Count -ne 1 -or $run[0] -notmatch 'Flags: postinstall nowait skipifsilent unchecked runasoriginaluser$') { throw 'Unexpected launch behavior' }
+          Copy-Item -LiteralPath $overlay -Destination $original -Force
+      - name: Locate Inno Setup compiler and build
         shell: pwsh
         run: |
           $ErrorActionPreference = 'Stop'
@@ -147,12 +152,24 @@ jobs:
           foreach ($name in @('Aeris-1.0.0rc1-Windows-x64-portable.zip','Aeris-1.0.0rc1-Windows-x64-Setup.exe','SHA256SUMS.txt','AERIS-EXE-SHA256.txt','build-dependencies.txt')) {
             Copy-Item -LiteralPath (Join-Path $stage $name) -Destination preview-evidence
           }
+      - name: Verify portable manifest and record inventory
+        shell: pwsh
+        run: |
+          py -3.12-64 validation/audit-desktop-bundle.py preview-evidence/Aeris-1.0.0rc1-Windows-x64-portable.zip --output preview-evidence/bundle-audit.json
+          if ($LASTEXITCODE -ne 0) { throw 'Bundle inventory verification failed' }
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
           name: aeris-unsigned-installer-preview-not-a-release
           path: preview-evidence/
           if-no-files-found: error
           retention-days: 30
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: failure()
+        with:
+          name: aeris-installer-failure-diagnostics
+          path: preview-evidence/*.log
+          if-no-files-found: ignore
+          retention-days: 7
   publish-preview:
     needs: installer-preview
     if: ${{ github.event_name == 'workflow_dispatch' && inputs.publish_preview && github.ref == 'refs/heads/main' }}
@@ -181,268 +198,6 @@ jobs:
           p = pathlib.Path("setup-validation.json")
           data = json.loads(p.read_text(encoding="utf-8-sig"))
           for key in ("install", "reinstall_same_version", "uninstall", "synthetic_data_preserved", "shortcut_targets", "shortcut_cleanup", "silent_no_launch"):
-              if data.get(key) != "PASS":
-                  raise SystemExit(f"Missing passing evidence: {key}")
-          names = ["Aeris-1.0.0rc1-Windows-x64-Setup.exe", "Aeris-1.0.0rc1-Windows-x64-portable.zip"]
-          lines = []
-          for name in names:
-              f = pathlib.Path(name)
-              if not f.is_file() or f.stat().st_size == 0:
-                  raise SystemExit(f"Missing artifact: {name}")
-              lines.append(f"{hashlib.sha256(f.read_bytes()).hexdigest()}  {name}")
-          pathlib.Path("SHA256SUMS-preview.txt").write_text("\n".join(lines) + "\n", encoding="ascii")
-          PY
-          sha256sum --check SHA256SUMS-preview.txt
-      - name: Publish immutable experimental prerelease
-        env:
-          GH_TOKEN: ${{ github.token }}
-          REPO: ${{ github.repository }}
-          COMMIT_SHA: ${{ github.sha }}
-          RUN_ID: ${{ github.run_id }}
-          REVIEW: ${{ inputs.redistribution_review }}
-        shell: bash
-        run: |
-          set -euo pipefail
-          tag=aeris-desktop-1.0.0rc1-preview
-          if gh release view "$tag" --repo "$REPO" >/dev/null 2>&1; then
-            echo "Preview release already exists; refusing to overwrite verified assets." >&2
-            exit 1
-          fi
-          printf '%s\n' 'Experimental unsigned Windows x64 installer. Tested on Windows Server 2022; Windows 10/11, cross-version upgrade, real AI/audio/OCR, performance and accessibility remain pending. Use synthetic data only. Not a stable release.' "Validation: https://github.com/$REPO/actions/runs/$RUN_ID" "Redistribution and trust review: $REVIEW" > notes.md
-          gh release create "$tag" --repo "$REPO" --target "$COMMIT_SHA" --prerelease --latest=false --title 'Aeris Desktop 1.0.0rc1 — Experimental Windows preview' --notes-file notes.md \
-            preview/Aeris-1.0.0rc1-Windows-x64-Setup.exe \
-            preview/Aeris-1.0.0rc1-Windows-x64-portable.zip \
-            preview/SHA256SUMS-preview.txt \
-            preview/setup-validation.json \
-            preview/build-dependencies.txt
-) { throw 'Unexpected installer side effects' }
-          $run = @($after | Where-Object { $_ -match '^Filename: ' })
-          if ($run.Count -ne 1 -or $run[0] -notmatch 'Flags: postinstall nowait skipifsilent unchecked runasoriginaluser
-        shell: pwsh
-        run: |
-          $ErrorActionPreference = 'Stop'
-          $candidates = @(
-            (Join-Path ${env:ProgramFiles(x86)} 'Inno Setup 6\ISCC.exe'),
-            (Join-Path $env:ProgramFiles 'Inno Setup 6\ISCC.exe'),
-            (Join-Path $env:LOCALAPPDATA 'Programs\Inno Setup 6\ISCC.exe')
-          )
-          $iscc = $candidates | Where-Object { Test-Path -LiteralPath $_ -PathType Leaf } | Select-Object -First 1
-          if (-not $iscc) {
-            $cmd = Get-Command ISCC.exe -ErrorAction SilentlyContinue
-            if ($cmd) { $iscc = $cmd.Source }
-          }
-          if (-not $iscc) { throw 'Inno Setup 6 compiler not available on runner; no unverified download attempted.' }
-          & .\source\Aeris-Desktop-v1.0.0rc1-fix1\distribution\build.ps1 -Iscc $iscc
-      - name: Validate portable and installed previews
-        shell: pwsh
-        run: |
-          $ErrorActionPreference = 'Stop'
-          $root = 'source/Aeris-Desktop-v1.0.0rc1-fix1'
-          $dirs = @(Get-ChildItem -LiteralPath "$root/distribution/out" -Directory)
-          if ($dirs.Count -ne 1) { throw 'Expected exactly one build' }
-          $stage = $dirs[0].FullName
-          $exe = Join-Path $stage 'dist/Aeris/Aeris.exe'
-          $hash = (Get-Content -LiteralPath (Join-Path $stage 'AERIS-EXE-SHA256.txt') -Raw).Trim()
-          $validator = "$root/distribution/validate-windows.ps1"
-          New-Item -ItemType Directory -Path preview-evidence | Out-Null
-          & $validator -AerisExe $exe -ExpectedExeSha256 $hash -Mode Portable -ConfirmTestVM | Set-Content -LiteralPath preview-evidence/portable-validation.json -Encoding utf8
-          $setup = Join-Path $stage 'Aeris-1.0.0rc1-Windows-x64-Setup.exe'
-          $dest = Join-Path $env:LOCALAPPDATA 'Programs\KGVision\Aeris'
-          $data = Join-Path $env:LOCALAPPDATA 'Aeris'
-          if ((Test-Path -LiteralPath $dest) -or (Test-Path -LiteralPath $data)) { throw 'Expected clean disposable runner; refusing to touch existing installation/data.' }
-          $marker = Join-Path $data 'ci-synthetic-preserve.txt'
-          function Run-Setup([string]$log) {
-            $p = Start-Process -FilePath $setup -ArgumentList @('/VERYSILENT','/SUPPRESSMSGBOXES','/NORESTART','/CURRENTUSER',('/LOG="' + $log + '"')) -PassThru
-            if (-not $p.WaitForExit(120000)) { $p.Kill(); throw 'Installer timed out' }
-            if ($p.ExitCode -ne 0) { throw "Installer exit code $($p.ExitCode)" }
-          }
-          Run-Setup (Join-Path $PWD 'preview-evidence/install.log')
-          $installed = Join-Path $dest 'Aeris.exe'
-          & $validator -AerisExe $installed -ExpectedExeSha256 $hash -Mode Installed -ConfirmTestVM | Set-Content -LiteralPath preview-evidence/installed-validation.json -Encoding utf8
-          New-Item -ItemType Directory -Path $data -Force | Out-Null
-          $token = 'Aeris CI synthetic preservation marker'
-          Set-Content -LiteralPath $marker -Value $token -Encoding ascii
-          $markerHash = (Get-FileHash -LiteralPath $marker).Hash
-          Run-Setup (Join-Path $PWD 'preview-evidence/reinstall.log')
-          & $validator -AerisExe $installed -ExpectedExeSha256 $hash -Mode Installed -ConfirmTestVM | Set-Content -LiteralPath preview-evidence/reinstalled-validation.json -Encoding utf8
-          if ((Get-FileHash -LiteralPath $marker).Hash -ne $markerHash) { throw 'Reinstallation changed synthetic data' }
-          $uninstallers = @(Get-ChildItem -LiteralPath $dest -File -Filter 'unins*.exe')
-          if ($uninstallers.Count -ne 1) { throw 'Expected one uninstaller' }
-          $log = Join-Path $PWD 'preview-evidence/uninstall.log'
-          $p = Start-Process -FilePath $uninstallers[0].FullName -ArgumentList @('/VERYSILENT','/SUPPRESSMSGBOXES','/NORESTART',('/LOG="' + $log + '"')) -PassThru
-          if (-not $p.WaitForExit(120000)) { $p.Kill(); throw 'Uninstaller timed out' }
-          if ($p.ExitCode -ne 0) { throw "Uninstaller exit code $($p.ExitCode)" }
-          if (Test-Path -LiteralPath $installed) { throw 'Installed application remains after uninstall' }
-          if ((Get-FileHash -LiteralPath $marker).Hash -ne $markerHash) { throw 'Uninstallation changed synthetic data' }
-          [pscustomobject]@{ install='PASS'; reinstall_same_version='PASS'; uninstall='PASS'; synthetic_data_preserved='PASS'; windows=[Environment]::OSVersion.VersionString; scope='Disposable Server 2022 runner; unsigned preview; not Windows 10/11 certification' } | ConvertTo-Json | Set-Content -LiteralPath preview-evidence/setup-validation.json -Encoding utf8
-          foreach ($name in @('Aeris-1.0.0rc1-Windows-x64-portable.zip','Aeris-1.0.0rc1-Windows-x64-Setup.exe','SHA256SUMS.txt','AERIS-EXE-SHA256.txt','build-dependencies.txt')) {
-            Copy-Item -LiteralPath (Join-Path $stage $name) -Destination preview-evidence
-          }
-      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
-        with:
-          name: aeris-unsigned-installer-preview-not-a-release
-          path: preview-evidence/
-          if-no-files-found: error
-          retention-days: 30
-  publish-preview:
-    needs: installer-preview
-    if: ${{ github.event_name == 'workflow_dispatch' && inputs.publish_preview && github.ref == 'refs/heads/main' }}
-    runs-on: ubuntu-24.04
-    permissions:
-      actions: read
-      contents: write
-    steps:
-      - name: Verify publication authorization and download validated artifact
-        env:
-          GH_TOKEN: ${{ github.token }}
-          REVIEW: ${{ inputs.redistribution_review }}
-          RUN_ID: ${{ github.run_id }}
-          REPO: ${{ github.repository }}
-        shell: bash
-        run: |
-          set -euo pipefail
-          if [[ -z "${REVIEW//[[:space:]]/}" ]]; then
-            echo "Documented redistribution and trust review required." >&2
-            exit 1
-          fi
-          gh run download "$RUN_ID" --repo "$REPO" --name aeris-unsigned-installer-preview-not-a-release --dir preview
-          cd preview
-          python - <<'PY'
-          import json, pathlib, hashlib
-          p = pathlib.Path("setup-validation.json")
-          data = json.loads(p.read_text(encoding="utf-8-sig"))
-          for key in ("install", "reinstall_same_version", "uninstall", "synthetic_data_preserved"):
-              if data.get(key) != "PASS":
-                  raise SystemExit(f"Missing passing evidence: {key}")
-          names = ["Aeris-1.0.0rc1-Windows-x64-Setup.exe", "Aeris-1.0.0rc1-Windows-x64-portable.zip"]
-          lines = []
-          for name in names:
-              f = pathlib.Path(name)
-              if not f.is_file() or f.stat().st_size == 0:
-                  raise SystemExit(f"Missing artifact: {name}")
-              lines.append(f"{hashlib.sha256(f.read_bytes()).hexdigest()}  {name}")
-          pathlib.Path("SHA256SUMS-preview.txt").write_text("\n".join(lines) + "\n", encoding="ascii")
-          PY
-          sha256sum --check SHA256SUMS-preview.txt
-      - name: Publish immutable experimental prerelease
-        env:
-          GH_TOKEN: ${{ github.token }}
-          REPO: ${{ github.repository }}
-          COMMIT_SHA: ${{ github.sha }}
-          RUN_ID: ${{ github.run_id }}
-          REVIEW: ${{ inputs.redistribution_review }}
-        shell: bash
-        run: |
-          set -euo pipefail
-          tag=aeris-desktop-1.0.0rc1-preview
-          if gh release view "$tag" --repo "$REPO" >/dev/null 2>&1; then
-            echo "Preview release already exists; refusing to overwrite verified assets." >&2
-            exit 1
-          fi
-          printf '%s\n' 'Experimental unsigned Windows x64 installer. Tested on Windows Server 2022; Windows 10/11, cross-version upgrade, real AI/audio/OCR, performance and accessibility remain pending. Use synthetic data only. Not a stable release.' "Validation: https://github.com/$REPO/actions/runs/$RUN_ID" "Redistribution and trust review: $REVIEW" > notes.md
-          gh release create "$tag" --repo "$REPO" --target "$COMMIT_SHA" --prerelease --latest=false --title 'Aeris Desktop 1.0.0rc1 — Experimental Windows preview' --notes-file notes.md \
-            preview/Aeris-1.0.0rc1-Windows-x64-Setup.exe \
-            preview/Aeris-1.0.0rc1-Windows-x64-portable.zip \
-            preview/SHA256SUMS-preview.txt \
-            preview/setup-validation.json \
-            preview/build-dependencies.txt
-) { throw 'Unexpected launch behavior' }
-          Copy-Item -LiteralPath $overlay -Destination $original -Force
-      - name: Locate Inno Setup compiler and build
-        shell: pwsh
-        run: |
-          $ErrorActionPreference = 'Stop'
-          $candidates = @(
-            (Join-Path ${env:ProgramFiles(x86)} 'Inno Setup 6\ISCC.exe'),
-            (Join-Path $env:ProgramFiles 'Inno Setup 6\ISCC.exe'),
-            (Join-Path $env:LOCALAPPDATA 'Programs\Inno Setup 6\ISCC.exe')
-          )
-          $iscc = $candidates | Where-Object { Test-Path -LiteralPath $_ -PathType Leaf } | Select-Object -First 1
-          if (-not $iscc) {
-            $cmd = Get-Command ISCC.exe -ErrorAction SilentlyContinue
-            if ($cmd) { $iscc = $cmd.Source }
-          }
-          if (-not $iscc) { throw 'Inno Setup 6 compiler not available on runner; no unverified download attempted.' }
-          & .\source\Aeris-Desktop-v1.0.0rc1-fix1\distribution\build.ps1 -Iscc $iscc
-      - name: Validate portable and installed previews
-        shell: pwsh
-        run: |
-          $ErrorActionPreference = 'Stop'
-          $root = 'source/Aeris-Desktop-v1.0.0rc1-fix1'
-          $dirs = @(Get-ChildItem -LiteralPath "$root/distribution/out" -Directory)
-          if ($dirs.Count -ne 1) { throw 'Expected exactly one build' }
-          $stage = $dirs[0].FullName
-          $exe = Join-Path $stage 'dist/Aeris/Aeris.exe'
-          $hash = (Get-Content -LiteralPath (Join-Path $stage 'AERIS-EXE-SHA256.txt') -Raw).Trim()
-          $validator = "$root/distribution/validate-windows.ps1"
-          New-Item -ItemType Directory -Path preview-evidence | Out-Null
-          & $validator -AerisExe $exe -ExpectedExeSha256 $hash -Mode Portable -ConfirmTestVM | Set-Content -LiteralPath preview-evidence/portable-validation.json -Encoding utf8
-          $setup = Join-Path $stage 'Aeris-1.0.0rc1-Windows-x64-Setup.exe'
-          $dest = Join-Path $env:LOCALAPPDATA 'Programs\KGVision\Aeris'
-          $data = Join-Path $env:LOCALAPPDATA 'Aeris'
-          if ((Test-Path -LiteralPath $dest) -or (Test-Path -LiteralPath $data)) { throw 'Expected clean disposable runner; refusing to touch existing installation/data.' }
-          $marker = Join-Path $data 'ci-synthetic-preserve.txt'
-          function Run-Setup([string]$log) {
-            $p = Start-Process -FilePath $setup -ArgumentList @('/VERYSILENT','/SUPPRESSMSGBOXES','/NORESTART','/CURRENTUSER',('/LOG="' + $log + '"')) -PassThru
-            if (-not $p.WaitForExit(120000)) { $p.Kill(); throw 'Installer timed out' }
-            if ($p.ExitCode -ne 0) { throw "Installer exit code $($p.ExitCode)" }
-          }
-          Run-Setup (Join-Path $PWD 'preview-evidence/install.log')
-          $installed = Join-Path $dest 'Aeris.exe'
-          & $validator -AerisExe $installed -ExpectedExeSha256 $hash -Mode Installed -ConfirmTestVM | Set-Content -LiteralPath preview-evidence/installed-validation.json -Encoding utf8
-          New-Item -ItemType Directory -Path $data -Force | Out-Null
-          $token = 'Aeris CI synthetic preservation marker'
-          Set-Content -LiteralPath $marker -Value $token -Encoding ascii
-          $markerHash = (Get-FileHash -LiteralPath $marker).Hash
-          Run-Setup (Join-Path $PWD 'preview-evidence/reinstall.log')
-          & $validator -AerisExe $installed -ExpectedExeSha256 $hash -Mode Installed -ConfirmTestVM | Set-Content -LiteralPath preview-evidence/reinstalled-validation.json -Encoding utf8
-          if ((Get-FileHash -LiteralPath $marker).Hash -ne $markerHash) { throw 'Reinstallation changed synthetic data' }
-          $uninstallers = @(Get-ChildItem -LiteralPath $dest -File -Filter 'unins*.exe')
-          if ($uninstallers.Count -ne 1) { throw 'Expected one uninstaller' }
-          $log = Join-Path $PWD 'preview-evidence/uninstall.log'
-          $p = Start-Process -FilePath $uninstallers[0].FullName -ArgumentList @('/VERYSILENT','/SUPPRESSMSGBOXES','/NORESTART',('/LOG="' + $log + '"')) -PassThru
-          if (-not $p.WaitForExit(120000)) { $p.Kill(); throw 'Uninstaller timed out' }
-          if ($p.ExitCode -ne 0) { throw "Uninstaller exit code $($p.ExitCode)" }
-          if (Test-Path -LiteralPath $installed) { throw 'Installed application remains after uninstall' }
-          if ((Get-FileHash -LiteralPath $marker).Hash -ne $markerHash) { throw 'Uninstallation changed synthetic data' }
-          [pscustomobject]@{ install='PASS'; reinstall_same_version='PASS'; uninstall='PASS'; synthetic_data_preserved='PASS'; windows=[Environment]::OSVersion.VersionString; scope='Disposable Server 2022 runner; unsigned preview; not Windows 10/11 certification' } | ConvertTo-Json | Set-Content -LiteralPath preview-evidence/setup-validation.json -Encoding utf8
-          foreach ($name in @('Aeris-1.0.0rc1-Windows-x64-portable.zip','Aeris-1.0.0rc1-Windows-x64-Setup.exe','SHA256SUMS.txt','AERIS-EXE-SHA256.txt','build-dependencies.txt')) {
-            Copy-Item -LiteralPath (Join-Path $stage $name) -Destination preview-evidence
-          }
-      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
-        with:
-          name: aeris-unsigned-installer-preview-not-a-release
-          path: preview-evidence/
-          if-no-files-found: error
-          retention-days: 30
-  publish-preview:
-    needs: installer-preview
-    if: ${{ github.event_name == 'workflow_dispatch' && inputs.publish_preview && github.ref == 'refs/heads/main' }}
-    runs-on: ubuntu-24.04
-    permissions:
-      actions: read
-      contents: write
-    steps:
-      - name: Verify publication authorization and download validated artifact
-        env:
-          GH_TOKEN: ${{ github.token }}
-          REVIEW: ${{ inputs.redistribution_review }}
-          RUN_ID: ${{ github.run_id }}
-          REPO: ${{ github.repository }}
-        shell: bash
-        run: |
-          set -euo pipefail
-          if [[ -z "${REVIEW//[[:space:]]/}" ]]; then
-            echo "Documented redistribution and trust review required." >&2
-            exit 1
-          fi
-          gh run download "$RUN_ID" --repo "$REPO" --name aeris-unsigned-installer-preview-not-a-release --dir preview
-          cd preview
-          python - <<'PY'
-          import json, pathlib, hashlib
-          p = pathlib.Path("setup-validation.json")
-          data = json.loads(p.read_text(encoding="utf-8-sig"))
-          for key in ("install", "reinstall_same_version", "uninstall", "synthetic_data_preserved"):
               if data.get(key) != "PASS":
                   raise SystemExit(f"Missing passing evidence: {key}")
           names = ["Aeris-1.0.0rc1-Windows-x64-Setup.exe", "Aeris-1.0.0rc1-Windows-x64-portable.zip"]
