@@ -1,0 +1,108 @@
+name: Aeris performance and accessibility validation
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/aeris-performance-accessibility.yml'
+      - 'validation/performance/**'
+permissions:
+  contents: read
+  actions: read
+jobs:
+  packaged-performance:
+    runs-on: windows-2022
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065
+        with:
+          python-version: '3.14.10'
+          architecture: x64
+      - name: Verify exact RC2 artifact and extract independently
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $ErrorActionPreference = 'Stop'
+          New-Item -ItemType Directory -Path perf-evidence | Out-Null
+          $archive = Join-Path $env:RUNNER_TEMP 'aeris-rc2-perf.zip'
+          $target = Join-Path $env:RUNNER_TEMP 'aeris-rc2-perf'
+          $headers = @{Authorization=('Bearer ' + $env:GH_TOKEN);Accept='application/vnd.github+json';'X-GitHub-Api-Version'='2022-11-28'}
+          Invoke-WebRequest -Uri 'https://api.github.com/repos/Kgasil/aeris/actions/artifacts/15132831716/zip' -Headers $headers -OutFile $archive
+          py -3.14-64 validation/performance/extract-rc2.py $archive $target | Set-Content -LiteralPath perf-evidence/integrity.json -Encoding utf8
+          if ($LASTEXITCODE -ne 0) { throw 'RC2 verification failed' }
+      - name: Measure RC2 startup, idle resources and normal shutdown
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          & .\validation\performance\measure-rc2.ps1 -AerisExe (Join-Path $env:RUNNER_TEMP 'aeris-rc2-perf/Aeris/Aeris.exe') -ExpectedSha256 '1cfc9f494feb5d5b15646fef4c1dbbe6490377326abf59a309e0c56e4db551a4' -EvidencePath perf-evidence/packaged-performance.json
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: aeris-rc2-performance-evidence
+          path: perf-evidence/
+          if-no-files-found: warn
+          retention-days: 30
+  source-ui:
+    runs-on: windows-2022
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065
+        with:
+          python-version: '3.14.10'
+          architecture: x64
+      - name: Run existing accessibility regression and UI smoke
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $zip = 'downloads/Aeris-Desktop-v1.0.0rc1-fix1-codigo-fonte.zip'
+          if ((Get-FileHash -LiteralPath $zip -Algorithm SHA256).Hash.ToLowerInvariant() -ne '22e8843c3f823d4358766ad44905d5e13265cb47ab36dc10dbb42fc3760c9153') { throw 'Source hash mismatch' }
+          Expand-Archive -LiteralPath $zip -DestinationPath source
+          New-Item -ItemType Directory -Path ui-evidence | Out-Null
+          $evidence = (Resolve-Path ui-evidence).Path
+          Push-Location 'source/Aeris-Desktop-v1.0.0rc1-fix1/desktop'
+          try {
+            py -3.14-64 -m unittest -v tests.test_accessibility 2>&1 | Tee-Object -FilePath (Join-Path $evidence 'accessibility-unit.log')
+            if ($LASTEXITCODE -ne 0) { throw 'Accessibility unit tests failed' }
+            $log = Get-Content -LiteralPath (Join-Path $evidence 'accessibility-unit.log') -Raw
+            if ($log -notmatch 'Ran 6 tests' -or $log -match 'skipped=') { throw 'Expected six tests without skips' }
+            py -3.14-64 -m tests.smoke_accessibility 2>&1 | Tee-Object -FilePath (Join-Path $evidence 'accessibility-smoke.log')
+            if ($LASTEXITCODE -ne 0) { throw 'Accessibility smoke failed' }
+            if (-not (Select-String -LiteralPath (Join-Path $evidence 'accessibility-smoke.log') -SimpleMatch 'Accessibility smoke: OK' -Quiet)) { throw 'Smoke success marker missing' }
+          } finally { Pop-Location }
+      - name: Measure source UI lifecycle and idle resource usage
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $evidence = (Resolve-Path ui-evidence).Path
+          Push-Location 'source/Aeris-Desktop-v1.0.0rc1-fix1/desktop'
+          try {
+            foreach ($module in @('benchmark_health','benchmark_eco','benchmark_lifecycle')) {
+              py -3.14-64 -m "tests.$module" | Set-Content -LiteralPath (Join-Path $evidence "$module.json") -Encoding utf8
+              if ($LASTEXITCODE -ne 0) { throw "Benchmark failed: $module" }
+            }
+          } finally { Pop-Location }
+          foreach ($name in @('benchmark_health','benchmark_eco')) {
+            $r = Get-Content -LiteralPath (Join-Path $evidence "$name.json") -Raw | ConvertFrom-Json
+            if ($r.samples.Count -ne 6) { throw 'Expected six idle samples per benchmark' }
+            foreach ($sample in $r.samples) {
+              if ($sample.seconds -lt 1.9 -or $sample.cpu_percent_one_core -gt 5 -or $null -eq $sample.resident_bytes -or $sample.resident_bytes -le 0 -or $sample.resident_bytes -gt 200MB) { throw "Idle resource budget failed: $name" }
+            }
+          }
+          $life = Get-Content -LiteralPath (Join-Path $evidence 'benchmark_lifecycle.json') -Raw | ConvertFrom-Json
+          if ($life.cycles -ne 5 -or $life.windows -ne 65 -or $life.retained_objects -ne 0 -or $life.closed_hub_references -ne 0) { throw 'Lifecycle regression' }
+          if ($null -eq $life.rss_initial_bytes -or $null -eq $life.rss_after_bytes -or ($life.rss_after_bytes - $life.rss_initial_bytes) -gt 64MB) { throw 'Lifecycle memory growth budget failed' }
+          [pscustomobject]@{scope='Source-level UI benchmarks and accessibility smoke on Server 2022, not installed RC2 or OS accessibility certification';accessibility_unit='PASS';accessibility_smoke='PASS';idle_budgets='PASS';lifecycle='PASS';narrator='NOT_TESTED';os_high_contrast='NOT_TESTED';client_scaling='NOT_TESTED';release_approved=$false} | ConvertTo-Json | Set-Content -LiteralPath (Join-Path $evidence 'ui-validation.json') -Encoding utf8
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: aeris-source-ui-evidence
+          path: ui-evidence/
+          if-no-files-found: warn
+          retention-days: 30
