@@ -73,8 +73,30 @@ class ExperienceTests(unittest.TestCase):
             self.ui.save_note(); self.ui.save_meeting()
         self.assertEqual(self.h.capture_store.list()[0].body,'Nota sintética')
         self.assertEqual(self.h.meeting_store.list()[0].notes,'Pauta fictícia')
-        self.ui.meeting_summary(); self.assertIn('Pauta fictícia',self.ui.input.get('1.0','end-1c'))
+        # No model configured: opening help must not transmit or save the transcript.
+        with patch.object(self.ui,'configure_ai') as help_ui, patch('aeris.experience.prepare_minutes') as prepare:
+            self.ui.meeting_summary()
+            help_ui.assert_called_once(); prepare.assert_not_called()
         self.assertFalse(self.h.permissions.allowed(COMPANION_CHAT))
+        self.assertEqual(self.ui.input.get('1.0','end-1c'),'')
+        self.ui.model.set('local')
+        with patch('aeris.experience.messagebox.askyesno',return_value=False), patch('aeris.experience.prepare_minutes') as prepare:
+            self.ui.meeting_summary(); prepare.assert_not_called()
+        self.assertFalse(self.h.permissions.allowed(COMPANION_CHAT))
+        from aeris.meeting_intelligence import Draft
+        draft=Draft('Resumo fictício',())
+        with patch('aeris.experience.messagebox.askyesno',return_value=True), patch('aeris.experience.prepare_minutes',return_value=draft) as prepare:
+            self.ui.meeting_summary()
+            deadline=time.monotonic()+3
+            while self.ui.busy and time.monotonic()<deadline: self.root.update(); time.sleep(.03)
+            prepare.assert_called_once_with('local','Pauta fictícia')
+        self.assertFalse(self.ui.busy)
+        self.assertTrue(self.h.alive(self.h.meeting_window) or self.h.meeting_store is not None)
+        self.assertEqual(len(self.h.meeting_store.list()),1)
+        self.assertIsNotNone(self.ui.meeting_review)
+        self.h.permissions.set(COMPANION_CHAT,False)
+        self.assertIsNone(self.ui.meeting_review)
+        self.assertEqual(len(self.h.meeting_store.list()),1)
     def test_screen_requires_consent_and_revocation_discards(self):
         with patch('aeris.experience.messagebox.askyesno',return_value=False),patch('aeris.experience.capture_process') as cap:
             self.ui.capture(); cap.assert_not_called()
