@@ -10,7 +10,7 @@
 | Revisão dos quatro skips e desempenho exato RC3 | PASS | [Evidência complementar](../downloads/rc3-final-review-evidence.json): quatro testes em Ubuntu; desempenho RC3 aprovado |
 | Direitos de distribuição | Pendente | Confirmar autoria/licenças de código, imagens e marca; resolver obrigações de terceiros e proveniência Microsoft |
 | Antimalware | Pendente | Executar [procedimento de scan](../validation/installer/SCAN.md) no candidato exato, com proteção ativa |
-| Assinatura digital | Pendente | Definir processo de Authenticode e verificar assinatura; não afirmar certificação. RC3 unsigned |
+| Assinatura digital | Adiada — orçamento zero | Não adquirir certificado; avaliar alternativas gratuitas legítimas. RC4 não assinado; estável adiada |
 | Windows 10/11 | Pendente | Executar [kit cliente](../validation/windows-client/README.md) em duas VMs suportadas, contas comuns |
 | Atualização, recuperação e funções nativas | Parcial | [RC3→RC4](../downloads/rc3-rc4-upgrade-evidence.json) passou; 44 DLLs permanecem após atualização direta. Reinstalação limpa preservou dados fictícios; testar cliente, interrupção, outra conta e ACLs |
 | IA, áudio, OCR e acessibilidade cliente | Parcial | Validar funções opcionais, consentimento, dispositivos, Tesseract Windows, Narrator e escala |
@@ -42,3 +42,6 @@ Aeris Desktop 1.0.0 — Eficiência e Simplicidade. Primeira versão estável pl
 [Build RC4](../downloads/windows-rc4-reduced-runtime-evidence.json): 409/413 testes Windows, quatro skips, 47 hashes, 27 binários e 17 avisos. Dois VCRUNTIME correspondem à instalação Python de build, sem autorização legal implícita. [Atualização exata](../downloads/rc3-rc4-upgrade-evidence.json): oito manifestos idênticos, reinstalação limpa aprovada, 44 arquivos antigos em atualização direta. Migração documentada, sem exclusão automática. ClamAV RC3 bloqueado por definições com mais de 24h; scan RC4 ainda não executado. Revisão complementar RC4 aprovada em CI. Não gerar ou publicar estável até decisões de direitos, assinatura e testes em Windows cliente; nenhum certificado ou credencial deve ser compartilhado no chat.
 
 - [Revisão complementar RC4 45854218340](https://github.com/Kgasil/aeris/actions/runs/45854218340): quatro testes anteriormente ignorados aprovados em Ubuntu com Tesseract; 413 testes distintos aprovados nos ambientes aplicáveis (409 Windows + 4 Linux). Performance RC4 portátil exato aprovada: inicializações 1,031/0,229/0,234 s, máximo 41.566.208 bytes de working set, CPU ociosa amostrada 0%, encerramento ≤0,055 s. [Evidência verificada](../downloads/rc4-final-review-evidence.json). Gates de segurança, direitos, assinatura e Windows cliente permanecem abertos; nenhuma autorização de publicação.
+
+## Política de orçamento zero
+[Plano sem custos](zero-cost-plan.md): lojas e certificados pagos fora do escopo atual. Testes gratuitos em ambientes disponíveis, sem assumir custos. Direitos e segurança continuam requisitos de publicação; se faltar ambiente cliente, manter NOT_TESTED. Sincronização GRAAL pode ocorrer antes do lançamento, sem rotular RC4 como estável.
