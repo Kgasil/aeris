@@ -1,0 +1,35 @@
+{
+  "scope": "Windows Server 2022 disposable runner; unsigned experimental build; not Windows 10/11 certification",
+  "run": 45730507059,
+  "commit": "cdb8163c4d7e2afb7969b0ae59c9f6641a77058f",
+  "artifact_id": 15076935274,
+  "artifact_sha256": "67f3a5aa1131ce612d82627e7e500dfed64305a03f9a806a97173625ed8d33a7",
+  "artifact_expires": "2026-12-03T00:42:42Z",
+  "portable": {
+    "bytes": 13077458,
+    "sha256": "f076ab5d766121f318847d803295796ba32022c0f27092542a9911dd120a3a08"
+  },
+  "installer": {
+    "bytes": 11374812,
+    "sha256": "20a5f376e62f67e941dba3e4027814992c03165008ea309581e442543d425830"
+  },
+  "exe_sha256": "007d397c3c7f20329043414b3c2cb3f2009a5ad109b34374f0efeb8946e96f4f",
+  "checks": {
+    "portable_ui_self_test": "PASS",
+    "installed_ui_self_test": "PASS",
+    "reinstalled_ui_self_test": "PASS",
+    "install": "PASS",
+    "reinstall_same_version": "PASS",
+    "uninstall": "PASS",
+    "synthetic_data_preserved": "PASS"
+  },
+  "authenticode": "NotSigned",
+  "remaining": [
+    "Clean Windows 10 and 11 validation",
+    "Upgrade from a different version",
+    "Real AI, speech and OCR",
+    "Performance and accessibility",
+    "License and redistribution review",
+    "Final publication and trust review"
+  ]
+}

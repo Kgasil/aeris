@@ -90,7 +90,7 @@ Official visual lockup: **K&G** above **Vision**; individual project symbols are
 
 ## Release preparation / Preparação de lançamento — 1.0.0rc1
 
-The local source candidate has 50 tools. 393 unit tests and 60 graphical scripts passed on Linux; six Windows-only tests were skipped in Linux. No Windows installer has been compiled or validated, and the complete source package is now available in `downloads/`. The public Web Lab and complete source ZIP are available. The browser extension is a separate project stage.
+The local source candidate has 50 tools. 393 unit tests and 60 graphical scripts passed on Linux; six Windows-only tests were skipped in Linux. No stable Windows installer has been released, and the complete source package is now available in `downloads/`. The public Web Lab and complete source ZIP are available. The browser extension is a separate project stage.
 
 [Release status / Estado da versão](https://kgasil.github.io/aeris/release-status.html)
 
@@ -116,3 +116,7 @@ The [fourth run](https://github.com/Kgasil/aeris/actions/runs/45729575816) passe
 ### Portable Windows preview — successful CI
 
 [Run 45730089078](https://github.com/Kgasil/aeris/actions/runs/45730089078) passed 395 native unit tests (four skips), PyInstaller build, packaged UI self-test, and 1,002-file portable bundle verification on Windows Server 2022. The unsigned temporary artifact is available on the run page until December 3, 2026. This is not Windows 10/11 certification or a stable release. A separate installer-preview workflow checks build, install, same-version reinstall and uninstall with synthetic data on a disposable runner.
+
+### Windows installer preview — successful CI
+
+[Run 45730507059](https://github.com/Kgasil/aeris/actions/runs/45730507059) successfully built the experimental unsigned Setup.exe and passed installation, same-version reinstallation, uninstall, packaged UI self-tests, and synthetic-data preservation on Windows Server 2022. Downloaded artifacts were hash-verified. [Temporary installer and portable ZIP](https://github.com/Kgasil/aeris/actions/runs/45730507059/artifacts/15076935274) (expires December 3, 2026; GitHub login may be required). [Evidence and SHA-256 values](downloads/windows-preview-evidence.json). Not a stable release; Windows 10/11, actual AI/audio/OCR, performance, upgrade across versions and licensing remain pending.
