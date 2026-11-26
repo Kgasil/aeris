@@ -12,6 +12,21 @@ nav.kg-graal-bar .kg-graal-dot{display:block!important;width:7px!important;heigh
 nav.kg-graal-bar .kg-graal-shield{display:block!important;width:20px!important;height:22px!important;max-width:none!important;flex:none!important;margin:0!important;object-fit:contain!important}
 @media(max-width:650px){nav.kg-graal-bar .kg-graal-inner{padding:5px 10px!important;gap:3px!important}nav.kg-graal-bar a{padding:7px 8px!important}}
 </style>
+<style id="kg-comfort-palette-v1">
+@media screen{
+:root{--ink:#193D2E;--sage:#BFCFC4;--mist:#508D70}
+body{background:#BFCFC4;color:#193D2E}
+header:not(.kg-site-header){background:#244737;color:#E2EEE5}
+header:not(.kg-site-header) a{color:#E2EEE5}
+.kg-site-header[data-project="aeris"]{--kg-head-bg:#B8CBBE!important;--kg-head-ink:#193D2E!important;--kg-head-muted:#365345!important;--kg-head-line:#91AE9B!important;--kg-lang-bg:#244B38!important;--kg-lang-ink:#E2EEE5!important}
+main section,main article{background:#D0DFD3;border-color:#91AE9B}
+input,select,textarea{background:#D6E2D9;color:#193D2E;border-color:#729582}
+button{background:#244B38;color:#E2EEE5;border-color:#244B38}
+output,.note{background:#B4C9BA;color:#193D2E}
+small,footer{color:#365345}
+.kg-distribution-notice{background:#C5D5CB;color:#193D2E}
+}
+</style>
 </head>
 <body><nav class="kg-graal-bar" aria-label="K&amp;G Vision ecosystem"><div class="kg-graal-inner"><a href="https://kgasil.github.io/" style="--graal-accent:#EDF4FF"><img class="kg-graal-shield" src="https://kgasil.github.io/assets/kg-symbol.svg" width="20" height="22" alt="">K&amp;G Vision</a><a href="https://kgasil.github.io/genesis/" style="--graal-accent:#C5B5ED"><i class="kg-graal-dot" aria-hidden="true"></i>Project Genesis</a><a href="https://kgasil.github.io/rubedo/" style="--graal-accent:#FFAD72"><i class="kg-graal-dot" aria-hidden="true"></i>Project Rubedo</a><a href="https://kgasil.github.io/argus/" style="--graal-accent:#75BAFF"><i class="kg-graal-dot" aria-hidden="true"></i>Project Argus</a><a href="https://kgasil.github.io/aeris/" aria-current="true" style="--graal-accent:#9BD2AB"><i class="kg-graal-dot" aria-hidden="true"></i>Project Aeris</a><a href="https://kgasil.github.io/lilium/" style="--graal-accent:#F4A2C3"><i class="kg-graal-dot" aria-hidden="true"></i>Project Lilium</a></div></nav><header><a href="extension-preview.html">← Aeris Extension</a> · K&amp;G Vision</header><main><h1>Laboratório de validação</h1><p><strong>RC2 · Eficiência e Simplicidade.</strong> Use somente dados inventados. Esta página não envia formulários, não usa armazenamento nem faz requisições programadas. O navegador pode ter preenchimento automático próprio.</p>
 <section><h2>1. Capture, Reading e Autofill</h2><p>Selecione: O Aeris ajuda a organizar tarefas e estudar. Concerteza podemos melhorar a reuniao.</p><label for="scenario">Cenário</label><select id="scenario"><option value="ok">Campo único vazio — permitir</option><option value="duplicate">Dois campos iguais — bloquear</option><option value="filled">Campo preenchido — bloquear</option><option value="hidden">Campo oculto — bloquear</option><option value="disabled">Campo desabilitado — bloquear</option><option value="readonly">Campo somente leitura — bloquear</option><option value="credential">Formulário com senha — bloquear</option><option value="sensitive">Campo rotulado CPF — bloquear</option><option value="large">Mais de 500 campos — bloquear</option></select><button id="reset">Preparar cenário / limpar</button><div id="target"></div><p id="status" role="status"></p><p>Abra o popup, escolha Autofill → Empresa, digite <strong>Empresa Exemplo</strong>, prepare a prévia e verifique o destino. A prévia nunca deve escrever; no cenário permitido, confirme e confira o valor. Nos demais, a prévia deve ser recusada. A página deve estar em HTTPS.</p></section>
