@@ -1,0 +1,64 @@
+{
+  "scope": "Windows Server 2022 CI; unsigned experimental candidate, not client Windows validation or release approval",
+  "run": 45848435777,
+  "commit": "980c8f5ecf888b25b8fab10e14ee3bd481ec46a3",
+  "artifact_id": 15132975671,
+  "artifact_sha256": "344312b886942c379be7010df852da5d92812f8487ca4cf9698d5987d3b7701f",
+  "artifact_bytes": 27612893,
+  "artifact_expires": "2026-12-26T15:23:54Z",
+  "unit_tests": {
+    "total": 401,
+    "passed": 397,
+    "skipped": 4,
+    "failures": 0
+  },
+  "portable": {
+    "bytes": 14782338,
+    "sha256": "fa8faa5c985e1ec0fc909d42c71053b379afcc821d51d046e231b4f8b4cb2974",
+    "manifest_files_verified": 91,
+    "hash_mismatches": 0,
+    "binaries": 71,
+    "notice_files": 17
+  },
+  "installer": {
+    "bytes": 13335236,
+    "sha256": "0f3e0a21919f5944f45301c1f589e5f1665e3a608c5abd39d4a618677ac46407",
+    "inno_setup": "6.7.4"
+  },
+  "exe_sha256": "ed8aa796b948b658dcc9ef97469512b9264240d56efadbb5e555091a5366849c",
+  "checks": {
+    "install": "PASS",
+    "reinstall_same_version": "PASS",
+    "uninstall": "PASS",
+    "synthetic_data_preserved": "PASS",
+    "shortcut_targets": "PASS",
+    "shortcut_cleanup": "PASS",
+    "silent_no_launch": "PASS",
+    "installed_notice_hashes": "PASS",
+    "reinstalled_notice_hashes": "PASS",
+    "portable_ui_self_test": "PASS",
+    "installed_ui_self_test": "PASS",
+    "reinstalled_ui_self_test": "PASS",
+    "independent_outer_and_asset_hashes": "PASS",
+    "independent_manifest_hashes": "PASS"
+  },
+  "compiler": {
+    "vendor": "Pyrsys B.V.",
+    "download_authenticode": "Valid",
+    "download_sha256": "a549929319f9120716677c685535ca4671e4b937b5fdc87e2585f32d8eb30e8c"
+  },
+  "aeris_authenticode": "NotSigned",
+  "defender": {
+    "antivirus_enabled": true,
+    "real_time_protection_enabled": false,
+    "signature_version": "1.463.480.0",
+    "signature_last_updated": "2026-11-26T08:52:35+00:00",
+    "malware_scan": "NOT_TESTED"
+  },
+  "client_windows": {
+    "windows10": "NOT_TESTED",
+    "windows11": "NOT_TESTED"
+  },
+  "redistribution_approved": false,
+  "release_approved": false
+}
