@@ -1,0 +1,24 @@
+{
+  "run": 45862501358,
+  "commit": "6f04f2c7cde3d5ea2e1fc51d0064943d6dbbdaf6",
+  "artifact_id": 15137654610,
+  "artifact_sha256": "39ce8f0dfe3c6e0c6015dc891eb042cbb41c2d0390271c4027c51c6e28f91724",
+  "independent_digest": "PASS",
+  "changed_source_hashes_verified": 47,
+  "new_tests": {
+    "passed": 7,
+    "skipped": 0,
+    "seconds": 2.943
+  },
+  "full_regression": {
+    "total": 470,
+    "passed": 466,
+    "skipped": 4,
+    "failures": 0,
+    "seconds": 25.504
+  },
+  "smokes": 50,
+  "smokes_result": "PASS",
+  "scope": "Cumulative source overlays and real Tk on Windows Server CI; synthetic files and simulated OCR effects; no new executable or client certification",
+  "release_approved": false
+}
