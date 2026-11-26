@@ -7,6 +7,7 @@ import subprocess
 import tkinter as tk
 from tkinter import ttk,messagebox
 from aeris.hub import Hub, COLORS
+from aeris.experience_help import HELP
 from aeris.companion_ui import CompanionWindow
 from aeris.companion import chat,validate_message,speech_process,MAX_HISTORY
 from aeris.copilot import CopilotSession,parse_command
@@ -352,6 +353,7 @@ class ExperienceHub(Hub):
         super().build()
         self.legacy_side,self.catalog=self.root.winfo_children()[:2]
         self.legacy_side.pack_forget(); self.catalog.pack_forget()
+        self.legacy_catalog=self.catalog; self.build_catalog()
         sw=self.root.winfo_screenwidth(); sh=self.root.winfo_screenheight()
         width=min(1240,max(760,sw-44)); height=min(780,max(540,sh-100))
         self.root.geometry(f'{width}x{height}+16+12'); self.root.minsize(min(870,width),min(570,height))
@@ -368,9 +370,38 @@ class ExperienceHub(Hub):
         ttk.Label(side,text='K&G Vision\nVersão em desenvolvimento',style='Experience.Side.TLabel',wraplength=150).pack(side='bottom',anchor='w')
         self.conversation=Conversation(self,self.root)
         self.navigate('chat')
+    def build_catalog(self):
+        self.catalog=ttk.Frame(self.root,padding=18)
+        f=self.catalog
+        ttk.Label(f,text='Ferramentas de trabalho',style='Experience.Title.TLabel').pack(anchor='w')
+        ttk.Label(f,text='Encontre o que precisa, veja um exemplo e abra a ferramenta.',style='Experience.Muted.TLabel').pack(anchor='w',pady=(2,12))
+        filters=ttk.Frame(f); filters.pack(fill='x',pady=(0,8))
+        self.search=ttk.Entry(filters,textvariable=self.query); self.search.pack(side='left',fill='x',expand=True,ipady=5)
+        self.search.bind('<Return>',self.focus_results); self.search.bind('<Escape>',lambda _:self.clear_filters())
+        ttk.Button(filters,text='Limpar',command=self.clear_filters).pack(side='right',padx=(5,0))
+        self.category_display=tk.StringVar(self.root,'Todas')
+        self.category_box=ttk.Combobox(filters,textvariable=self.category_display,values=('Todas',*CATEGORIES.values()),state='readonly',width=15)
+        self.category_box.pack(side='right',padx=(5,0)); self.category_box.bind('<<ComboboxSelected>>',self.choose_category)
+        self.count=ttk.Label(f,text='',style='Experience.Muted.TLabel'); self.count.pack(anchor='w',pady=(0,6))
+        body=ttk.Frame(f); body.pack(fill='both',expand=True); body.columnconfigure(0,weight=3); body.columnconfigure(1,weight=2); body.rowconfigure(0,weight=1)
+        left=ttk.Frame(body); left.grid(row=0,column=0,sticky='nsew',padx=(0,10))
+        self.listbox=tk.Listbox(left,font=('Segoe UI',11),relief='flat',highlightthickness=1,exportselection=False,activestyle='none',width=24)
+        self.listbox.pack(side='left',fill='both',expand=True)
+        sb=ttk.Scrollbar(left,command=self.listbox.yview); sb.pack(side='right',fill='y'); self.listbox.configure(yscrollcommand=sb.set)
+        self.listbox.bind('<<ListboxSelect>>',self.show_selected); self.listbox.bind('<Return>',self.open_selected); self.listbox.bind('<Double-1>',self.open_selected)
+        detail=ttk.Frame(body,padding=14,style='Experience.Card.TFrame'); detail.grid(row=0,column=1,sticky='nsew')
+        self.detail_name=ttk.Label(detail,text='',style='Experience.Detail.TLabel',wraplength=215,justify='left'); self.detail_name.pack(anchor='w',fill='x')
+        self.detail_status=ttk.Label(detail,text='',style='Experience.Card.TLabel',wraplength=215); self.detail_status.pack(anchor='w',pady=(4,12),fill='x')
+        self.detail_desc=ttk.Label(detail,text='',style='Experience.Card.TLabel',wraplength=215,justify='left'); self.detail_desc.pack(anchor='w',fill='x')
+        self.example=ttk.Label(detail,text='',style='Experience.Card.TLabel',wraplength=215,justify='left'); self.example.pack(anchor='w',pady=(12,6),fill='x')
+        self.toggle=ttk.Button(detail,text='Ativar')
+        self.launch=ttk.Button(detail,text='Abrir',style='Experience.Primary.TButton')
+    def choose_category(self,_=None):
+        selected=self.category_display.get()
+        self.category.set(next((key for key,value in CATEGORIES.items() if value==selected),'Todas'))
     def navigate(self,view):
         self.catalog.pack_forget(); self.conversation.window.pack_forget()
-        if view=='catalog': self.catalog.pack(fill='both',expand=True,padx=24,pady=22); self.search.focus_set()
+        if view=='catalog': self.catalog.pack(fill='both',expand=True); self.search.focus_set()
         else: self.conversation.window.pack(fill='both',expand=True)
         self.view=view
         for label,button in self.nav_buttons.items(): button.configure(style='Experience.Active.TButton' if label==('Ferramentas' if view=='catalog' else 'Conversar') else 'Experience.Nav.TButton')
@@ -386,8 +417,9 @@ class ExperienceHub(Hub):
         selected=self.visible[old[0]].name if old and old[0]<len(self.visible) else None
         self.listbox.delete(0,'end')
         from aeris.registry import normalize
+        self.category_display.set(CATEGORIES.get(self.category.get(),'Todas'))
         query=normalize(self.query.get()).split()
-        self.visible=tuple(m for m in self.modules if (self.category.get()=='Todas' or m.category==self.category.get()) and all(q in normalize(' '.join((m.name,NAMES.get(m.name,m.name),m.description,m.category,CATEGORIES.get(m.category,m.category)))) for q in query))
+        self.visible=tuple(m for m in self.modules if (self.category.get()=='Todas' or m.category==self.category.get()) and all(q in normalize(' '.join((m.name,NAMES.get(m.name,m.name),m.description,m.category,CATEGORIES.get(m.category,m.category),*HELP.get(m.name,('',''))))) for q in query))
         for m in self.visible: self.listbox.insert('end',f'  {NAMES.get(m.name,m.name)}  ·  {CATEGORIES.get(m.category,m.category)}')
         self.count.configure(text=f'{len(self.visible)} ferramentas encontradas')
         if self.visible:
@@ -396,9 +428,11 @@ class ExperienceHub(Hub):
         self.show_selected()
     def show_selected(self,*_):
         super().show_selected(*_)
+        self.example.configure(text='')
         sel=self.listbox.curselection()
         if sel and sel[0]<len(self.visible):
             m=self.visible[sel[0]]; self.detail_name.configure(text=NAMES.get(m.name,m.name))
+            description,example=HELP.get(m.name,(m.description,'')); self.detail_desc.configure(text=description); self.example.configure(text='COMO USAR\n'+example)
             if m.name in self.tool_buttons:
                 self.launch.configure(text='Abrir ferramenta')
                 self.detail_status.configure(text=CATEGORIES.get(m.category,m.category)+' · '+('Disponível' if self.enabled(m.name) else 'Ative para usar'))
@@ -412,6 +446,7 @@ class ExperienceHub(Hub):
         style.configure('Experience.Side.TLabel',background='#193D30',foreground='#D9E7DF',font=('Segoe UI',10))
         style.configure('Experience.Card.TFrame',background=p['field'])
         style.configure('Experience.Card.TLabel',background=p['field'],foreground=p['deep'])
+        style.configure('Experience.Detail.TLabel',background=p['field'],foreground=p['deep'],font=('Segoe UI',17,'bold'))
         style.configure('Experience.Section.TLabel',font=('Segoe UI',10,'bold'),foreground=p['forest'])
         style.configure('Experience.Subtitle.TLabel',font=('Segoe UI',13,'bold'))
         style.configure('Experience.Muted.TLabel',font=('Segoe UI',10),foreground=p['deep'])
