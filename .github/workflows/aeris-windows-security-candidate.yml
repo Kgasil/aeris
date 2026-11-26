@@ -101,6 +101,17 @@ jobs:
             py -3.14-64 -c "from aeris.timeline import parse_when; assert parse_when('2026-11-25 00:00').hour == 0; assert parse_when('2026-11-25 23:59').minute == 59"
             if ($LASTEXITCODE -ne 0) { throw 'Timeline valid boundary regression failed' }
           } finally { Pop-Location }
+      - name: Upgrade pinned PyInstaller for embedded Tcl Tk 9 runtime
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $path = 'source/Aeris-Desktop-v1.0.0rc1-fix1/distribution/requirements-build.txt'
+          $s = [IO.File]::ReadAllText((Resolve-Path -LiteralPath $path).Path)
+          $pattern = '(?im)^(\s*pyinstaller\s*==\s*)6\.19\.0(?=\s*(?:#|$))'
+          if ([regex]::Matches($s,$pattern).Count -ne 1) { throw 'Unexpected PyInstaller pin; review requirements' }
+          $s = [regex]::Replace($s,$pattern,'16.22.3')
+          [IO.File]::WriteAllText((Resolve-Path -LiteralPath $path).Path,$s,[Text.UTF8Encoding]::new($false))
+          Copy-Item -LiteralPath $path -Destination security-evidence/requirements-build.txt
       - name: Locate Inno Setup compiler and build
         shell: pwsh
         run: |
