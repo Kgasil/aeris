@@ -50,7 +50,7 @@ COMPANION_MIC = 'companion.mic'
 COMPANION_SPEAK = 'companion.speak'
 COMPANION_SCREEN = 'companion.screen'
 CAPABILITIES = {
-    COMPANION_SCREEN: ('Assistente → Tela', 'Capturar uma imagem da tela principal após ação explícita; enviar a imagem revisada ao modelo local de visão somente mediante confirmação separada.'),
+    COMPANION_SCREEN: ('Assistente → Tela', 'Capturar a tela principal após ação explícita, ou iniciar acompanhamento autorizado de até 5 minutos e 20 capturas. Enviar somente a imagem revisada ao modelo local de visão mediante confirmação separada.'),
     INTEGRATION_RUN: ('Integrações entre ferramentas', 'Transferir registros salvos entre Meeting, Checklist, Reminder, Learn, Flashcards e Research após prévia e confirmação.'),
     COMPANION_CHAT: ('Assistente → IA local', 'Enviar mensagens e histórico da conversa ou uma solicitação isolada de sugestão de comando ao servidor Ollama local.'),
     COMPANION_MIC: ('Assistente → Microfone', 'Usar o microfone do Windows para ditado explícito ou transcrição de reunião iniciada pelo usuário. A transcrição ocorre em blocos; pode ser interrompida.'),
