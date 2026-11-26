@@ -1,15 +1,6 @@
 name: Aeris Windows installer preview validation
 on:
   workflow_dispatch:
-    inputs:
-      publish_preview:
-        description: 'Publish an unsigned experimental prerelease only after redistribution review'
-        type: boolean
-        default: false
-      redistribution_review:
-        description: 'Reference to completed license/redistribution and trust review (required to publish)'
-        type: string
-        default: ''
   push:
     branches: [main]
     paths:
@@ -170,65 +161,3 @@ jobs:
           path: preview-evidence/*.log
           if-no-files-found: ignore
           retention-days: 7
-  publish-preview:
-    needs: installer-preview
-    if: ${{ github.event_name == 'workflow_dispatch' && inputs.publish_preview && github.ref == 'refs/heads/main' }}
-    runs-on: ubuntu-24.04
-    permissions:
-      actions: read
-      contents: write
-    steps:
-      - name: Verify publication authorization and download validated artifact
-        env:
-          GH_TOKEN: ${{ github.token }}
-          REVIEW: ${{ inputs.redistribution_review }}
-          RUN_ID: ${{ github.run_id }}
-          REPO: ${{ github.repository }}
-        shell: bash
-        run: |
-          set -euo pipefail
-          if [[ -z "${REVIEW//[[:space:]]/}" ]]; then
-            echo "Documented redistribution and trust review required." >&2
-            exit 1
-          fi
-          gh run download "$RUN_ID" --repo "$REPO" --name aeris-unsigned-installer-preview-not-a-release --dir preview
-          cd preview
-          python - <<'PY'
-          import json, pathlib, hashlib
-          p = pathlib.Path("setup-validation.json")
-          data = json.loads(p.read_text(encoding="utf-8-sig"))
-          for key in ("install", "reinstall_same_version", "uninstall", "synthetic_data_preserved", "shortcut_targets", "shortcut_cleanup", "silent_no_launch"):
-              if data.get(key) != "PASS":
-                  raise SystemExit(f"Missing passing evidence: {key}")
-          names = ["Aeris-1.0.0rc1-Windows-x64-Setup.exe", "Aeris-1.0.0rc1-Windows-x64-portable.zip"]
-          lines = []
-          for name in names:
-              f = pathlib.Path(name)
-              if not f.is_file() or f.stat().st_size == 0:
-                  raise SystemExit(f"Missing artifact: {name}")
-              lines.append(f"{hashlib.sha256(f.read_bytes()).hexdigest()}  {name}")
-          pathlib.Path("SHA256SUMS-preview.txt").write_text("\n".join(lines) + "\n", encoding="ascii")
-          PY
-          sha256sum --check SHA256SUMS-preview.txt
-      - name: Publish immutable experimental prerelease
-        env:
-          GH_TOKEN: ${{ github.token }}
-          REPO: ${{ github.repository }}
-          COMMIT_SHA: ${{ github.sha }}
-          RUN_ID: ${{ github.run_id }}
-          REVIEW: ${{ inputs.redistribution_review }}
-        shell: bash
-        run: |
-          set -euo pipefail
-          tag=aeris-desktop-1.0.0rc1-preview
-          if gh release view "$tag" --repo "$REPO" >/dev/null 2>&1; then
-            echo "Preview release already exists; refusing to overwrite verified assets." >&2
-            exit 1
-          fi
-          printf '%s\n' 'Experimental unsigned Windows x64 installer. Tested on Windows Server 2022; Windows 10/11, cross-version upgrade, real AI/audio/OCR, performance and accessibility remain pending. Use synthetic data only. Not a stable release.' "Validation: https://github.com/$REPO/actions/runs/$RUN_ID" "Redistribution and trust review: $REVIEW" > notes.md
-          gh release create "$tag" --repo "$REPO" --target "$COMMIT_SHA" --prerelease --latest=false --title 'Aeris Desktop 1.0.0rc1 — Experimental Windows preview' --notes-file notes.md \
-            preview/Aeris-1.0.0rc1-Windows-x64-Setup.exe \
-            preview/Aeris-1.0.0rc1-Windows-x64-portable.zip \
-            preview/SHA256SUMS-preview.txt \
-            preview/setup-validation.json \
-            preview/build-dependencies.txt
