@@ -156,3 +156,5 @@ The [fourth run](https://github.com/Kgasil/aeris/actions/runs/45729575816) passe
 ZIPs publicados no GitHub. Não publicado nas lojas. / ZIPs published on GitHub. Not published in extension stores.
 
 [![K&G Vision — GRAAL](https://raw.githubusercontent.com/Kgasil/kgasil.github.io/main/assets/kg-symbol.svg?v=20261126-2)](https://kgasil.github.io/) **GRAAL · Marco 01** — identidade integrada / integrated identity.
+
+**GRAAL — Descobrir / Discover:** [Rubedo Research Workspace](https://kgasil.github.io/rubedo/research/) · [Precisão / Precision (R06)](https://kgasil.github.io/rubedo/research/#precisao) · [Monte Carlo (R07)](https://kgasil.github.io/rubedo/research/#monte-carlo). Novos modelos experimentais; validação atual pendente / Experimental additions; current validation pending.
