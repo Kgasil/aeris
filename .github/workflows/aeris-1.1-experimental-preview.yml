@@ -1,0 +1,262 @@
+name: Aeris 1.1.0rc1 owner-authorized experimental preview
+on:
+  push:
+    branches: [aeris-experimental-preview]
+    paths:
+      - '.github/workflows/aeris-1.1-experimental-preview.yml'
+permissions:
+  contents: read
+concurrency:
+  group: aeris-1.1-experimental-preview
+  cancel-in-progress: false
+jobs:
+  candidate:
+    if: github.repository == 'Kgasil/aeris' && github.ref == 'refs/heads/aeris-experimental-preview'
+    runs-on: windows-2022
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065
+        with:
+          python-version: '3.14.10'
+          architecture: x64
+      - name: Build candidate without publishing
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $evidence = Join-Path $PWD 'candidate-evidence'
+          New-Item -ItemType Directory -Path $evidence | Out-Null
+          $candidates = @()
+          if (${env:ProgramFiles(x86)}) { $candidates += (Join-Path ${env:ProgramFiles(x86)} 'Inno Setup 6\ISCC.exe') }
+          if ($env:LOCALAPPDATA) { $candidates += (Join-Path $env:LOCALAPPDATA 'Programs\Inno Setup 6\ISCC.exe') }
+          $iscc = $candidates | Where-Object { Test-Path -LiteralPath $_ -PathType Leaf } | Select-Object -First 1
+          $mode = if ($iscc) { 'installer-and-portable' } else { 'portable-only' }
+          [pscustomobject]@{commit=$env:GITHUB_SHA; mode=$mode; installer_compiler_found=[bool]$iscc; release_approved=$false} | ConvertTo-Json | Set-Content (Join-Path $evidence 'attempt.json')
+          try {
+            if ($iscc) {
+              & .\distribution\build.ps1 -Iscc $iscc *>&1 | Tee-Object -FilePath (Join-Path $evidence 'build.log')
+            } else {
+              & .\distribution\build.ps1 -PortableOnly *>&1 | Tee-Object -FilePath (Join-Path $evidence 'build.log')
+            }
+            $stages = @(Get-ChildItem -LiteralPath distribution/out -Directory)
+            if ($stages.Count -ne 1) { throw 'Expected exactly one build staging directory' }
+            $stage = $stages[0].FullName
+            foreach ($name in @('SHA256SUMS.txt','AERIS-EXE-SHA256.txt','build-info.json','build-dependencies.txt','runtime-reduction.json')) {
+              Copy-Item -LiteralPath (Join-Path $stage $name) -Destination $evidence
+            }
+            $files = @(Get-ChildItem -LiteralPath $stage -File | Where-Object { $_.Name -match '^Aeris-1\.1\.0rc1-Windows-x64-(Setup\.exe|portable\.zip)$' })
+            $expected = if ($iscc) { 2 } else { 1 }
+            if ($files.Count -ne $expected) { throw 'Candidate artifact count mismatch' }
+            $files | ForEach-Object { [pscustomobject]@{name=$_.Name; bytes=$_.Length; sha256=(Get-FileHash -LiteralPath $_.FullName -Algorithm SHA256).Hash.ToLowerInvariant()} } | ConvertTo-Json -AsArray | Set-Content (Join-Path $evidence 'artifact-inventory.json')
+            if (-not $iscc) { Write-Warning 'Installer not generated: Inno Setup absent. Portable build only.' }
+          } catch {
+            $_ | Out-String | Add-Content (Join-Path $evidence 'build.log')
+            throw
+          }
+      - name: Collect candidate assurance evidence
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $stages = @(Get-ChildItem -LiteralPath distribution/out -Directory)
+          if ($stages.Count -ne 1) { throw 'Expected a single fresh build' }
+          $e = Join-Path $PWD 'candidate-evidence'
+          & .\distribution\assurance.ps1 -Stage $stages[0].FullName -Evidence $e
+          python distribution/audit-dependencies.py (Join-Path $e 'build-dependencies.txt') (Join-Path $e 'dependency-advisories.json')
+          if ($LASTEXITCODE -ne 0) { throw 'Known advisory requires review' }
+      - name: Homologate installer on disposable hosted runner
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $stage = @(Get-ChildItem -LiteralPath distribution/out -Directory)
+          if ($stage.Count -ne 1) { throw 'Expected a single fresh build' }
+          & .\distribution\homologate-candidate.ps1 -Stage $stage[0].FullName -Evidence (Join-Path $PWD 'candidate-evidence') -ConfirmDisposableRunner
+      - name: Check Defender availability and refresh signatures normally
+        shell: pwsh
+        run: |
+          $ErrorActionPreference='Stop'
+          New-Item -ItemType Directory -Path candidate-evidence/defender-diagnostic | Out-Null
+          $report=[ordered]@{status='NOT_TESTED'; scope='On-demand Defender scan, isolated Windows Server 2022 CI; no client certification or stable approval';release_approved=$false}
+          try {
+            $before=Get-MpComputerStatus
+            $before | Select-Object AMServiceEnabled,AntivirusEnabled,RealTimeProtectionEnabled,AMRunningMode,AntivirusSignatureVersion,AntivirusSignatureLastUpdated,AMProductVersion,AMEngineVersion | ConvertTo-Json | Set-Content candidate-evidence/defender-diagnostic/before.json
+            if (-not $before.AMServiceEnabled -or -not $before.AntivirusEnabled) {throw 'Defender service or antivirus not active'}
+            $platform=Join-Path $env:ProgramData 'Microsoft\Windows Defender\Platform'
+            $cmd=Get-ChildItem -LiteralPath $platform -Directory -ErrorAction SilentlyContinue | Sort-Object LastWriteTime -Descending | ForEach-Object {Join-Path $_.FullName 'MpCmdRun.exe'} | Where-Object {Test-Path -LiteralPath $_ -PathType Leaf} | Select-Object -First 1
+            if (-not $cmd) {$cmd=Join-Path $env:ProgramFiles 'Windows Defender\MpCmdRun.exe'}
+            $sig=Get-AuthenticodeSignature -LiteralPath $cmd
+            if ($sig.Status -ne 'Valid' -or $sig.SignerCertificate.Subject -notmatch 'Microsoft') {throw 'Defender executable signature not verified'}
+            & $cmd -SignatureUpdate 2>&1 | Tee-Object -FilePath candidate-evidence/defender-diagnostic/signature-update.log
+            $report.update_exit=$LASTEXITCODE
+            $after=Get-MpComputerStatus
+            $after | Select-Object AMServiceEnabled,AntivirusEnabled,RealTimeProtectionEnabled,AMRunningMode,AntivirusSignatureVersion,AntivirusSignatureLastUpdated,AMProductVersion,AMEngineVersion | ConvertTo-Json | Set-Content candidate-evidence/defender-diagnostic/after.json
+            if (-not $after.AMServiceEnabled -or -not $after.AntivirusEnabled -or -not $after.AntivirusSignatureLastUpdated -or $after.AntivirusSignatureLastUpdated -lt (Get-Date).AddHours(-24)) {throw 'Active engine and signatures within 24 hours required'}
+            if ($after.AntivirusSignatureLastUpdated -gt (Get-Date).AddMinutes(5)) {throw 'Unexpected future definitions date'}
+            $report.signature_version=$after.AntivirusSignatureVersion
+            $report.real_time=$after.RealTimeProtectionEnabled
+            $report.status='READY'
+            "DEFENDER_CMD=$cmd" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+          } catch {$report.status='BLOCKED_OR_INCOMPLETE';$report.error=$_.Exception.Message;throw}
+          finally {$report | ConvertTo-Json | Set-Content candidate-evidence/defender-diagnostic/preflight.json}
+      - name: Verify detector with inert EICAR control and scan exact bytes in diagnostic mode
+        shell: pwsh
+        run: |
+          $ErrorActionPreference='Stop'
+          $report=[ordered]@{status='NOT_TESTED';scope='Microsoft Defender on-demand diagnostic scan on Windows Server 2022; no execution of scanned files, no remediation or configuration changes, no client or stable certification';release_approved=$false}
+          $stage=@(Get-ChildItem -LiteralPath distribution/out -Directory)
+          if ($stage.Count -ne 1) {throw 'Expected one stage'}
+          $root=$stage[0].FullName
+          $cmd=$env:DEFENDER_CMD
+          $setup=Join-Path $root 'Aeris-1.1.0rc1-Windows-x64-Setup.exe'
+          $portable=Join-Path $root 'Aeris-1.1.0rc1-Windows-x64-portable.zip'
+          $bundle=Join-Path $root 'dist\Aeris'
+          $inventory=@(Get-Content -LiteralPath candidate-evidence/artifact-inventory.json -Raw | ConvertFrom-Json)
+          $hashes=[ordered]@{}
+          foreach ($f in (@(Get-Item -LiteralPath $setup,$portable)+@(Get-ChildItem -LiteralPath $bundle -File -Recurse))) {
+            $hashes[$f.FullName]=(Get-FileHash -LiteralPath $f.FullName -Algorithm SHA256).Hash.ToLowerInvariant()
+          }
+          foreach ($p in @($setup,$portable)) {
+            $entry=@($inventory | Where-Object {$_.name -ceq (Split-Path -Leaf $p)})
+            if ($entry.Count -ne 1 -or $hashes[$p] -cne $entry[0].sha256) {throw 'Candidate inventory mismatch'}
+          }
+          $controlDir=Join-Path $env:RUNNER_TEMP 'AerisDefenderPositiveControl'
+          try {
+            $pref=Get-MpPreference
+            $pref | Select-Object DisableArchiveScanning,ExclusionPath,ExclusionExtension,ExclusionProcess | ConvertTo-Json -Depth 4 | Set-Content candidate-evidence/defender-diagnostic/preferences.json
+            # Microsoft's documented custom-scan diagnostic option scans excluded
+            # paths and archives, prints detections, and does not remediate.
+            # No policies or protection settings are changed. No tested file is run.
+            # EICAR is a standard inert antivirus test file, not executable malware.
+            New-Item -ItemType Directory -Path $controlDir | Out-Null
+            $control=Join-Path $controlDir 'eicar-test.txt'
+            $testString='X5O!P%@AP[4\PZX54(P^)7CC)7}$EICAR-STANDARD-ANTIVIRUS-TEST-FILE!$H+H*'
+            [IO.File]::WriteAllBytes($control,[Text.Encoding]::ASCII.GetBytes($testString))
+            if ((Get-Item -LiteralPath $control).Length -ne 68) {throw 'Invalid standard EICAR test file'}
+            & $cmd -Scan -ScanType 3 -File $control -DisableRemediation 2>&1 | Tee-Object -FilePath candidate-evidence/defender-diagnostic/positive-control.log
+            $controlCode=$LASTEXITCODE
+            $report.control_exit=$controlCode
+            $controlLog=Get-Content -LiteralPath candidate-evidence/defender-diagnostic/positive-control.log -Raw
+            if ($controlCode -ne 2 -or $controlLog -notmatch '(?i)(Virus:DOS/EICAR|EICAR_Test_File|EICAR-Test-File|EICAR_Test)') {throw 'Positive control did not establish actual detection; no clean result can be claimed'}
+            $report.positive_control='PASS'
+            Remove-Item -LiteralPath $control -Force
+            foreach ($target in @(@{label='setup';path=$setup},@{label='portable';path=$portable},@{label='extracted';path=$bundle})) {
+              & $cmd -Scan -ScanType 3 -File $target.path -DisableRemediation 2>&1 | Tee-Object -FilePath "candidate-evidence/defender-diagnostic/$($target.label).log"
+              $code=$LASTEXITCODE
+              $report[$target.label+'_exit']=$code
+              if ($code -ne 0) {throw "Defender diagnostic returned $code for $($target.label); review output"}
+              $log=Get-Content -LiteralPath "candidate-evidence/defender-diagnostic/$($target.label).log" -Raw
+              if ($log -match '(?i)\b(?:skipped|not scanned|excluded)\b' -or $log -notmatch '(?i)scan finished|scan completed' -or $log -match '(?i)(Threat\s*:\s*(?!None\b)\S+|ThreatName\s*[:=]|Virus:|Trojan:|PUA:|HackTool:|Ransom:|0x[89a-f][0-9a-f]{7})') {throw "Ambiguous diagnostic output: $($target.label)"}
+            }
+            foreach ($p in $hashes.Keys) {
+              if (-not (Test-Path -LiteralPath $p -PathType Leaf) -or (Get-FileHash -LiteralPath $p -Algorithm SHA256).Hash.ToLowerInvariant() -cne $hashes[$p]) {throw 'Scan target changed'}
+            }
+            if (@(Get-ChildItem -LiteralPath $bundle -File -Recurse).Count -ne ($hashes.Count-2)) {throw 'Bundle inventory changed'}
+            $report.package_hashes=[ordered]@{setup=$hashes[$setup];portable=$hashes[$portable]}
+            $report.post_scan_integrity='PASS'
+            $after=Get-MpComputerStatus
+            if (-not $after.AntivirusEnabled -or $after.AntivirusSignatureLastUpdated -lt (Get-Date).AddHours(-24)) {throw 'Definitions freshness or engine state changed'}
+            $report.status='DIAGNOSTIC_SCAN_COMPLETED_REVIEW_REQUIRED'
+            $report.signature_version=$after.AntivirusSignatureVersion
+            $report.signature_utc=$after.AntivirusSignatureLastUpdated.ToUniversalTime().ToString('o')
+            $report.engine=$after.AMEngineVersion
+            $report.real_time=$after.RealTimeProtectionEnabled
+            $report.bundle_manifest_count=$hashes.Count-2
+          } catch {$report.status='BLOCKED_OR_INCOMPLETE';$report.error=$_.Exception.Message;throw}
+          finally {
+            if (Test-Path -LiteralPath $controlDir) {Remove-Item -LiteralPath $controlDir -Recurse -Force -ErrorAction SilentlyContinue}
+            $report|ConvertTo-Json|Set-Content candidate-evidence/defender-diagnostic/scan-status.json
+          }
+      - name: Verify evidence and retain exact experimental installer
+        shell: pwsh
+        run: |
+          $ErrorActionPreference='Stop'
+          $e=Join-Path $PWD 'candidate-evidence'
+          $d=Get-Content -LiteralPath (Join-Path $e 'defender-diagnostic/scan-status.json') -Raw | ConvertFrom-Json
+          $h=Get-Content -LiteralPath (Join-Path $e 'homologation.json') -Raw | ConvertFrom-Json
+          $o=Get-Content -LiteralPath (Join-Path $e 'dependency-advisories.json') -Raw | ConvertFrom-Json
+          if ($d.status -cne 'DIAGNOSTIC_SCAN_COMPLETED_REVIEW_REQUIRED' -or $d.positive_control -cne 'PASS' -or $d.post_scan_integrity -cne 'PASS' -or $d.setup_exit -ne 0 -or $d.portable_exit -ne 0 -or $d.extracted_exit -ne 0) {throw 'Defender evidence incomplete'}
+          if ($h.status -cne 'PASS' -or $h.commit -cne $env:GITHUB_SHA -or $h.checks.silent_terms_refusal -cne 'PASS' -or $h.checks.installed_terms -cne 'PASS' -or $h.checks.installed_manifest_files -ne 48 -or $h.checks.uninstall_preserves_synthetic_data -cne 'PASS' -or $o.status -cne 'NO_REPORTED_ADVISORIES') {throw 'Homologation or dependency evidence incomplete'}
+          $stage=@(Get-ChildItem -LiteralPath distribution/out -Directory)
+          if ($stage.Count -ne 1) {throw 'Expected one stage'}
+          $name='Aeris-1.1.0rc1-Windows-x64-Setup.exe'
+          $setup=Join-Path $stage[0].FullName $name
+          $hash=(Get-FileHash -LiteralPath $setup -Algorithm SHA256).Hash.ToLowerInvariant()
+          if ($hash -cne $d.package_hashes.setup) {throw 'Exact scanned installer mismatch'}
+          $dest=Join-Path $PWD 'experimental-installer'
+          New-Item -ItemType Directory -Path $dest | Out-Null
+          Copy-Item -LiteralPath $setup -Destination $dest
+          if ((Get-FileHash -LiteralPath (Join-Path $dest $name) -Algorithm SHA256).Hash.ToLowerInvariant() -cne $hash) {throw 'Retention hash mismatch'}
+          "$hash  $name" | Set-Content -LiteralPath (Join-Path $dest 'SHA256SUMS.txt') -Encoding ascii
+          [ordered]@{commit=$env:GITHUB_SHA;run=$env:GITHUB_RUN_ID;name=$name;sha256=$hash;bytes=(Get-Item -LiteralPath $setup).Length;defender=$d.status;clamav='PENDING';client_windows='PENDING';license_review='PENDING';stable_approved=$false;scope='Owner-authorized experimental preview only'} | ConvertTo-Json | Set-Content -LiteralPath (Join-Path $dest 'preview-evidence.json') -Encoding utf8
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: aeris-1.1.0rc1-experimental-installer
+          path: experimental-installer/
+          if-no-files-found: error
+          retention-days: 14
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: aeris-1.1.0rc1-experimental-evidence
+          path: candidate-evidence/
+          if-no-files-found: warn
+          retention-days: 30
+  publish-preview:
+    needs: candidate
+    if: github.repository == 'Kgasil/aeris' && github.ref == 'refs/heads/aeris-experimental-preview'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: write
+      actions: read
+    steps:
+      - name: Verify retained installer and publish separate prerelease
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          tag=aeris-desktop-1.1.0rc1-experimental
+          name=Aeris-1.1.0rc1-Windows-x64-Setup.exe
+          artifact=$(gh api "repos/Kgasil/aeris/actions/runs/$GITHUB_RUN_ID/artifacts" --jq '.artifacts[]|select(.name=="aeris-1.1.0rc1-experimental-installer" and .expired==false)|.id')
+          [[ "$artifact" =~ ^[0-9]+$ ]]
+          gh api "repos/Kgasil/aeris/actions/artifacts/$artifact" > "$RUNNER_TEMP/artifact.json"
+          digest=$(jq -er '.digest | sub("^sha256:";"")' "$RUNNER_TEMP/artifact.json")
+          [[ "$digest" =~ ^[0-9a-f]{64}$ ]]
+          curl --fail --location --silent --show-error -H "Authorization: Bearer $GH_TOKEN" -H 'Accept: application/vnd.github+json' "https://api.github.com/repos/Kgasil/aeris/actions/artifacts/$artifact/zip" -o "$RUNNER_TEMP/preview.zip"
+          echo "$digest  $RUNNER_TEMP/preview.zip" | sha256sum -c -
+          mkdir staged
+          for f in "$name" SHA256SUMS.txt preview-evidence.json; do unzip -p "$RUNNER_TEMP/preview.zip" "$f" > "staged/$f"; done
+          (cd staged && sha256sum -c SHA256SUMS.txt)
+          hash=$(sha256sum "staged/$name" | cut -d' ' -f1)
+          size=$(stat -c %s "staged/$name")
+          jq -e --arg sha "$GITHUB_SHA" --arg hash "$hash" --arg run "$GITHUB_RUN_ID" --argjson size "$size" '.commit==$sha and (.run|tostring)==$run and .sha256==$hash and .bytes==$size and .stable_approved==false and .defender=="DIAGNOSTIC_SCAN_COMPLETED_REVIEW_REQUIRED" and .clamav=="PENDING"' staged/preview-evidence.json
+          gh api --paginate repos/Kgasil/aeris/releases | jq -se --arg tag "$tag" 'map(.[]) | all(.tag_name != $tag)'
+          gh api --paginate repos/Kgasil/aeris/tags | jq -se --arg tag "$tag" 'map(.[]) | all(.name != $tag)'
+          cat > "$RUNNER_TEMP/notes.md" <<'EOF'
+          ## Aeris Desktop 1.1.0 RC1 — prévia experimental
+          Nova experiência desktop para avaliação gratuita. Não é versão estável. A análise antimalware independente com ClamAV permanece pendente; as definições oficiais não atenderam ao critério de atualização. O Defender concluiu análise diagnóstica sob demanda dos arquivos desta compilação, com controle positivo e verificação de integridade; isso não certifica a segurança. Instalador sem assinatura digital, compatibilidade interativa Windows 10/11 e revisão integral das licenças de terceiros pendentes. Use apenas ambiente descartável e dados fictícios. Confira SHA-256, analise com antivírus atualizado antes de executar e não ignore alertas nem contorne bloqueios. Se houver detecção, não execute e relate no GitHub.
+          
+          ## Experimental preview
+          Free evaluation build, not stable. Independent ClamAV scan pending. Microsoft Defender on-demand diagnostic scan completed for this build; not a security certification. Unsigned; client Windows testing and third-party license review pending. Disposable test environments and synthetic data only. Verify SHA-256, scan before use and never bypass warnings.
+          EOF
+          printf '\nCI: https://github.com/Kgasil/aeris/actions/runs/%s\n' "$GITHUB_RUN_ID" >> "$RUNNER_TEMP/notes.md"
+          gh api --method POST repos/Kgasil/aeris/releases -f tag_name="$tag" -f target_commitish="$GITHUB_SHA" -f name='Aeris Desktop 1.1.0 RC1 — prévia experimental' -F draft=true -F prerelease=true -f make_latest=false -F body=@"$RUNNER_TEMP/notes.md" > "$RUNNER_TEMP/release.json"
+          id=$(jq -er '.id' "$RUNNER_TEMP/release.json")
+          [[ "$id" =~ ^[0-9]+$ ]]
+          jq -e --arg tag "$tag" '.draft==true and .prerelease==true and .tag_name==$tag' "$RUNNER_TEMP/release.json"
+          for f in "$name" SHA256SUMS.txt preview-evidence.json; do
+            curl --fail --silent --show-error -X POST -H "Authorization: Bearer $GH_TOKEN" -H 'Content-Type: application/octet-stream' --data-binary @"staged/$f" "https://uploads.github.com/repos/Kgasil/aeris/releases/$id/assets?name=$f" > "$RUNNER_TEMP/$f.json"
+          done
+          gh api "repos/Kgasil/aeris/releases/$id" > "$RUNNER_TEMP/staged.json"
+          jq -e --arg n "$name" --arg d "sha256:$hash" --argjson size "$size" '.draft==true and .prerelease==true and (.assets|length)==3 and any(.assets[];.name==$n and .state=="uploaded" and .size==$size and .digest==$d)' "$RUNNER_TEMP/staged.json"
+          asset=$(jq -er --arg n "$name" '.assets[]|select(.name==$n)|.id' "$RUNNER_TEMP/staged.json")
+          curl --fail --location --silent --show-error -H "Authorization: Bearer $GH_TOKEN" -H 'Accept: application/octet-stream' "https://api.github.com/repos/Kgasil/aeris/releases/assets/$asset" -o "$RUNNER_TEMP/retrieved.exe"
+          echo "$hash  $RUNNER_TEMP/retrieved.exe" | sha256sum -c -
+          gh api --method PATCH "repos/Kgasil/aeris/releases/$id" -F draft=false -F prerelease=true -f make_latest=false > "$RUNNER_TEMP/published.json"
+          jq -e --arg tag "$tag" '.draft==false and .prerelease==true and .tag_name==$tag' "$RUNNER_TEMP/published.json"
+          url="https://github.com/Kgasil/aeris/releases/download/$tag/$name"
+          curl --fail --location --silent --show-error --retry 3 --retry-all-errors "$url" -o "$RUNNER_TEMP/public.exe"
+          echo "$hash  $RUNNER_TEMP/public.exe" | sha256sum -c -
+          echo "Verified public experimental installer: $url"
