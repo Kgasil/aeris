@@ -49,7 +49,7 @@ jobs:
     needs: regression
     if: github.ref == 'refs/heads/desktop-experience'
     runs-on: windows-2022
-    timeout-minutes: 30
+    timeout-minutes: 50
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
@@ -108,6 +108,13 @@ jobs:
           $stage = @(Get-ChildItem -LiteralPath distribution/out -Directory)
           if ($stage.Count -ne 1) { throw 'Expected a single fresh build' }
           & .\distribution\homologate-candidate.ps1 -Stage $stage[0].FullName -Evidence (Join-Path $PWD 'candidate-evidence') -ConfirmDisposableRunner
+      - name: Independent ClamAV scan of exact candidate bytes
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $stages = @(Get-ChildItem -LiteralPath distribution/out -Directory)
+          if ($stages.Count -ne 1) { throw 'Expected a single fresh build' }
+          & .\distribution\scan-clamav.ps1 -Stage $stages[0].FullName -Evidence (Join-Path $PWD 'candidate-evidence')
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         if: always()
         with:
