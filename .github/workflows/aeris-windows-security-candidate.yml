@@ -109,7 +109,7 @@ jobs:
           $s = [IO.File]::ReadAllText((Resolve-Path -LiteralPath $path).Path)
           $pattern = '(?im)^(\s*pyinstaller\s*==\s*)6\.19\.0(?=\s*(?:#|$))'
           if ([regex]::Matches($s,$pattern).Count -ne 1) { throw 'Unexpected PyInstaller pin; review requirements' }
-          $s = [regex]::Replace($s,$pattern,'16.22.3')
+          $s = [regex]::Replace($s,$pattern,'pyinstaller==6.22.3')
           [IO.File]::WriteAllText((Resolve-Path -LiteralPath $path).Path,$s,[Text.UTF8Encoding]::new($false))
           Copy-Item -LiteralPath $path -Destination security-evidence/requirements-build.txt
       - name: Locate Inno Setup compiler and build
