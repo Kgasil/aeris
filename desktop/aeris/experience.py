@@ -34,6 +34,37 @@ GOALS={
     'Automatizar e configurar': ["Hub","Spotlight","Health","Bridge","Routine","Autofill","Clipboard","Copilot","Context","Search"],
 }
 
+
+# Explicit task phrases only; no inference, execution, or data transfer.
+TASK_HINTS=(
+    ('Email',('escrever email','escrever e-mail','responder email','responder e-mail','rascunho de email','rascunho de e-mail')),
+    ('Text',('corrigir texto','revisar texto','corrigir um texto','revisar um texto','corrigir ortografia')),
+    ('Translate',('traduzir','traduza','traducao')),
+    ('Meeting',('resumir reuniao','transcrever reuniao','ata de reuniao','acompanhar reuniao')),
+    ('Capture',('fazer anotacoes','salvar anotacao','anotar uma ideia')),
+    ('Checklist',('lista de tarefas','organizar tarefas','criar checklist')),
+    ('Reminder',('criar lembrete','me lembre','lembre-me')),
+    ('Data',('analisar csv','analisar planilha csv','qualidade dos dados','dados duplicados')),
+    ('Dashboard',('criar indicadores','criar dashboard','agrupar dados')),
+    ('Report',('relatorio de csv','relatorio dos dados')),
+    ('Documents',('ler documento','extrair texto de documento')),
+    ('Compare',('comparar arquivos','comparar textos')),
+    ('Lens',('extrair texto de imagem','ler texto de imagem')),
+    ('Learn',('plano de estudos','organizar estudos')),
+    ('Flashcards',('criar flashcards','cartoes de estudo')),
+    ('Privacy',('mascarar dados','ocultar dados pessoais')),
+)
+def task_hint(text):
+    import re
+    from aeris.registry import normalize
+    if not isinstance(text,str) or len(text)>4000:
+        return None
+    words=' '.join(re.findall(r'\w+',normalize(text)))
+    matches=[name for name,phrases in TASK_HINTS
+             if any(' '+' '.join(re.findall(r'\w+',normalize(p)))+' ' in ' '+words+' ' for p in phrases)]
+    return matches[0] if len(matches)==1 else None
+
+
 class Conversation(CompanionWindow):
     """Reuse the bounded local worker, chat, speech, history and permission lifecycle."""
     def __init__(self,hub,parent):
@@ -63,6 +94,12 @@ class Conversation(CompanionWindow):
         self.transcript=tk.Text(chatbox,wrap='word',height=5,state='disabled',font=('Segoe UI',11),padx=16,pady=14,relief='flat',highlightthickness=1)
         self.transcript.pack(side='left',fill='both',expand=True)
         sb=ttk.Scrollbar(chatbox,command=self.transcript.yview); sb.pack(side='right',fill='y'); self.transcript.configure(yscrollcommand=sb.set)
+        self.hint_panel=ttk.Frame(left,padding=8,style='Experience.Card.TFrame')
+        self.hint_text=tk.StringVar(w,'')
+        ttk.Label(self.hint_panel,textvariable=self.hint_text,wraplength=330,justify='left',style='Experience.Card.TLabel').pack(fill='x')
+        self.hint_button=ttk.Button(self.hint_panel,text='Conhecer ferramenta',command=self.open_hint)
+        self.hint_button.pack(anchor='w',pady=(4,0))
+        self.hint_name=None
         self.input=tk.Text(left,wrap='word',height=3,font=('Segoe UI',11),padx=12,pady=8,relief='flat',highlightthickness=1); self.input.pack(fill='x',pady=(12,3))
         self.count=tk.StringVar(w,'0 / 4000 caracteres'); ttk.Label(left,textvariable=self.count,style='Experience.Muted.TLabel').pack(anchor='e')
         self.input.bind('<<Modified>>',self.input_changed); self.input.edit_modified(False)
@@ -158,6 +195,7 @@ class Conversation(CompanionWindow):
         free=not self.busy and not self.meeting_active and self.capture_timer is None
         for button in (self.send_button,self.mic_button,self.prepare_button,self.suggest_button,self.capture_button,self.meeting_start,self.detect_button):
             button.configure(state='normal' if free else 'disabled')
+        self.hint_button.configure(state='normal' if free else 'disabled')
         self.speak_button.configure(state='normal' if free and self.history else 'disabled')
         self.stop_button.configure(state='normal' if not free else 'disabled')
         self.meeting_stop.configure(state='normal' if self.meeting_active else 'disabled')
@@ -172,7 +210,7 @@ class Conversation(CompanionWindow):
         self.transcript.tag_configure('message',spacing3=10)
         if not self.history:
             self.transcript.insert('end','Olá! Como posso ajudar hoje?\n','person')
-            self.transcript.insert('end','Converse com o modelo local, prepare um lembrete ou analise uma captura da tela. Você decide o que compartilhar.','message')
+            self.transcript.insert('end','Escreva o que precisa fazer. Posso ajudar a encontrar uma ferramenta, conversar sobre um assunto ou preparar uma ação. Você decide o que compartilhar.','message')
         for role,value in self.history:
             self.transcript.insert('end',('Você' if role=='user' else 'Aeris')+'\n','person')
             self.transcript.insert('end',value+'\n','message')
@@ -183,7 +221,35 @@ class Conversation(CompanionWindow):
     def input_changed(self,event=None):
         if self.input.edit_modified():
             self.session.cancel(); self.action_input=None; self.preview.set('')
-        super().input_changed(event); self.refresh()
+        super().input_changed(event); self.update_hint(); self.refresh()
+    def update_hint(self):
+        self.hint_name=task_hint(self.input.get('1.0','end-1c'))
+        if self.hint_name:
+            name=self.hint_name
+            self.hint_text.set('Sugestão de ferramenta: '+NAMES[name]+'\n'+HELP[name][0])
+            if not self.hint_panel.winfo_manager():
+                self.hint_panel.pack(fill='x',pady=(5,0),before=self.input)
+        else:
+            self.hint_panel.pack_forget()
+    def open_hint(self):
+        if not self.hint_name or self.busy or self.meeting_active:
+            return
+        name=self.hint_name
+        if name in ('Meeting','Capture'):
+            self.hub.navigate('meeting' if name=='Meeting' else 'notes')
+            return
+        self.hub.navigate('catalog')
+        self.hub.goal.set('Todas')
+        self.hub.category.set('Todas')
+        self.hub.query.set(NAMES[name])
+        self.hub.refresh()
+        for i,module in enumerate(self.hub.visible):
+            if module.name==name:
+                self.hub.listbox.selection_clear(0,'end')
+                self.hub.listbox.selection_set(i)
+                self.hub.listbox.see(i)
+                self.hub.show_selected()
+                break
     def permissions_changed(self):
         self.session.cancel(); self.action_input=None; self.preview.set('')
         if not self.hub.permissions.allowed(COMPANION_SCREEN): self.discard_screen()
