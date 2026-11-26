@@ -1,0 +1,19 @@
+{
+  "version": "1.0.0rc5",
+  "run": 45863779585,
+  "workflow_commit": "2918be32bcf1d2221890baa8ff0cb57a97b60cc8",
+  "source_artifact_id": 15139686297,
+  "source_artifact_sha256": "47b1eb68f1892c72c2960bafcc01a03dcbc5b1ced55ed86dc0585921c731101b",
+  "source_artifact_expires": "2026-12-26T17:00:22Z",
+  "source_sha256": "fe393db2e8903ae9c181d23639729204bad96fefcbdc60de4c7cec2170debc18",
+  "source_bytes": 622242,
+  "source_manifest_sha256": "5cd25579bc1e3c6f2acb4711754237a7d4eefcab124bcc2605b6e5b041c2c265",
+  "source_files_verified": 362,
+  "reviewed_source_files_exact_match": 54,
+  "reviewed_security_run": 45862942949,
+  "tests_included": "477 expected; 64 refinement cases, 60 smoke scripts",
+  "independent_integrity": "PASS",
+  "permanent_reconstruction": "tracked Fix 1 ZIP, pinned RC4 build adjustments, all ten functional overlays and hash manifest; no old artifact download required",
+  "scope": "Consolidated source snapshot, not a public release or proof of binary safety; RC5 build validation pending",
+  "release_approved": false
+}
