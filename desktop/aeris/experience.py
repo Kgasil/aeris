@@ -5,17 +5,19 @@ import json
 import queue
 import subprocess
 import tkinter as tk
-from tkinter import ttk,messagebox
+from tkinter import ttk,messagebox,filedialog
 from aeris.hub import Hub, COLORS
 from aeris.experience_help import HELP
 from aeris.intelligence import recommend_tool
 from aeris.voice_session import VoiceSession, MAX_TURNS
 from aeris.vision_session import VisionSession, INTERVAL_MS, MAX_SECONDS, MAX_FRAMES
+from aeris.meeting_audio import available as loopback_available, model_path, start_loopback, read_loopback, BLOCK_SECONDS
+from aeris.meeting_intelligence import prepare_minutes
 from aeris.companion_ui import CompanionWindow
 from aeris.companion import chat,validate_message,speech_process,MAX_HISTORY
 from aeris.copilot import CopilotSession,parse_command
 from aeris.permissions import (COMPANION_CHAT,COMPANION_MIC,COMPANION_SPEAK,COPILOT_RUN,
-                              COMPANION_SCREEN)
+                              COMPANION_SCREEN, MEETING_LOOPBACK)
 from aeris.screen_context import capture_process,read_capture,describe_screen,installed_models
 from aeris.local_worker import worker_for
 from aeris.safe_input import strict_json
@@ -79,6 +81,7 @@ class Conversation(CompanionWindow):
         self.session=CopilotSession(hub); self.action_input=None; self.screen=None; self.photo=None
         self.capture_timer=None; self.screen_question=None; self.meeting_active=False
         self.meeting_timer=None; self.meeting_generation=0; self.meeting_chunks=[]
+        self.meeting_source='mic'; self.meeting_model=None; self.meeting_badge=None; self.meeting_review=None
         self.window=w=ttk.Frame(parent,padding=(18,12)); w.bind('<Destroy>',self.destroyed,add='+')
         top=ttk.Frame(w); top.pack(fill='x')
         ttk.Label(top,text='Olá. Como posso ajudar?',style='Experience.Title.TLabel').pack(side='left')
@@ -164,11 +167,12 @@ class Conversation(CompanionWindow):
         ttk.Button(notes,text='Salvar anotação na sessão',command=self.save_note).pack(fill='x')
         meetings=ttk.Frame(tabs,padding=9); tabs.add(meetings,text='Reunião')
         ttk.Label(meetings,text='Acompanhar reunião',style='Experience.Subtitle.TLabel').pack(anchor='w')
-        ttk.Label(meetings,text='Microfone padrão do Windows, em blocos de ditado pt-BR. Não captura o áudio interno da chamada nem identifica participantes. Avise todos antes de iniciar.',wraplength=242,justify='left').pack(anchor='w',pady=5)
+        ttk.Label(meetings,text='Escolha microfone ou áudio interno (experimental). Avise todos os participantes. Não identifica interlocutores.',wraplength=242,justify='left').pack(anchor='w',pady=5)
         self.meeting_text=tk.Text(meetings,wrap='word',height=6,relief='flat',highlightthickness=1,padx=8,pady=5); self.meeting_text.pack(fill='both',expand=True)
-        self.meeting_start=ttk.Button(meetings,text='Iniciar transcrição pelo microfone',command=self.start_meeting); self.meeting_start.pack(fill='x',pady=(8,3))
+        self.meeting_start=ttk.Button(meetings,text='Transcrever microfone',command=self.start_meeting); self.meeting_start.pack(fill='x',pady=(8,3))
+        self.meeting_loopback=ttk.Button(meetings,text='Transcrever áudio interno',command=self.start_internal_meeting,style='Experience.Primary.TButton'); self.meeting_loopback.pack(fill='x',pady=3)
         self.meeting_stop=ttk.Button(meetings,text='Parar transcrição',command=self.stop_meeting); self.meeting_stop.pack(fill='x',pady=3)
-        ttk.Button(meetings,text='Preparar resumo na conversa',command=self.meeting_summary).pack(fill='x',pady=3)
+        self.minutes_button=ttk.Button(meetings,text='Gerar ata e tarefas com IA',command=self.meeting_summary); self.minutes_button.pack(fill='x',pady=3)
         ttk.Button(meetings,text='Salvar ata na sessão',command=self.save_meeting).pack(fill='x',pady=3)
         self.status=tk.StringVar(w,'Pronto. Microfone e tela desligados.')
         ttk.Label(w,textvariable=self.status,style='Experience.Muted.TLabel',wraplength=800).pack(fill='x',pady=(12,0))
@@ -332,6 +336,8 @@ class Conversation(CompanionWindow):
         self.speak_button.configure(state='normal' if free and self.history else 'disabled')
         self.stop_button.configure(state='normal' if not free else 'disabled')
         self.meeting_stop.configure(state='normal' if self.meeting_active else 'disabled')
+        self.meeting_loopback.configure(state='normal' if free else 'disabled')
+        self.minutes_button.configure(state='normal' if free else 'disabled')
         self.analyze_button.configure(state='normal' if (free or (self.vision.active and not self.busy)) and self.screen else 'disabled')
         self.accept_button.configure(state='normal' if free and self.candidate and self.hub.permissions.allowed(COPILOT_RUN) and self.hub.permissions.allowed(COMPANION_CHAT) else 'disabled')
         self.confirm_button.configure(state='normal' if free and self.session.pending else 'disabled')
@@ -355,7 +361,7 @@ class Conversation(CompanionWindow):
         self.clear()
         self.note.delete('1.0','end')
         self.meeting_text.configure(state='normal'); self.meeting_text.delete('1.0','end')
-        self.meeting_chunks.clear()
+        self.meeting_chunks.clear(); self.close_meeting_review()
         self.auto_speak.set(False)
         self.ai_hint=None; self.update_hint()
         self.status.set('Sessão limpa. Resultados pendentes descartados; registros protegidos preservados.')
@@ -421,7 +427,8 @@ class Conversation(CompanionWindow):
         if not self.hub.permissions.allowed(COMPANION_CHAT):
             self.ai_hint=None; self.update_hint()
         if not self.hub.permissions.allowed(COMPANION_SCREEN): self.discard_screen()
-        if self.meeting_active and not self.hub.permissions.allowed(COMPANION_MIC): self.stop_meeting()
+        if self.meeting_active and not self.hub.permissions.allowed(self.meeting_cap()): self.stop_meeting()
+        if not self.hub.permissions.allowed(COMPANION_CHAT): self.close_meeting_review()
         super().permissions_changed()
     def suggest(self):
         if not self.model.get().strip():
@@ -564,18 +571,49 @@ class Conversation(CompanionWindow):
         except ValueError as e: self.status.set(str(e)); return
         if self.hub.alive(self.hub.capture_window): self.hub.capture_window.refresh()
         self.status.set('Anotação salva nesta sessão. O bloco continua disponível para edição.')
-    def start_meeting(self):
-        if self.busy or self.meeting_active: return
+    def meeting_cap(self):
+        return MEETING_LOOPBACK if self.meeting_source=='internal' else COMPANION_MIC
+    def start_internal_meeting(self):
+        if self.busy or self.meeting_active or self.voice.active or self.vision.active: return
+        if not loopback_available():
+            messagebox.showinfo('Áudio interno experimental','Disponível na execução por código-fonte no Windows, com soundcard, numpy e faster-whisper instalados. Escolha uma pasta de modelo Whisper convertido previamente instalada. Nenhum download é iniciado pelo Aeris.',parent=self.hub.root); return
+        folder=filedialog.askdirectory(parent=self.hub.root,title='Modelo Whisper local')
+        if not folder: return
+        try: model=model_path(folder)
+        except (OSError,ValueError) as exc: self.status.set(str(exc)); return
+        self.start_meeting('internal',model)
+    def start_meeting(self,source='mic',model=None):
+        if self.closed or self.busy or self.meeting_active or self.voice.active or self.vision.active or self.capture_timer is not None: return
+        self.close_meeting_review()
         revision=self.hub.permissions.revision
-        if not messagebox.askyesno('Transcrição de reunião','Todos os participantes foram avisados e concordam com a transcrição? O microfone permanecerá ativo em blocos até Parar, fechar, revogar ou atingir o limite de 20 blocos. Nenhum áudio é gravado em arquivo pelo Aeris.',parent=self.hub.root): return
+        description=('A saída padrão do Windows inclui TODOS os sons reproduzidos, não apenas a chamada. O áudio é capturado em blocos de 30 segundos, com pausas durante a transcrição local. Até 20 blocos; sem gravação em arquivo.' if source=='internal' else 'Microfone padrão em blocos de ditado, até 20 blocos; sem gravação em arquivo.')
+        if not messagebox.askyesno('Transcrição de reunião','Todos os participantes foram avisados e concordam com a transcrição? '+description+' Você pode interromper a qualquer momento.',parent=self.hub.root): return
         if self.closed or self.hub.permissions.revision!=revision: return
-        if not self.authorize(COMPANION_MIC,'Autorizar o microfone nesta sessão?'): return
-        if self.busy or self.meeting_active: return
+        cap=MEETING_LOOPBACK if source=='internal' else COMPANION_MIC
+        if not self.authorize(cap,'Autorizar a fonte de áudio selecionada nesta sessão?'): return
+        if self.closed or self.busy or self.meeting_active or self.voice.active or self.vision.active or self.capture_timer is not None or not self.hub.permissions.allowed(cap): return
+        self.meeting_source=source; self.meeting_model=model
         self.meeting_active=True; self.meeting_generation+=1; self.meeting_chunks=[]
+        badge=tk.Toplevel(self.hub.root); self.meeting_badge=badge
+        badge.title('Aeris · Reunião'); badge.attributes('-topmost',True); badge.resizable(False,False)
+        badge.protocol('WM_DELETE_WINDOW',self.stop_meeting)
+        panel=ttk.Frame(badge,padding=10); panel.pack(fill='both',expand=True)
+        ttk.Label(panel,text='REUNIÃO · '+('Áudio interno' if source=='internal' else 'Microfone'),font=('Segoe UI',10,'bold')).pack(anchor='w')
+        ttk.Button(panel,text='Parar transcrição',command=self.stop_meeting).pack(fill='x',pady=(5,0))
+        badge.update_idletasks(); badge.geometry(f'+{max(0,badge.winfo_screenwidth()-badge.winfo_reqwidth()-30)}+32')
+        badge.bind('<Unmap>',lambda e:self.stop_meeting() if e.widget is badge and self.meeting_active else None,add='+')
         self.meeting_text.configure(state='disabled'); self.meeting_next(); self.refresh()
     def meeting_next(self):
         self.meeting_timer=None
-        if not self.meeting_active or not self.hub.permissions.allowed(COMPANION_MIC) or len(self.meeting_chunks)>=20: self.stop_meeting(); return
+        if not self.meeting_active or not self.hub.permissions.allowed(self.meeting_cap()) or len(self.meeting_chunks)>=20 or self.meeting_badge is None or not self.meeting_badge.winfo_viewable(): self.stop_meeting(); return
+        if self.meeting_source=='internal':
+            try:
+                if worker_for(self.hub).busy: raise OSError()
+                p=start_loopback(self.meeting_model); self.process=p
+                if not self.start(MEETING_LOOPBACK,lambda:read_loopback(p),kind='meeting'):
+                    p.kill(); self.process=None; raise OSError()
+            except (OSError,ValueError,PermissionError): self.stop_meeting(); self.status.set('Áudio interno indisponível. Confira dependências, saída padrão e modelo local.'); return
+            self.status.set('REUNIÃO ATIVA · áudio interno · captura e transcrição em blocos.'); return
         try:
             if worker_for(self.hub).busy: raise OSError()
             p=speech_process(); self.process=p
@@ -589,22 +627,67 @@ class Conversation(CompanionWindow):
         except (OSError,PermissionError): self.stop_meeting(); self.status.set('Microfone ou reconhecedor pt-BR indisponível.'); return
         self.status.set('MICROFONE ATIVO · reunião · pressione Parar para encerrar.')
     def stop_meeting(self):
-        self.meeting_active=False; self.meeting_generation+=1
+        self.meeting_active=False; self.meeting_generation+=1; self.meeting_model=None
+        if self.meeting_badge is not None:
+            badge=self.meeting_badge; self.meeting_badge=None
+            if badge.winfo_exists(): badge.destroy()
         if self.meeting_timer is not None: self.window.after_cancel(self.meeting_timer); self.meeting_timer=None
         if self.busy and self.kind=='meeting': super().stop()
-        self.meeting_text.configure(state='normal'); self.status.set('Microfone desligado. Revise a transcrição antes de salvar.'); self.refresh()
+        self.meeting_text.configure(state='normal'); self.status.set('Captura de áudio encerrada. Revise a transcrição antes de salvar.'); self.refresh()
+    def close_meeting_review(self):
+        if self.meeting_review is not None:
+            window=self.meeting_review; self.meeting_review=None
+            if window.winfo_exists(): window.destroy()
     def meeting_summary(self):
-        if self.meeting_active or self.busy: return
-        text=self.meeting_text.get('1.0','end-1c').strip()
-        prompt='Resuma a transcrição abaixo, separando decisões, dúvidas e ações. Não invente participantes, prazos ou responsáveis.\n\n'+text
-        if not text or len(prompt)>4000:
-            if self.meeting_text.tag_ranges('sel'):
-                text=self.meeting_text.get('sel.first','sel.last').strip()
-                prompt='Resuma o trecho abaixo, separando decisões, dúvidas e ações. Não invente participantes, prazos ou responsáveis.\n\n'+text
-            if not text or len(prompt)>4000:
-                self.status.set('Selecione um trecho de até 3.800 caracteres para resumir.'); return
-        if self.input.get('1.0','end-1c').strip(): self.status.set('Envie ou limpe o rascunho da conversa primeiro.'); return
-        self.input.insert('1.0',prompt); self.status.set('Resumo preparado no editor. Revise e clique Enviar.')
+        if self.meeting_active or self.busy or self.voice.active or self.vision.active: return
+        source=self.meeting_text.get('1.0','end-1c')
+        text=source.strip()
+        if len(text)>4000 and self.meeting_text.tag_ranges('sel'):
+            text=self.meeting_text.get('sel.first','sel.last').strip()
+        if not text or len(text)>4000:
+            self.status.set('Selecione um trecho de até 4.000 caracteres para gerar a ata.'); return
+        model=self.model.get().strip()
+        if not model:
+            if not self.ai_open: self.toggle_ai_settings()
+            self.configure_ai(); return
+        if not self.authorize(COMPANION_CHAT,'Enviar a transcrição selecionada ao modelo local para gerar uma ata? Não inclui histórico.'): return
+        revision=self.hub.permissions.revision
+        if not messagebox.askyesno('Gerar ata?', 'Enviar o texto revisado ao modelo local? A ata poderá conter erros e será revisada antes de salvar.',parent=self.hub.root): return
+        if self.closed or self.busy or revision!=self.hub.permissions.revision or source!=self.meeting_text.get('1.0','end-1c') or model!=self.model.get().strip(): return
+        self.close_meeting_review()
+        if self.start(COMPANION_CHAT,lambda:(source,model,prepare_minutes(model,text)),kind='minutes'):
+            self.status.set('Preparando ata e sugestões de tarefas. Nada foi salvo.')
+    def review_minutes(self,source,draft):
+        self.close_meeting_review()
+        window=tk.Toplevel(self.hub.root); self.meeting_review=window
+        window.title('Aeris · Revisar ata'); window.geometry('640x600')
+        window.protocol('WM_DELETE_WINDOW',self.close_meeting_review)
+        panel=ttk.Frame(window,padding=16); panel.pack(fill='both',expand=True)
+        ttk.Label(panel,text='Revise a ata e as tarefas',font=('Segoe UI',18,'bold')).pack(anchor='w')
+        ttk.Label(panel,text='Confira os fatos. Edite ou remova sugestões incorretas. Nenhuma tarefa será transferida automaticamente.',wraplength=560).pack(anchor='w')
+        ttk.Label(panel,text='Resumo e decisões').pack(anchor='w',pady=(8,0))
+        notes=tk.Text(panel,wrap='word',height=8); notes.pack(fill='both',expand=True); notes.insert('1.0',draft.notes)
+        ttk.Label(panel,text='Tarefas sugeridas (uma por linha)').pack(anchor='w',pady=(8,0))
+        actions=tk.Text(panel,wrap='word',height=5); actions.pack(fill='both',expand=True); actions.insert('1.0','\n'.join(a.title for a in draft.actions))
+        def save():
+            if self.meeting_review is not window or self.meeting_active or source!=self.meeting_text.get('1.0','end-1c') or not self.hub.permissions.allowed(COMPANION_CHAT):
+                self.close_meeting_review(); self.status.set('Ata expirada. Gere novamente.'); return
+            from aeris.meeting import MeetingStore,Action
+            try:
+                tasks=tuple(Action(v.strip()) for v in actions.get('1.0','end-1c').splitlines() if v.strip())
+                body=notes.get('1.0','end-1c').strip()
+                if not body: raise ValueError('Informe o resumo revisado.')
+                if not self.ensure_tool('Meeting'): return
+                if self.meeting_review is not window or source!=self.meeting_text.get('1.0','end-1c') or not self.hub.permissions.allowed(COMPANION_CHAT): return
+                if self.hub.meeting_store is None: self.hub.meeting_store=MeetingStore()
+                self.hub.meeting_store.add('Ata revisada',date.today().isoformat(),'','',body,tasks)
+            except ValueError as exc: messagebox.showwarning('Revisar ata',str(exc),parent=window); return
+            if self.hub.alive(self.hub.meeting_window): self.hub.meeting_window.render()
+            self.close_meeting_review(); self.status.set('Ata e sugestões revisadas salvas em Reuniões. Transfira tarefas individualmente.')
+        ttk.Button(panel,text='Salvar ata revisada',command=save,style='Experience.Primary.TButton').pack(fill='x',pady=(8,3))
+        ttk.Button(panel,text='Descartar',command=self.close_meeting_review).pack(fill='x')
+        from aeris.theme import apply_tree
+        apply_tree(window,self.hub.settings.appearance.theme)
     def save_meeting(self):
         if self.meeting_active: return
         text=self.meeting_text.get('1.0','end-1c').strip()
@@ -625,7 +708,7 @@ class Conversation(CompanionWindow):
         super().stop()
         if self.hub.root.state()=='withdrawn': self.hub.root.deiconify()
     def poll(self):
-        if self.kind not in ('screen','vision','meeting','models','route','voice_listen','voice_chat','voice_speak','monitor_screen'): return super().poll()
+        if self.kind not in ('screen','vision','meeting','models','route','voice_listen','voice_chat','voice_speak','monitor_screen','minutes'): return super().poll()
         self.timer=None
         if self.closed: return
         try: job,ok,result=self.results.get_nowait()
@@ -675,6 +758,12 @@ class Conversation(CompanionWindow):
             if ok and self.hub.permissions.allowed(COMPANION_CHAT):
                 question,response=result; self.history.extend((('user',('[Captura pontual] '+question)[:4000]),('assistant',response))); self.history=self.history[-MAX_HISTORY:]; self.draw(); self.status.set('Análise concluída. A IA pode errar.')
             else: self.status.set('Modelo de visão indisponível ou permissão revogada.')
+        elif valid and kind=='minutes':
+            if ok:
+                source,model,draft=result
+                if source==self.meeting_text.get('1.0','end-1c') and model==self.model.get().strip(): self.review_minutes(source,draft)
+                else: self.status.set('Transcrição ou modelo alterado; ata descartada.')
+            else: self.status.set('Não foi possível gerar uma ata válida. Tente novamente ou revise manualmente.')
         elif valid and kind=='meeting' and self.meeting_active:
             if ok:
                 current=self.meeting_text.get('1.0','end-1c')
@@ -690,6 +779,10 @@ class Conversation(CompanionWindow):
     def destroyed(self,event):
         if event.widget is self.window:
             self.voice.stop(); self.vision.stop()
+            if self.meeting_badge is not None:
+                try: self.meeting_badge.destroy()
+                except tk.TclError: pass
+                self.meeting_badge=None
             if self.vision_badge is not None:
                 try: self.vision_badge.destroy()
                 except tk.TclError: pass
