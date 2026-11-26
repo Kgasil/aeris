@@ -21,3 +21,6 @@ Nova CI somente para verificação dos ZIPs e testes Node existentes (50 casos e
 
 ## Registro de execução
 [CI 45878981054](https://github.com/Kgasil/aeris/actions/runs/45878981054), commit `6290ca6aef5af2129829bf1047f5a429e29b931a`: disparada, ainda na fila na última consulta. Nenhum novo resultado Node ou SHA-256 da CI confirmado. A comparação main/backup mostrou exclusivamente os três arquivos novos de validação/documentação. O resultado histórico de 50/50 em release/extension-1.0.0-notes.md não substitui esta execução.
+
+## Confirmação CI na etapa 06
+A [execução 45878981054](https://github.com/Kgasil/aeris/actions/runs/45878981054) concluiu com sucesso: recálculo SHA-256 e verificação dos dois ZIPs, sintaxe dos módulos e suíte Node original aprovados. Runner Linux; não é scan Defender, teste Ollama real ou instalação nativa.
