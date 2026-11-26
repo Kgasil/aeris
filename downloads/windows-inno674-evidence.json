@@ -1,0 +1,71 @@
+{
+  "scope": "Windows Server 2022 CI, unsigned experimental candidate; not release approval or Windows 10/11 certification",
+  "run": 45847790103,
+  "commit": "7052439a2bedd78f587a920e5835f8dd6009dc5f",
+  "artifact_id": 15132320867,
+  "artifact_sha256": "efdb1abf3b5268c436ddfca28de88a87611975e298c448533a71697cd19113e0",
+  "artifact_bytes": 27611364,
+  "artifact_expires": "2026-12-26T15:20:23Z",
+  "unit_tests": {
+    "total": 401,
+    "passed": 397,
+    "skipped": 4,
+    "failures": 0
+  },
+  "portable": {
+    "bytes": 14780130,
+    "sha256": "79c3717de3be402966a2536a44451ec24e40a2ecd42cf5c318553df3f7334dc0",
+    "manifest_files_verified": 89,
+    "hash_mismatches": 0,
+    "binaries": 71,
+    "notice_files": 15,
+    "new_notices": 11
+  },
+  "installer": {
+    "bytes": 13335670,
+    "sha256": "7759ee0aad592734702ede141ca074e1edc0ab8d4e2abd382c2f8b8d65bbc834",
+    "inno_setup": "6.7.4",
+    "administrative_install_mode": false
+  },
+  "exe_sha256": "61c947d01bbeece9cb0e5e4bdbcb689eb246a3d27214f4fef54d942cea3739fb",
+  "compiler": {
+    "vendor": "Pyrsys B.V.",
+    "download_sha256": "a549929319f9120716677c685535ca4671e4b937b5fdc87e2585f32d8eb30e8c",
+    "download_authenticode": "Valid",
+    "compiler_sha256": "f02fa0e5f237b47d7ed1edae9b991866ec94fe02af61eb6a73e94f92fe8e0604",
+    "compiler_authenticode": "Valid",
+    "version_from_build_and_install_logs": "6.7.4"
+  },
+  "checks": {
+    "portable_ui_self_test": "PASS",
+    "installed_ui_self_test": "PASS",
+    "reinstalled_ui_self_test": "PASS",
+    "install": "PASS",
+    "reinstall_same_version": "PASS",
+    "uninstall": "PASS",
+    "synthetic_data_preserved": "PASS",
+    "shortcut_targets": "PASS",
+    "shortcut_cleanup": "PASS",
+    "silent_no_launch": "PASS",
+    "independent_outer_and_asset_hashes": "PASS",
+    "binary_inventory_matches_manifest": "PASS",
+    "ten_upstream_notices_match_git_after_crlf_normalization": "PASS",
+    "inno_license_matches_collected_license": "PASS",
+    "fourteen_notice_paths_in_install_and_reinstall_logs": "PASS"
+  },
+  "binary_signatures": {
+    "valid": 66,
+    "not_signed": 5,
+    "scope": "CI-reported Authenticode status, not independently revalidated on Linux"
+  },
+  "aeris_authenticode": "NotSigned",
+  "defender": {
+    "antivirus_enabled": true,
+    "real_time_protection_enabled": false,
+    "signature_version": "1.463.440.0",
+    "signature_last_updated": "2026-11-23T16:21:03+00:00",
+    "malware_scan": "NOT_TESTED"
+  },
+  "redistribution_approved": false,
+  "release_approved": false
+}
