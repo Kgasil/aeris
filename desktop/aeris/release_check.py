@@ -47,16 +47,30 @@ def pe_x64(stream):
         raise ValueError('Expected AMD64 PE')
 
 
+def pe_installer(stream):
+    """Structural sanity check, not signature or executable validation."""
+    head = stream.read(64)
+    if len(head) != 64 or head[:2] != b'MZ':
+        raise ValueError('Missing installer executable header')
+    offset = struct.unpack_from('<I', head, 60)[0]
+    if not 64 <= offset <= 1024 * 1024:
+        raise ValueError('Invalid installer PE offset')
+    stream.seek(offset)
+    header = stream.read(24)
+    if len(header) != 24 or header[:4] != b'PE\0\0' or struct.unpack_from('<H',header,4)[0] not in (0x14c,0x8664):
+        raise ValueError('Invalid installer PE header')
+
+
 def build_portable(bundle, output):
     bundle, output = Path(bundle), Path(output)
-    if bundle.name != 'Aeris' or output.exists() or output.resolve().is_relative_to(bundle.resolve()):
+    if bundle.name != 'Aeris' or bundle.is_symlink() or getattr(bundle.lstat(),'st_file_attributes',0) & 0x400 or output.exists() or output.resolve().is_relative_to(bundle.resolve()):
         raise ValueError('Expected new ZIP outside Aeris bundle')
     files = {}
     seen = set()
     total = 0
     for p in sorted(bundle.rglob('*')):
-        if p.is_symlink():
-            raise ValueError('Symlinks are not allowed')
+        if p.is_symlink() or getattr(p.lstat(),'st_file_attributes',0) & 0x400:
+            raise ValueError('Symlinks and reparse points are not allowed')
         if p.is_dir():
             continue
         if not p.is_file():
@@ -134,6 +148,8 @@ def verify_release(directory, version, portable_only=False):
     if not portable_only:
         expected.add(base + '-Setup.exe')
     sums = directory / 'SHA256SUMS.txt'
+    if sums.is_symlink() or not sums.is_file() or getattr(sums.lstat(),'st_file_attributes',0) & 0x400:
+        raise ValueError('Invalid checksum manifest file')
     if sums.stat().st_size > 4096:
         raise ValueError('Checksum manifest too large')
     parsed = {}
@@ -146,7 +162,7 @@ def verify_release(directory, version, portable_only=False):
         raise ValueError('Unexpected or missing artifact')
     for name, h in parsed.items():
         p = directory / name
-        if p.is_symlink() or not p.is_file():
+        if p.is_symlink() or not p.is_file() or getattr(p.lstat(),'st_file_attributes',0) & 0x400:
             raise ValueError('Invalid artifact file')
         with p.open('rb') as f:
             if digest(f) != h:
@@ -154,8 +170,7 @@ def verify_release(directory, version, portable_only=False):
     # Inno Setup's bootstrapper may be 32-bit even for an x64 payload.
     if not portable_only:
         with (directory / (base + '-Setup.exe')).open('rb') as f:
-            if f.read(2) != b'MZ':
-                raise ValueError('Missing installer executable header')
+            pe_installer(f)
     return verify_portable(directory / (base + '-portable.zip'))
 
 
