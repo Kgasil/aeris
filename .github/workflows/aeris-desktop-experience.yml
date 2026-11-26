@@ -44,3 +44,57 @@ jobs:
       - name: Linux integrated UI smoke test
         if: runner.os == 'Linux'
         run: xvfb-run -a python -c "from aeris.distribution import self_test; self_test(full=True)"
+
+  candidate-build:
+    needs: regression
+    if: github.ref == 'refs/heads/desktop-experience'
+    runs-on: windows-2022
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065
+        with:
+          python-version: '3.14.10'
+          architecture: x64
+      - name: Build candidate without publishing
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $evidence = Join-Path $PWD 'candidate-evidence'
+          New-Item -ItemType Directory -Path $evidence | Out-Null
+          $candidates = @()
+          if (${env:ProgramFiles(x86)}) { $candidates += (Join-Path ${env:ProgramFiles(x86)} 'Inno Setup 6\ISCC.exe') }
+          if ($env:LOCALAPPDATA) { $candidates += (Join-Path $env:LOCALAPPDATA 'Programs\Inno Setup 6\ISCC.exe') }
+          $iscc = $candidates | Where-Object { Test-Path -LiteralPath $_ -PathType Leaf } | Select-Object -First 1
+          $mode = if ($iscc) { 'installer-and-portable' } else { 'portable-only' }
+          [pscustomobject]@{commit=$env:GITHUB_SHA; mode=$mode; installer_compiler_found=[bool]$iscc; release_approved=$false} | ConvertTo-Json | Set-Content (Join-Path $evidence 'attempt.json')
+          try {
+            if ($iscc) {
+              & .\distribution\build.ps1 -Iscc $iscc *>&1 | Tee-Object -FilePath (Join-Path $evidence 'build.log')
+            } else {
+              & .\distribution\build.ps1 -PortableOnly *>&1 | Tee-Object -FilePath (Join-Path $evidence 'build.log')
+            }
+            $stages = @(Get-ChildItem -LiteralPath distribution/out -Directory)
+            if ($stages.Count -ne 1) { throw 'Expected exactly one build staging directory' }
+            $stage = $stages[0].FullName
+            foreach ($name in @('SHA256SUMS.txt','AERIS-EXE-SHA256.txt','build-info.json','build-dependencies.txt','runtime-reduction.json')) {
+              Copy-Item -LiteralPath (Join-Path $stage $name) -Destination $evidence
+            }
+            $files = @(Get-ChildItem -LiteralPath $stage -File | Where-Object { $_.Name -match '^Aeris-1\.1\.0rc1-Windows-x64-(Setup\.exe|portable\.zip)$' })
+            $expected = if ($iscc) { 2 } else { 1 }
+            if ($files.Count -ne $expected) { throw 'Candidate artifact count mismatch' }
+            $files | ForEach-Object { [pscustomobject]@{name=$_.Name; bytes=$_.Length; sha256=(Get-FileHash -LiteralPath $_.FullName -Algorithm SHA256).Hash.ToLowerInvariant()} } | ConvertTo-Json -AsArray | Set-Content (Join-Path $evidence 'artifact-inventory.json')
+            if (-not $iscc) { Write-Warning 'Installer not generated: Inno Setup absent. Portable build only.' }
+          } catch {
+            $_ | Out-String | Add-Content (Join-Path $evidence 'build.log')
+            throw
+          }
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: aeris-candidate-build-evidence
+          path: candidate-evidence/
+          if-no-files-found: warn
+          retention-days: 14
