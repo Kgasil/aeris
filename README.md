@@ -13,7 +13,7 @@ Light · Modular · Privacy-conscious
 
 O Aeris é um projeto da K&G Vision para criar ferramentas leves, discretas e úteis ao cotidiano. A proposta reúne um aplicativo desktop para Windows e uma extensão para navegadores Chromium, com módulos opcionais e processamento local sempre que possível.
 
-**Situação atual: candidato de código-fonte 1.0.0rc1 (local).** 50 protótipos desktop foram construídos localmente. O website oferece seis demonstrações interativas; a branch `develop` ainda contém a versão inicial 0.1.0a4. O instalador final e a publicação do pacote completo permanecem pendentes.
+**Situação atual: candidato de código-fonte 1.0.0rc1 publicado.** 50 protótipos desktop foram construídos localmente. O website oferece seis demonstrações interativas; a branch `develop` ainda contém a versão inicial 0.1.0a4. O pacote completo está disponível abaixo; o instalador final permanece pendente.
 
 [Experimente no navegador](https://kgasil.github.io/aeris/demo.html) · [Instalação e downloads](https://kgasil.github.io/aeris/#instalacao)
 
@@ -48,7 +48,7 @@ Os 50 protótipos locais foram consolidados no candidato de código-fonte. Não 
 
 Aeris is designed around one principle: technology should work for you, not interrupt you. Our proposed lightweight Windows desktop app and Chromium extension aim to make everyday productivity feel effortless. It aims to make everyday tasks simpler with optional modules, on-demand execution, local-first processing where feasible and explicit permissions.
 
-The catalog comprises 50 desktop prototypes built locally. The site includes six simplified interactive demos. The published develop branch still contains the early 0.1.0a4 source; the complete package and final installer are not yet published.
+The catalog comprises 50 desktop prototypes built locally. The site includes six simplified interactive demos. The published develop branch still contains the early 0.1.0a4 source; the complete source ZIP is now published; the final installer is pending.
 
 One free edition, including optional AI, with no ads or mandatory Aeris account, is the project policy. Performance, security, compatibility and licensing must be evaluated before any preview release.
 
@@ -90,6 +90,13 @@ Official visual lockup: **K&G** above **Vision**; individual project symbols are
 
 ## Release preparation / Preparação de lançamento — 1.0.0rc1
 
-The local source candidate has 50 tools. 392 unit tests and 60 graphical scripts passed on Linux; six Windows-only tests were skipped. No Windows installer has been compiled or validated, and the complete local source package is not yet in this repository. The public Web Lab and early source remain available. The browser extension is a separate project stage.
+The local source candidate has 50 tools. 392 unit tests and 60 graphical scripts passed on Linux; six Windows-only tests were skipped. No Windows installer has been compiled or validated, and the complete source package is now available in `downloads/`. The public Web Lab and complete source ZIP are available. The browser extension is a separate project stage.
 
 [Release status / Estado da versão](https://kgasil.github.io/aeris/release-status.html)
+
+### Download do candidato / Source candidate download
+
+- [ZIP completo / Complete ZIP](https://github.com/Kgasil/aeris/raw/refs/heads/main/downloads/Aeris-Desktop-v1.0.0rc1-codigo-fonte.zip)
+- [SHA-256](downloads/SHA256SUMS.txt)
+
+Windows: Python 3.12 or 3.13 with Tcl/Tk, extract ZIP, open `desktop`, run `py -3 main.py`. See included `distribution/build.ps1` for build instructions. Test with dummy data; no native Windows validation yet.
