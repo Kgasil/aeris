@@ -44,5 +44,15 @@
     "status": "NOT_TESTED",
     "reason": "Official updater still supplied a database more than 24 hours old; scan step skipped."
   },
-  "release_approved": false
+  "release_approved": false,
+  "public_preview": {
+    "release_id": 459713072,
+    "tag": "aeris-desktop-1.0.0rc5-terms1-preview",
+    "run": 45866976810,
+    "artifact_id": 15139774392,
+    "artifact_sha256": "e3273c6ab1b4983fa81cd3d68ca2143c663233a837dee18191316773ba6e97d2",
+    "anonymous_download_sha256_verified": true,
+    "scope": "owner-requested experimental evaluation only",
+    "stable_approved": false
+  }
 }
