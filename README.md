@@ -27,7 +27,7 @@ Light · Modular · Privacy-conscious
 
 [**Acessar downloads do Aeris**](https://kgasil.github.io/aeris/#instalacao) · [Compilações de teste](https://github.com/Kgasil/aeris/actions/workflows/aeris-windows-installer-preview.yml) · [Checklist de lançamento](validation/desktop-release-checklist.md)
 
-O instalador experimental Setup.exe já passou por instalação, reinstalação e desinstalação no Windows Server 2022. Ele inclui o runtime: não exige Python ou terminal. Na prévia atual, baixe o artefato de CI e extraia o Setup.exe; depois abra e confirme a instalação. A publicação permanente do .exe foi preparada e exige revisão de licenças/redistribuição e confiança documentada. O site exibirá o botão direto assim que a prévia for publicada. Sem assinatura digital; use dados fictícios. Windows 10/11 e versão estável ainda pendentes.
+O instalador experimental Setup.exe já passou por instalação, reinstalação e desinstalação no Windows Server 2022. Ele inclui o runtime: não exige Python ou terminal. Na prévia atual, baixe o artefato de CI e extraia o Setup.exe; depois abra e confirme a instalação. O novo instalador simplificado passou em CI; a publicação permanente exige revisão de licenças/redistribuição e confiança vinculada ao artefato exato. O site exibirá o botão direto assim que a prévia for publicada. Sem assinatura digital; use dados fictícios. Windows 10/11 e versão estável ainda pendentes.
 
 
 O Aeris é um projeto da K&G Vision para criar ferramentas leves, discretas e úteis ao cotidiano. A proposta reúne um aplicativo desktop para Windows e uma extensão para navegadores Chromium, com módulos opcionais e processamento local sempre que possível.
@@ -153,7 +153,7 @@ The [fourth run](https://github.com/Kgasil/aeris/actions/runs/45729575816) passe
 
 ## Primeira prévia pública / First public preview
 
-**25/11/2026 · v1.0.0rc1.** [Notas de lançamento](release/rc1-notes.md) · [GitHub Releases](https://github.com/Kgasil/aeris/releases/tag/v1.0.0rc1). Public source preview; experimental binaries remain temporary CI artifacts. Stable binary distribution is blocked pending validation and licensing review. A separate opt-in CI publication job is now prepared for an experimental prerelease after documented redistribution and trust review; it does not automatically publish on push.
+**25/11/2026 · v1.0.0rc1.** [Notas de lançamento](release/rc1-notes.md) · [GitHub Releases](https://github.com/Kgasil/aeris/releases/tag/v1.0.0rc1). Public source preview; experimental binaries remain temporary CI artifacts. Stable binary distribution is blocked pending validation and licensing review. The build workflow now validates only; publication will require a separate exact-artifact approval process, without rebuilding after review.
 
 ## Aeris Extension — 1.0.0
 
@@ -178,3 +178,7 @@ ZIPs publicados no GitHub. Não publicado nas lojas. / ZIPs published on GitHub.
 **GRAAL — Descobrir / Discover:** [Rubedo Research Workspace](https://kgasil.github.io/rubedo/research/) · [Precisão / Precision (R06)](https://kgasil.github.io/rubedo/research/#precisao) · [Monte Carlo (R07)](https://kgasil.github.io/rubedo/research/#monte-carlo). Novos modelos experimentais; validação atual pendente / Experimental additions; current validation pending.
 
 **Rubedo — edição 1.0 / 1.0 edition:** [Research Workspace 1.0](https://kgasil.github.io/rubedo/research/) · [Mini Lab 1.0.0](https://kgasil.github.io/rubedo/mini/) · [Mini Extension 1.0.0 — instalação manual / manual installation](https://kgasil.github.io/rubedo/#instalar). Edição experimental / Experimental edition.
+
+### Simplified installer — successful CI (26/11/2026)
+
+[Run 45844861678](https://github.com/Kgasil/aeris/actions/runs/45844861678) passed 395 native unit tests (four skipped), packaging, install/reinstall/uninstall, shortcut checks and synthetic-data preservation. [Temporary test artifact](https://github.com/Kgasil/aeris/actions/runs/45844861678/artifacts/15130517282) expires December 26, 2026. [Verified hashes and evidence](downloads/windows-simplified-preview-evidence.json). Unsigned, synthetic data only; permanent publication remains gated on licensing and trust review. Windows 10/11 interactive validation pending.
