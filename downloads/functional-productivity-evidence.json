@@ -1,0 +1,35 @@
+{
+  "run": 45856628978,
+  "commit": "a502f80fa637c05455a7ed11da6c8fb4e8321457",
+  "artifact_id": 15136660154,
+  "artifact_sha256": "58749a0cd8d9032384fc834a8bf5734d87269b3f3f7c78654d7a2d50fc7b15e8",
+  "independent_digest": "PASS",
+  "changed_source_hashes_verified": 11,
+  "new_tests": {
+    "passed": 6,
+    "skipped": 0,
+    "seconds": 2.947
+  },
+  "full_regression": {
+    "total": 425,
+    "passed": 421,
+    "skipped": 4,
+    "failures": 0,
+    "seconds": 18.556
+  },
+  "smokes": [
+    "smoke_backup",
+    "smoke_bridge",
+    "smoke_checklist",
+    "smoke_focus",
+    "smoke_health",
+    "smoke_refinement",
+    "smoke_reminder",
+    "smoke_spotlight_isolated",
+    "smoke_routine",
+    "smoke_workspace"
+  ],
+  "smokes_result": "PASS",
+  "scope": "Cumulative source overlays and real Tk on Windows Server 2022 CI; not packaged or client certification",
+  "release_approved": false
+}
