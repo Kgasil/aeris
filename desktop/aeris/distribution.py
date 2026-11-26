@@ -68,6 +68,14 @@ def self_test(full=False):
                 hub.navigate(view)
                 root.update()
                 if hub.view != view: raise RuntimeError('Navigation failed: '+view)
+            hub.conversation.toggle_ai_settings()
+            root.update()
+            if not hub.conversation.ai_open or not hub.conversation.ai_settings.winfo_manager():
+                raise RuntimeError('Readiness panel did not open')
+            hub.conversation.toggle_ai_settings()
+            root.update()
+            if hub.conversation.ai_open or hub.conversation.ai_settings.winfo_manager():
+                raise RuntimeError('Readiness panel did not close')
             if full:
                 # Opening windows only: no clipboard, external files, audio, AI or user records.
                 from dataclasses import replace
