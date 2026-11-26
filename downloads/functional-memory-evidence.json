@@ -1,0 +1,24 @@
+{
+  "run": 45857557390,
+  "commit": "a68f01c79ee488b62d42320b2e78e95aecdf5556",
+  "artifact_id": 15136960806,
+  "artifact_sha256": "3700c096c248ab8b80f3cf12582035f946c6a55b9117791756eaaa3f808cac08",
+  "independent_digest": "PASS",
+  "changed_source_hashes_verified": 16,
+  "new_tests": {
+    "passed": 6,
+    "skipped": 0,
+    "seconds": 2.8
+  },
+  "full_regression": {
+    "total": 431,
+    "passed": 427,
+    "skipped": 4,
+    "failures": 0,
+    "seconds": 17.837
+  },
+  "smokes": 16,
+  "smokes_result": "PASS",
+  "scope": "Cumulative source overlays and real Tk in Windows Server CI; protected-store UI uses synthetic test backend; no packaged executable or client certification",
+  "release_approved": false
+}
