@@ -93,11 +93,12 @@ class LoopbackTests(unittest.TestCase):
                 chat("fixture", (), "Synthetic question", connection_factory=connection)
 
     def test_unavailable_service(self):
-        # Reserve the port first, proving we do not contact an existing Ollama instance.
-        with socket.socket() as guard:
-            guard.bind(("127.0.0.1", 11434))
-            with self.assertRaises(OSError):
-                chat("fixture", (), "Synthetic question")
+        # Isolated CI only: verify no service is listening after the synthetic server closes.
+        with socket.socket() as probe:
+            probe.settimeout(2)
+            self.assertNotEqual(probe.connect_ex(("127.0.0.1", 11434)), 0)
+        with self.assertRaises(OSError):
+            chat("fixture", (), "Synthetic question")
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)
