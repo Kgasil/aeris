@@ -1,0 +1,12 @@
+# Aeris Release Assurance — 1.1.0rc1
+
+No application changes or public distribution. The last fully approved candidate remains 87b5b4554c4271f7a4fee7ffc355a76abc55f1d4; see RELEASE-READINESS.md. Previously approved gates: Windows build and native DPAPI/mutex. Seven gates remain pending.
+
+## Local execution
+Rechecked both archived evidence ZIPs: SHA-256 and CRC verification match GitHub records. Actual build inventory has eight exact PyPI package versions. New audit-dependencies.py locally tested with eight cases (actual inventory, duplicate names, unpinned line, empty inventory, returned advisories, missing response, pagination, malformed response); 8/8 passed. Attempted real OSV query for all eight package versions: INCONCLUSIVE, DNS resolution failure. No finding count claimed. The OSV endpoint is documented at https://google.github.io/osv.dev/post-v1-querybatch/. The check does not cover embedded CPython libraries, Windows, Inno Setup or optional applications.
+
+## Next CI evidence
+The Windows candidate job will collect hashes, versions, signature status and notice inventory from the actual built bundle, attempt a local Defender scan only when the service and trusted command are available, retain scoped scan outputs and status, confirm package hashes are unchanged, and measure three runs of the existing packaged full smoke test. No antivirus settings changed, no exclusions, no binary uploaded. Microsoft documentation: https://learn.microsoft.com/en-us/defender-endpoint/command-line-arguments-microsoft-defender-antivirus . Exit code 0 alone does not prove absence of malware; matched detections and availability are recorded separately. This is not signature certification or a full accessibility/performance test. The PyPI query sends only package names and versions, not user files or binaries. An unavailable scan or API is inconclusive, never release approval; reported advisories require review. PowerShell validation remains unexecuted locally (Linux without pwsh); CI results required.
+
+## Remaining gates
+Clean Windows 10/11 standard-user VMs, cross-version upgrade, real Ollama/audio/microphone/OCR, full performance/accessibility, review of actual redistribution terms and runtime licenses, confidence/antimalware/signing strategy, final retained package hash and publication approval. No gate is newly approved by this commit. Existing compiler documentation should be read historically: the latest verified runner used Inno Setup 6.7.1. The public branch, release and site remain unchanged.
