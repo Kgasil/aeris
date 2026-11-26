@@ -13,7 +13,7 @@ from aeris.companion import chat,validate_message,speech_process,MAX_HISTORY
 from aeris.copilot import CopilotSession,parse_command
 from aeris.permissions import (COMPANION_CHAT,COMPANION_MIC,COMPANION_SPEAK,COPILOT_RUN,
                               COMPANION_SCREEN)
-from aeris.screen_context import capture_process,read_capture,describe_screen
+from aeris.screen_context import capture_process,read_capture,describe_screen,installed_models
 from aeris.local_worker import worker_for
 from aeris.safe_input import strict_json
 from aeris.window_lifecycle import trace_window
@@ -41,8 +41,9 @@ class Conversation(CompanionWindow):
         modelrow=ttk.Frame(w); modelrow.pack(fill='x',pady=(0,8))
         ttk.Label(modelrow,text='Modelo local').pack(side='left')
         self.model=tk.StringVar(w,'')
-        self.model_entry=ttk.Entry(modelrow,textvariable=self.model,width=24); self.model_entry.pack(side='left',padx=8)
-        ttk.Button(modelrow,text='Configurar IA',command=self.configure_ai).pack(side='left')
+        self.model_entry=ttk.Combobox(modelrow,textvariable=self.model,width=19); self.model_entry.pack(side='left',padx=6)
+        self.detect_button=ttk.Button(modelrow,text='Detectar modelos',command=self.detect_models); self.detect_button.pack(side='left')
+        ttk.Button(modelrow,text='Ajuda',command=self.configure_ai).pack(side='left',padx=4)
         trace_window(w,self.model,self.model_changed)
         panes=ttk.Frame(w); panes.pack(fill='both',expand=True)
         panes.columnconfigure(0,weight=3,uniform='work'); panes.columnconfigure(1,weight=2,uniform='work'); panes.rowconfigure(0,weight=1)
@@ -114,8 +115,12 @@ class Conversation(CompanionWindow):
         return self.hub.enabled(name)
     def model_changed(self,*args):
         self.session.cancel(); self.action_input=None; self.preview.set(''); super().model_changed(*args)
+    def detect_models(self):
+        if self.busy or self.meeting_active: return
+        if not self.authorize(COMPANION_CHAT,'Consultar os nomes dos modelos instalados no Ollama local? Nenhuma mensagem ou arquivo será enviado.'): return
+        if self.start(COMPANION_CHAT,installed_models,kind='models'): self.status.set('Consultando modelos instalados…')
     def configure_ai(self):
-        messagebox.showinfo('IA local','Instale o Ollama e um modelo local, com OLLAMA_NO_CLOUD=1. Digite o nome exato do modelo instalado. Para imagens, use um modelo compatível com visão. Aeris não instala modelos nem envia dados para uma API de nuvem.',parent=self.hub.root)
+        messagebox.showinfo('IA local','Instale o Ollama e um modelo local, com OLLAMA_NO_CLOUD=1. Em seguida clique Detectar modelos ou digite o nome exato. Para imagens, use um modelo compatível com visão. Aeris não instala modelos nem envia dados para uma API de nuvem.',parent=self.hub.root)
     def send(self):
         if self.meeting_active or self.busy: return
         # Recognized local commands use the same reviewed action path, without a model.
@@ -141,7 +146,7 @@ class Conversation(CompanionWindow):
             if not self.proposal_panel.winfo_manager(): self.proposal_panel.pack(fill='x',pady=4)
         else: self.proposal_panel.pack_forget()
         free=not self.busy and not self.meeting_active and self.capture_timer is None
-        for button in (self.send_button,self.mic_button,self.prepare_button,self.suggest_button,self.capture_button,self.meeting_start):
+        for button in (self.send_button,self.mic_button,self.prepare_button,self.suggest_button,self.capture_button,self.meeting_start,self.detect_button):
             button.configure(state='normal' if free else 'disabled')
         self.speak_button.configure(state='normal' if free and self.history else 'disabled')
         self.stop_button.configure(state='normal' if not free else 'disabled')
@@ -301,7 +306,7 @@ class Conversation(CompanionWindow):
         super().stop()
         if self.hub.root.state()=='withdrawn': self.hub.root.deiconify()
     def poll(self):
-        if self.kind not in ('screen','vision','meeting'): return super().poll()
+        if self.kind not in ('screen','vision','meeting','models'): return super().poll()
         self.timer=None
         if self.closed: return
         try: job,ok,result=self.results.get_nowait()
@@ -310,7 +315,13 @@ class Conversation(CompanionWindow):
         kind=self.kind
         if kind=='screen': self.hub.root.deiconify()
         valid=job==self.job and self.hub.permissions.allowed(self.cap)
-        if valid and kind=='screen':
+        if valid and kind=='models':
+            if ok and result:
+                self.model_entry.configure(values=result)
+                if len(result)==1 and not self.model.get().strip(): self.model.set(result[0])
+                self.status.set('Modelos locais encontrados. Escolha um modelo para conversar.')
+            else: self.status.set('Nenhum modelo local encontrado. Abra Ajuda para configurar o Ollama.')
+        elif valid and kind=='screen':
             if ok:
                 try:
                     image=tk.PhotoImage(data=base64.b64encode(result).decode('ascii'))
