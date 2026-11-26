@@ -23,9 +23,9 @@ def start_loopback(model):
     if not available():
         raise OSError('Áudio interno experimental disponível somente no Windows por código-fonte com dependências instaladas.')
     p=model_path(model)
-    env=dict(os.environ,HF_HUB_OFFLINE='1',TRANSFORMERS_OFFLINE='1',HF_HUB_DISABLE_TELEMETRY='1')
+    env=dict(os.environ,HF_HUB_OFFLINE='1',TRANSFORMERS_OFFLINE='1',HF_HUB_DISABLE_TELEMETRY='1',PYTHONIOENCODING='utf-8')
     return subprocess.Popen([sys.executable,'-m','aeris.meeting_audio',str(p)],stdin=subprocess.DEVNULL,
-        stdout=subprocess.PIPE,stderr=subprocess.DEVNULL,encoding='utf-8',env=env,creationflags=subprocess.CREATE_NO_WINDOW)
+        stdout=subprocess.PIPE,stderr=subprocess.DEVNULL,encoding='utf-8',env=env,cwd=str(Path(__file__).resolve().parent.parent),creationflags=subprocess.CREATE_NO_WINDOW)
 
 def read_loopback(process):
     from aeris.safe_input import strict_json
