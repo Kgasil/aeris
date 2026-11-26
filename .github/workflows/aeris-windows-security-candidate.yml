@@ -1,0 +1,206 @@
+name: Aeris Windows security candidate - Python 3.14
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/aeris-windows-security-candidate.yml'
+permissions:
+  contents: read
+concurrency:
+  group: aeris-windows-security-candidate-${{ github.ref }}
+  cancel-in-progress: false
+jobs:
+  installer-preview:
+    runs-on: windows-2022
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065
+        with:
+          python-version: '3.14.10'
+          architecture: x64
+      - name: Verify and unpack source
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $zip = 'downloads/Aeris-Desktop-v1.0.0rc1-fix1-codigo-fonte.zip'
+          $expected = '22e8843c3f823d4358766ad44905d5e13265cb47ab36dc10dbb42fc3760c9153'
+          if ((Get-FileHash -LiteralPath $zip -Algorithm SHA256).Hash.ToLowerInvariant() -ne $expected) { throw 'Source hash mismatch' }
+          Expand-Archive -LiteralPath $zip -DestinationPath source
+          py -3.14-64 -c "import tkinter, sys, ssl; assert sys.version_info[:3] == (3,14,10) and sys.maxsize > 2**32; print(sys.version); print(ssl.OPENSSL_VERSION); assert ssl.OPENSSL_VERSION_INFO[:2] >= (3,5)"
+          if ($LASTEXITCODE -ne 0) { throw 'Python x64 verification failed' }
+      - name: Apply tested regression-test compatibility update
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $test = 'validation/test_verify.py'
+          if ((Get-FileHash -LiteralPath $test -Algorithm SHA256).Hash.ToLowerInvariant() -ne 'd54b0258a08369b29559a12275e9071098dd9c750a9d6e2802892691ba3b06ef') { throw 'Regression test hash mismatch' }
+          Copy-Item -LiteralPath $test -Destination 'source/Aeris-Desktop-v1.0.0rc1-fix1/desktop/tests/test_verify.py' -Force
+      - name: Fix catalog resource path in build recipe
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $path = 'source/Aeris-Desktop-v1.0.0rc1-fix1/distribution/build.ps1'
+          $original = [IO.File]::ReadAllText((Resolve-Path -LiteralPath $path).Path)
+          $old = "'--add-data','aeris/catalog.json:aeris'"
+          $new = "'--add-data',((Join-Path `$desktop 'aeris/catalog.json') + ':aeris')"
+          if ([regex]::Matches($original, [regex]::Escape($old)).Count -ne 1) { throw 'Unexpected build recipe' }
+          [IO.File]::WriteAllText((Resolve-Path -LiteralPath $path).Path, $original.Replace($old,$new), [Text.UTF8Encoding]::new($false))
+          if (-not (Test-Path -LiteralPath 'source/Aeris-Desktop-v1.0.0rc1-fix1/desktop/aeris/catalog.json' -PathType Leaf)) { throw 'Missing source catalog' }
+      - name: Apply simplified installer recipe and verify preserved invariants
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $original = 'source/Aeris-Desktop-v1.0.0rc1-fix1/distribution/Aeris.iss'
+          $overlay = 'validation/installer/Aeris.iss'
+          $before = Get-Content -LiteralPath $original
+          $after = Get-Content -LiteralPath $overlay
+          foreach ($key in @('AppId','AppName','DefaultDirName','PrivilegesRequired','AppMutex','CloseApplications','RestartApplications','ArchitecturesAllowed','ArchitecturesInstallIn64BitMode','MinVersion','InfoBeforeFile','OutputBaseFilename','UninstallDisplayIcon')) {
+            $a = @($before | Where-Object { $_ -match ('^' + $key + '=') })
+            $b = @($after | Where-Object { $_ -match ('^' + $key + '=') })
+            if ($a.Count -ne 1 -or $b.Count -ne 1 -or $a[0] -cne $b[0]) { throw "Installer invariant changed: $key" }
+          }
+          if ($after -match '^\[(Registry|InstallDelete|UninstallDelete|UninstallRun)\]$') { throw 'Unexpected installer side effects' }
+          $run = @($after | Where-Object { $_ -match '^Filename: ' })
+          if ($run.Count -ne 1 -or $run[0] -notmatch 'Flags: postinstall nowait skipifsilent unchecked runasoriginaluser$') { throw 'Unexpected launch behavior' }
+          Copy-Item -LiteralPath $overlay -Destination $original -Force
+      - name: Adapt verified build recipe for patched runtime candidate
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $root = 'source/Aeris-Desktop-v1.0.0rc1-fix1/distribution'
+          $build = Join-Path $root 'build.ps1'
+          $s = [IO.File]::ReadAllText((Resolve-Path $build).Path)
+          if ([regex]::Matches($s, '-3\.12-64').Count -ne 2 -or -not $s.Contains('(3,12)')) { throw 'Unexpected runtime recipe' }
+          $s = $s.Replace('-3.12-64','-3.14-64').Replace('(3,12)','(3,14)').Replace('CPython 3.12','CPython 3.14')
+          [IO.File]::WriteAllText((Resolve-Path $build).Path,$s,[Text.UTF8Encoding]::new($false))
+          $validator = Join-Path $root 'validate-windows.ps1'
+          $v = [IO.File]::ReadAllText((Resolve-Path $validator).Path)
+          if ([regex]::Matches($v,'python312\.dll').Count -ne 1) { throw 'Unexpected validator' }
+          [IO.File]::WriteAllText((Resolve-Path $validator).Path,$v.Replace('python312.dll','python314.dll'),[Text.UTF8Encoding]::new($false))
+          New-Item -ItemType Directory -Path security-evidence | Out-Null
+          py -3.14-64 -c "import sys, ssl, tkinter, json; t=tkinter.Tcl(); print(json.dumps(dict(python=sys.version,openssl=ssl.OPENSSL_VERSION,tcl=t.eval('info patchlevel'))))" | Set-Content -LiteralPath security-evidence/runtime.json -Encoding utf8
+          if ($LASTEXITCODE -ne 0) { throw 'Runtime inventory failed' }
+      - name: Locate Inno Setup compiler and build
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $candidates = @(
+            (Join-Path ${env:ProgramFiles(x86)} 'Inno Setup 6\ISCC.exe'),
+            (Join-Path $env:ProgramFiles 'Inno Setup 6\ISCC.exe'),
+            (Join-Path $env:LOCALAPPDATA 'Programs\Inno Setup 6\ISCC.exe')
+          )
+          $iscc = $candidates | Where-Object { Test-Path -LiteralPath $_ -PathType Leaf } | Select-Object -First 1
+          if (-not $iscc) {
+            $cmd = Get-Command ISCC.exe -ErrorAction SilentlyContinue
+            if ($cmd) { $iscc = $cmd.Source }
+          }
+          if (-not $iscc) { throw 'Inno Setup 6 compiler not available on runner; no unverified download attempted.' }
+          & .\source\Aeris-Desktop-v1.0.0rc1-fix1\distribution\build.ps1 -Iscc $iscc
+      - name: Validate portable and installed previews
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $root = 'source/Aeris-Desktop-v1.0.0rc1-fix1'
+          $dirs = @(Get-ChildItem -LiteralPath "$root/distribution/out" -Directory)
+          if ($dirs.Count -ne 1) { throw 'Expected exactly one build' }
+          $stage = $dirs[0].FullName
+          $exe = Join-Path $stage 'dist/Aeris/Aeris.exe'
+          $hash = (Get-Content -LiteralPath (Join-Path $stage 'AERIS-EXE-SHA256.txt') -Raw).Trim()
+          $validator = "$root/distribution/validate-windows.ps1"
+          New-Item -ItemType Directory -Path preview-evidence | Out-Null
+          & $validator -AerisExe $exe -ExpectedExeSha256 $hash -Mode Portable -ConfirmTestVM | Set-Content -LiteralPath preview-evidence/portable-validation.json -Encoding utf8
+          $setup = Join-Path $stage 'Aeris-1.0.0rc1-Windows-x64-Setup.exe'
+          $dest = Join-Path $env:LOCALAPPDATA 'Programs\KGVision\Aeris'
+          $data = Join-Path $env:LOCALAPPDATA 'Aeris'
+          if ((Test-Path -LiteralPath $dest) -or (Test-Path -LiteralPath $data)) { throw 'Expected clean disposable runner; refusing to touch existing installation/data.' }
+          $marker = Join-Path $data 'ci-synthetic-preserve.txt'
+          function Run-Setup([string]$log) {
+            $p = Start-Process -FilePath $setup -ArgumentList @('/VERYSILENT','/SUPPRESSMSGBOXES','/NORESTART','/CURRENTUSER',('/LOG="' + $log + '"')) -PassThru
+            if (-not $p.WaitForExit(120000)) { $p.Kill(); throw 'Installer timed out' }
+            if ($p.ExitCode -ne 0) { throw "Installer exit code $($p.ExitCode)" }
+          }
+          $startShortcut = Join-Path ([Environment]::GetFolderPath('Programs')) 'Project Aeris.lnk'
+          $desktopShortcut = Join-Path ([Environment]::GetFolderPath('DesktopDirectory')) 'Project Aeris.lnk'
+          if ((Test-Path -LiteralPath $startShortcut) -or (Test-Path -LiteralPath $desktopShortcut)) { throw 'Expected clean shortcuts' }
+          Run-Setup (Join-Path $PWD 'preview-evidence/install.log')
+          $shell = New-Object -ComObject WScript.Shell
+          foreach ($shortcut in @($startShortcut,$desktopShortcut)) {
+            if (-not (Test-Path -LiteralPath $shortcut -PathType Leaf)) { throw "Missing shortcut: $shortcut" }
+            $link = $shell.CreateShortcut($shortcut)
+            if ($link.TargetPath -ne (Join-Path $dest 'Aeris.exe')) { throw "Wrong shortcut target: $shortcut" }
+          }
+          if (Get-Process -Name Aeris -ErrorAction SilentlyContinue) { throw 'Silent installer unexpectedly launched Aeris' }
+          $installed = Join-Path $dest 'Aeris.exe'
+          & $validator -AerisExe $installed -ExpectedExeSha256 $hash -Mode Installed -ConfirmTestVM | Set-Content -LiteralPath preview-evidence/installed-validation.json -Encoding utf8
+          New-Item -ItemType Directory -Path $data -Force | Out-Null
+          $token = 'Aeris CI synthetic preservation marker'
+          Set-Content -LiteralPath $marker -Value $token -Encoding ascii
+          $markerHash = (Get-FileHash -LiteralPath $marker).Hash
+          Run-Setup (Join-Path $PWD 'preview-evidence/reinstall.log')
+          & $validator -AerisExe $installed -ExpectedExeSha256 $hash -Mode Installed -ConfirmTestVM | Set-Content -LiteralPath preview-evidence/reinstalled-validation.json -Encoding utf8
+          if ((Get-FileHash -LiteralPath $marker).Hash -ne $markerHash) { throw 'Reinstallation changed synthetic data' }
+          $uninstallers = @(Get-ChildItem -LiteralPath $dest -File -Filter 'unins*.exe')
+          if ($uninstallers.Count -ne 1) { throw 'Expected one uninstaller' }
+          $log = Join-Path $PWD 'preview-evidence/uninstall.log'
+          $p = Start-Process -FilePath $uninstallers[0].FullName -ArgumentList @('/VERYSILENT','/SUPPRESSMSGBOXES','/NORESTART',('/LOG="' + $log + '"')) -PassThru
+          if (-not $p.WaitForExit(120000)) { $p.Kill(); throw 'Uninstaller timed out' }
+          if ($p.ExitCode -ne 0) { throw "Uninstaller exit code $($p.ExitCode)" }
+          if (Test-Path -LiteralPath $installed) { throw 'Installed application remains after uninstall' }
+          if ((Test-Path -LiteralPath $startShortcut) -or (Test-Path -LiteralPath $desktopShortcut)) { throw 'Shortcuts remain after uninstall' }
+          if ((Get-FileHash -LiteralPath $marker).Hash -ne $markerHash) { throw 'Uninstallation changed synthetic data' }
+          [pscustomobject]@{ install='PASS'; reinstall_same_version='PASS'; uninstall='PASS'; synthetic_data_preserved='PASS'; shortcut_targets='PASS'; shortcut_cleanup='PASS'; silent_no_launch='PASS'; windows=[Environment]::OSVersion.VersionString; scope='Disposable Server 2022 runner; unsigned preview; not Windows 10/11 certification' } | ConvertTo-Json | Set-Content -LiteralPath preview-evidence/setup-validation.json -Encoding utf8
+          foreach ($name in @('Aeris-1.0.0rc1-Windows-x64-portable.zip','Aeris-1.0.0rc1-Windows-x64-Setup.exe','SHA256SUMS.txt','AERIS-EXE-SHA256.txt','build-dependencies.txt')) {
+            Copy-Item -LiteralPath (Join-Path $stage $name) -Destination preview-evidence
+          }
+      - name: Verify portable manifest and record inventory
+        shell: pwsh
+        run: |
+          py -3.14-64 validation/audit-desktop-bundle.py preview-evidence/Aeris-1.0.0rc1-Windows-x64-portable.zip --output preview-evidence/bundle-audit.json
+          if ($LASTEXITCODE -ne 0) { throw 'Bundle inventory verification failed' }
+      - name: Record actual bundle binary provenance and available scanner status
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $root = 'source/Aeris-Desktop-v1.0.0rc1-fix1/distribution/out'
+          $stage = @(Get-ChildItem -LiteralPath $root -Directory)
+          if ($stage.Count -ne 1) { throw 'Expected one candidate' }
+          $bundle = Join-Path $stage[0].FullName 'dist/Aeris'
+          $files = Get-ChildItem -LiteralPath $bundle -File -Recurse | Where-Object { $_.Extension -in '.exe','.dll','.pyd' }
+          $inventory = foreach ($file in $files) {
+            $sig = Get-AuthenticodeSignature -LiteralPath $file.FullName
+            [pscustomobject]@{ path=$file.FullName.Substring($bundle.Length+1); version=$file.VersionInfo.FileVersion; company=$file.VersionInfo.CompanyName; sha256=(Get-FileHash -LiteralPath $file.FullName -Algorithm SHA256).Hash.ToLowerInvariant(); signature=$sig.Status.ToString(); signer=if($sig.SignerCertificate){$sig.SignerCertificate.Subject}else{''} }
+          }
+          $inventory | ConvertTo-Json -Depth 4 | Set-Content -LiteralPath security-evidence/binary-inventory.json -Encoding utf8
+          $compiler = @((Join-Path ([Environment]::GetEnvironmentVariable('ProgramFiles(x86)')) 'Inno Setup 6\ISCC.exe'),(Join-Path $env:ProgramFiles 'Inno Setup 6\ISCC.exe'),(Join-Path $env:LOCALAPPDATA 'Programs\Inno Setup 6\ISCC.exe')) | Where-Object { Test-Path -LiteralPath $_ -PathType Leaf } | Select-Object -First 1
+          if ($compiler) {
+            $item=Get-Item -LiteralPath $compiler
+            [pscustomobject]@{version=$item.VersionInfo.FileVersion;sha256=(Get-FileHash -LiteralPath $compiler).Hash;signature=(Get-AuthenticodeSignature -LiteralPath $compiler).Status.ToString()} | ConvertTo-Json | Set-Content -LiteralPath security-evidence/compiler.json -Encoding utf8
+            $license = Join-Path $item.DirectoryName 'LICENSE.TXT'
+            if (Test-Path -LiteralPath $license) { Copy-Item -LiteralPath $license -Destination security-evidence/InnoSetup-LICENSE.txt }
+          }
+          try {
+            if (Get-Command Get-MpComputerStatus -ErrorAction SilentlyContinue) {
+              Get-MpComputerStatus | Select-Object AntivirusEnabled,RealTimeProtectionEnabled,AntivirusSignatureVersion,AntivirusSignatureLastUpdated,AMProductVersion | ConvertTo-Json | Set-Content -LiteralPath security-evidence/defender-status.json -Encoding utf8
+            }
+          } catch { Write-Warning 'Defender status unavailable' }
+          [pscustomobject]@{malware_scan='NOT_TESTED';release_approved=$false;scope='Inventory and compatibility candidate only; scanner availability is not a scan'} | ConvertTo-Json | Set-Content -LiteralPath security-evidence/trust-status.json -Encoding utf8
+          Copy-Item -LiteralPath security-evidence -Destination preview-evidence/security-evidence -Recurse
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: aeris-security-candidate-not-a-release
+          path: preview-evidence/
+          if-no-files-found: error
+          retention-days: 30
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: failure()
+        with:
+          name: aeris-installer-failure-diagnostics
+          path: |
+            preview-evidence/*.log
+            security-evidence/
+          if-no-files-found: ignore
+          retention-days: 7
