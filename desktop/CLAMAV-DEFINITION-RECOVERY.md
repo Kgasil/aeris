@@ -7,3 +7,9 @@ The isolated branch avoids triggering the existing regression and interface work
 Official guidance: https://docs.clamav.net/faq/faq-troubleshoot.html and https://docs.clamav.net/faq/faq-freshclam.html . Repeated downloads cannot generate newer upstream signatures. If the official base remains stale, stop and defer until a new official version exists. No automated recurring download configured.
 
 All app code and the public branch remain unchanged. Existing formal gate is unchanged; preparation does not authorize public distribution.
+
+## Recovery execution 45892912161
+
+- Workflow succeeded in enforcing the preflight, not in scanning binaries: https://github.com/Kgasil/aeris/actions/runs/45892912161 . Evidence artifact 15151928105: SHA-256 `93c474411a9a2db40252570e550804a3468c0961b882c9808c68b978ebdf6c34` verified independently, ZIP CRC clean.
+- Official DNS TXT for current.cvd.clamav.net advertised daily version 28194; FreshClam downloaded that version and sigtool reported Verification OK. Daily database build 2026-11-25T06:26:00Z, age 137781 seconds (38h16m21s) at preflight. Pinned scanner archive hash verified. Freshness limit remains 86400 seconds.
+- Result INCONCLUSIVE: no candidate compiled, no installer homologated in this run, no package scanned, no binary retained. The previous candidate's homologation remains historical evidence only. This is an upstream freshness blocker, not an application defect or a malware detection. No repeated download or rebuild was initiated. Recheck after the official publisher supplies a fresh database; the same preflight will enforce freshness again. All existing release gates and restrictions remain unchanged.
