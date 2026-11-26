@@ -52,9 +52,9 @@ COMPANION_SCREEN = 'companion.screen'
 CAPABILITIES = {
     COMPANION_SCREEN: ('Assistente → Tela', 'Capturar uma imagem da tela principal após ação explícita; enviar a imagem revisada ao modelo local de visão somente mediante confirmação separada.'),
     INTEGRATION_RUN: ('Integrações entre ferramentas', 'Transferir registros salvos entre Meeting, Checklist, Reminder, Learn, Flashcards e Research após prévia e confirmação.'),
-    COMPANION_CHAT: ('Companion → IA local', 'Enviar mensagens e histórico da conversa ou uma solicitação isolada de sugestão de comando ao servidor Ollama local.'),
-    COMPANION_MIC: ('Companion → Microfone', 'Ditado explícito e temporário pelo Windows.'),
-    COMPANION_SPEAK: ('Companion → Voz', 'Ler respostas com voz masculina local; leitura automática opcional na janela.'),
+    COMPANION_CHAT: ('Assistente → IA local', 'Enviar mensagens e histórico da conversa ou uma solicitação isolada de sugestão de comando ao servidor Ollama local.'),
+    COMPANION_MIC: ('Assistente → Microfone', 'Usar o microfone do Windows para ditado explícito ou transcrição de reunião iniciada pelo usuário. A transcrição ocorre em blocos; pode ser interrompida.'),
+    COMPANION_SPEAK: ('Assistente → Voz', 'Ler respostas por voz local do Windows; leitura automática opcional na janela.'),
     STORAGE_AUTO: ('Storage → Automático', 'Autorizar salvamento periódico apenas nos módulos selecionados nesta sessão.'),
     STORAGE_SAVE: ('Storage → Salvar', 'Gravar cópia protegida dos registros confirmados.'),
     STORAGE_LOAD: ('Storage → Restaurar', 'Substituir os registros da sessão por uma cópia protegida.'),
