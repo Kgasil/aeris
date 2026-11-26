@@ -1,0 +1,36 @@
+{
+  "run": 45850139129,
+  "commit": "34b391fb7457553d50d169efa5573a01ffbb521c",
+  "protocol": {
+    "os": "Windows Server 2022",
+    "artifact_id": 15132457815,
+    "sha256": "1d966db8c01c88e2c0a46548c5b6c21399cd2e79518e8b9a72ea57ae5b8f01e1",
+    "tests": 29,
+    "passed": 29,
+    "skipped": 0,
+    "failures": 0,
+    "seconds": 6.531,
+    "scope": "Real loopback HTTP with synthetic responses plus permission and worker regression"
+  },
+  "inference": {
+    "os": "Ubuntu 24.04",
+    "artifact_id": 15132937074,
+    "sha256": "531074cf2d63c8fd276d9b1b595d7e3ab1a6af93353a1cf35e3f0cd11888633c",
+    "ollama": "0.40.18",
+    "model": "smollm2:135m",
+    "model_digest": "9077fe9d2ae1a4a41a868836b56b8163731a8fe16621397028c2c76f838c6907",
+    "model_bytes": 270898672,
+    "cloud_disabled_env": true,
+    "inference": "PASS",
+    "answer_chars": 154,
+    "answer_sha256": "e9fca372bc7cd9178b5b5c1a467f97537709bbb2459f2036a1d956123a5e9902",
+    "seconds": 1.428,
+    "missing_model": "PASS",
+    "unavailable_service": "PASS",
+    "quality": "NOT_EVALUATED"
+  },
+  "independent_artifact_digest_checks": "PASS",
+  "installed_windows_gui": "NOT_TESTED",
+  "network_isolation": "NOT_TESTED",
+  "release_approved": false
+}
