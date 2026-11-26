@@ -38,6 +38,6 @@ Record PASS, FAIL or NOT TESTED for each OS and criterion. Capture logs/screensh
 
 ## Publish the experimental preview (only after review)
 
-Open [Aeris Windows installer preview validation](https://github.com/Kgasil/aeris/actions/workflows/aeris-windows-installer-preview.yml), choose Run workflow on main, enable publish_preview and enter the completed redistribution/trust review reference. CI builds and tests; publication proceeds only after successful validation. The workflow refuses to overwrite an existing preview tag. It creates a separate, explicitly unsigned experimental prerelease with Setup.exe, portable ZIP, SHA-256 and validation evidence. The website detects the expected uploaded Setup.exe asset and displays the direct download; otherwise the test-build link remains.
+The build workflow now validates and uploads artifacts only. The previous combined publication job has been removed because rebuilding after review could publish bytes different from those approved. Stage 05 must implement an independently approved exact-artifact publication flow (run ID, artifact ID, archive and asset hashes, verified rights and trust decision), with no rebuild. Do not publish until the review is complete. See [simplified installer evidence](../downloads/windows-simplified-preview-evidence.json) and [distribution audit](desktop-distribution-audit.md).
 
-This does not approve Windows 10/11 compatibility or stable release. Stable 1.0.0 requires closing all release gates, a versioned upgrade test, reviewed distribution notices and verified release assets.
+Stable 1.0.0 still requires all remaining validation gates.
