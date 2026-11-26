@@ -66,11 +66,16 @@ jobs:
               root.update()
               assert hub.conversation.compact, "Expected compact workspace at 980px"
               assert not hub.conversation.chat_panel.winfo_ismapped(), "Compact workspace must hide conversation"
-              assert hub.conversation.capture_button.winfo_ismapped(), "Capture control not visible"
-              assert hub.conversation.capture_button.winfo_rooty()+hub.conversation.capture_button.winfo_height() <= root.winfo_rooty()+root.winfo_height(), "Capture control clipped"
-              assert hub.conversation.discard_button.winfo_ismapped(), "Discard control not visible"
-              assert hub.conversation.discard_button.winfo_height() >= hub.conversation.discard_button.winfo_reqheight(), "Discard control clipped"
+              # Keep the screenshot even if a control assertion fails.
               Path(os.environ["AERIS_EVIDENCE"],"experience-screen.png").write_bytes(read_capture(capture_process()))
+              ui=hub.conversation
+              for control in (ui.monitor_button,ui.capture_button,ui.visual_mic,ui.analyze_button,ui.discard_button):
+                  name=control.cget("text")
+                  assert control.winfo_ismapped(), f"{name}: control not visible"
+                  assert control.winfo_height() >= control.winfo_reqheight(), f"{name}: height clipped"
+                  assert control.winfo_width() >= control.winfo_reqwidth(), f"{name}: width clipped"
+                  assert control.winfo_rooty()+control.winfo_height() <= root.winfo_rooty()+root.winfo_height(), f"{name}: outside window vertically"
+                  assert control.winfo_rootx()+control.winfo_width() <= root.winfo_rootx()+root.winfo_width(), f"{name}: outside window horizontally"
               hub.navigate("catalog")
               root.update()
               time.sleep(.3)
