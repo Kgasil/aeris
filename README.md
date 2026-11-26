@@ -126,3 +126,7 @@ The [fourth run](https://github.com/Kgasil/aeris/actions/runs/45729575816) passe
 ## Primeira prévia pública / First public preview
 
 **25/11/2026 · v1.0.0rc1.** [Notas de lançamento](release/rc1-notes.md) · [GitHub Releases](https://github.com/Kgasil/aeris/releases/tag/v1.0.0rc1). Public source preview; experimental binaries remain temporary CI artifacts. Stable binary distribution is blocked pending validation and licensing review.
+
+## Aeris Extension — Browser Preview 1.0.0rc1
+
+16 tools in a Manifest V3 candidate. 47 Node unit tests passed; local install and full source archives have been prepared. The archive upload to GitHub and real Chrome, Edge and Opera validation are pending. [Installation instructions and synthetic test page](https://kgasil.github.io/aeris/extension-preview.html). No browser store publication or stable release is claimed.
