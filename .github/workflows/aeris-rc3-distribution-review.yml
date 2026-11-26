@@ -39,23 +39,41 @@ jobs:
           set -euo pipefail
           sudo apt-get update
           sudo apt-get install -y --no-install-recommends clamav clamav-freshclam
-          sudo install -d -o clamav -g clamav -m 0755 "$RUNNER_TEMP/clamav-db"
-          # Start from the Ubuntu package's own configuration, isolating database and log paths.
-          sudo test -s /etc/clamav/freshclam.conf
-          sudo awk '!/^[[:space:]]*(DatabaseDirectory|UpdateLogFile|PidFile|NotifyClamd|DatabaseOwner|LogSyslog)[[:space:]]/' /etc/clamav/freshclam.conf > "$RUNNER_TEMP/freshclam.conf"
-          printf '\nDatabaseDirectory %s\nDatabaseOwner clamav\n' "$RUNNER_TEMP/clamav-db" >> "$RUNNER_TEMP/freshclam.conf"
-          chmod 0644 "$RUNNER_TEMP/freshclam.conf"
-          sudo freshclam --config-file="$RUNNER_TEMP/freshclam.conf" --stdout 2>&1 | tee scan-evidence/freshclam.log
-          clamscan --database="$RUNNER_TEMP/clamav-db" --version | tee scan-evidence/version.txt
-          daily=$(find "$RUNNER_TEMP/clamav-db" -maxdepth 1 \( -name daily.cvd -o -name daily.cld \) -print -quit)
+          # Use the package's unchanged default configuration and database location.
+          # If the installed updater is active, wait for its definitions rather than racing it.
+          if systemctl is-active --quiet clamav-freshclam; then
+            for i in $(seq 1 60); do
+              if test -s /var/lib/clamav/daily.cvd || test -s /var/lib/clamav/daily.cld; then break; fi
+              sleep 5
+            done
+            sudo journalctl -u clamav-freshclam --no-pager -n 100 > scan-evidence/freshclam.log
+          else
+            sudo freshclam --stdout 2>&1 | tee scan-evidence/freshclam.log
+          fi
+          clamscan --database=/var/lib/clamav --version | tee scan-evidence/version.txt
+          daily=$(find /var/lib/clamav -maxdepth 1 \( -name daily.cvd -o -name daily.cld \) -print -quit)
           test -n "$daily"
           sigtool --info "$daily" | tee scan-evidence/daily-info.txt
+          # Verify database build time, rather than trusting the file modification time.
+          python - <<'PY'
+          from datetime import datetime, timezone
+          from pathlib import Path
+          import re
+          line = re.search(r"(?m)^Build time:\s*(.+)$", Path("scan-evidence/daily-info.txt").read_text())
+          if not line:
+              raise SystemExit("Missing database build time")
+          raw = line.group(1).strip()
+          parsed = datetime.strptime(raw, "%d %b %Y %H-%M %z")
+          age = (datetime.now(timezone.utc)-parsed.astimezone(timezone.utc)).total_seconds()
+          if not 0 <= age <= 86400:
+              raise SystemExit("Daily definitions not within 24 hours")
+          PY
       - name: Scan exact installer, archive and verified extracted portable files
         shell: bash
         run: |
           set -euo pipefail
           # Do not execute binaries, submit samples, remove detections, or modify the artifacts.
-          clamscan --database="$RUNNER_TEMP/clamav-db" --recursive=yes --scan-archive=yes --alert-exceeds-max=yes --max-filesize=100M --max-scansize=400M --max-files=20000 --max-recursion=30 "$RUNNER_TEMP/rc3-assets" "$RUNNER_TEMP/rc3-portable" 2>&1 | tee scan-evidence/clamav-scan.log
+          clamscan --database=/var/lib/clamav --recursive=yes --scan-archive=yes --alert-exceeds-max=yes --max-filesize=100M --max-scansize=400M --max-files=20000 --max-recursion=30 "$RUNNER_TEMP/rc3-assets" "$RUNNER_TEMP/rc3-portable" 2>&1 | tee scan-evidence/clamav-scan.log
           grep -E '^Infected files: 0$' scan-evidence/clamav-scan.log
           if grep -Ei '(^|[[:space:]])(ERROR|FOUND)([[:space:]]|$)' scan-evidence/clamav-scan.log; then exit 1; fi
           python validation/verify-ci-artifact.py "$RUNNER_TEMP/rc3.zip" --expected-sha256 de81221a8723a9c26f11db293e440c65243f4c4c53e8d2dd2d00afc0e94e270f > scan-evidence/post-scan-integrity.json
