@@ -5,6 +5,7 @@ on:
     branches: [main]
     paths:
       - '.github/workflows/aeris-reduced-runtime-candidate.yml'
+      - 'validation/native-security/test_native_security.py'
 permissions:
   contents: read
 concurrency:
