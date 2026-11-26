@@ -1,0 +1,67 @@
+name: Update RC5 public preview with verified Defender result
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/aeris-rc5-publish-defender-result.yml'
+permissions:
+  contents: read
+  actions: read
+jobs:
+  notes:
+    runs-on: ubuntu-24.04
+    if: github.repository == 'Kgasil/aeris'
+    timeout-minutes: 5
+    permissions:
+      contents: write
+      actions: read
+    steps:
+      - name: Verify diagnostic evidence and update existing preview notes only
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p review-evidence
+          curl --fail --location --silent --show-error -H "Authorization: Bearer $GH_TOKEN" -H 'Accept: application/vnd.github+json' https://api.github.com/repos/Kgasil/aeris/actions/artifacts/15140024720/zip -o "$RUNNER_TEMP/defender.zip"
+          echo "79b63d0ea9c41c24f9936b1281f81bfd1ce987536857c417cff40f257ff5d293  $RUNNER_TEMP/defender.zip" | sha256sum -c -
+          python - "$RUNNER_TEMP/defender.zip" <<'PY'
+          import sys,zipfile,json
+          with zipfile.ZipFile(sys.argv[1]) as z:
+              status=json.loads(z.read("scan-status.json"))
+              assert status["positive_control"]=="PASS"
+              assert status["status"]=="DIAGNOSTIC_SCAN_COMPLETED_REVIEW_REQUIRED"
+              assert all(status[k]==0 for k in ("setup_exit","portable_exit","extracted_exit"))
+              for name in ("setup.log","portable.log","extracted.log"):
+                  assert "found no threats" in z.read(name).decode("utf-8-sig")
+          PY
+          gh api repos/Kgasil/aeris/releases/459713072 > "$RUNNER_TEMP/before.json"
+          jq -e '.draft==false and .prerelease==true and .tag_name=="aeris-desktop-1.0.0rc5-terms1-preview" and any(.assets[]; .name=="Aeris-1.0.0rc5-Windows-x64-Setup-terms1.exe" and .size==12795620 and .digest=="sha256:f5499cc2383e4d3a0acee8a0d84e173fa1a44a098ac0ba478c1febbcfe4e774b")' "$RUNNER_TEMP/before.json"
+          python - "$RUNNER_TEMP/before.json" "$RUNNER_TEMP/notes.txt" <<'PY'
+          import sys,json
+          from pathlib import Path
+          body=json.loads(Path(sys.argv[1]).read_text())["body"]
+          marker="## Microsoft Defender — 26/11/2026"
+          assert marker not in body
+          body=body.replace("escaneamento antimalware independente não realizado (definições ClamAV vencidas)", "Microsoft Defender não detectou ameaças na análise diagnóstica de 26/11/2026 (o scan ClamAV anterior foi bloqueado por definições vencidas)")
+          body=body.replace("no valid independent malware scan", "Microsoft Defender diagnostic scan found no threats on 26 November 2026")
+          body += """
+
+          ## Microsoft Defender — 26/11/2026
+
+          **Nenhuma ameaça detectada / No threats detected** no instalador exato publicado, no ZIP portátil e na pasta extraída. O controle positivo EICAR inofensivo foi detectado corretamente. Definições 1.463.481.0 atualizadas no dia do teste; SHA-256 pós-scan conferido. Análise personalizada diagnóstica sob demanda em Windows Server 2022 CI, sem execução do Aeris ou mudança de políticas, com proteção em tempo real inativa no runner.
+
+          O resultado é pontual e não representa garantia de segurança, assinatura digital, validação de Windows cliente ou aprovação estável. Respeite os avisos do Windows, analise localmente com proteção atualizada e não contorne bloqueios.
+
+          [Relatório de evidências](https://github.com/Kgasil/aeris/blob/main/downloads/rc5-defender-diagnostic-evidence.json) · [Execução e logs](https://github.com/Kgasil/aeris/actions/runs/45867805450)
+          """
+          Path(sys.argv[2]).write_text(body,encoding="utf-8")
+          PY
+          gh api --method PATCH repos/Kgasil/aeris/releases/459713072 -F body=@"$RUNNER_TEMP/notes.txt" > "$RUNNER_TEMP/after.json"
+          jq -e '.draft==false and .prerelease==true and (.body|contains("## Microsoft Defender — 26/11/2026")) and any(.assets[]; .name=="Aeris-1.0.0rc5-Windows-x64-Setup-terms1.exe" and .size==12795620 and .digest=="sha256:f5499cc2383e4d3a0acee8a0d84e173fa1a44a098ac0ba478c1febbcfe4e774b")' "$RUNNER_TEMP/after.json"
+          jq '{id,tag_name,draft,prerelease,html_url,assets:[.assets[]|{name,size,digest}],body}' "$RUNNER_TEMP/after.json" > review-evidence/release-notes.json
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: aeris-defender-public-notes-evidence
+          path: review-evidence/
+          if-no-files-found: error
