@@ -48,7 +48,9 @@ STORAGE_DELETE = 'storage.delete'
 COMPANION_CHAT = 'companion.chat'
 COMPANION_MIC = 'companion.mic'
 COMPANION_SPEAK = 'companion.speak'
+COMPANION_SCREEN = 'companion.screen'
 CAPABILITIES = {
+    COMPANION_SCREEN: ('Assistente → Tela', 'Capturar uma imagem da tela principal após ação explícita; enviar a imagem revisada ao modelo local de visão somente mediante confirmação separada.'),
     INTEGRATION_RUN: ('Integrações entre ferramentas', 'Transferir registros salvos entre Meeting, Checklist, Reminder, Learn, Flashcards e Research após prévia e confirmação.'),
     COMPANION_CHAT: ('Companion → IA local', 'Enviar mensagens e histórico da conversa ou uma solicitação isolada de sugestão de comando ao servidor Ollama local.'),
     COMPANION_MIC: ('Companion → Microfone', 'Ditado explícito e temporário pelo Windows.'),
