@@ -6,6 +6,7 @@ on:
     paths:
       - '.github/workflows/aeris-windows-preview.yml'
       - 'downloads/Aeris-Desktop-v1.0.0rc1-codigo-fonte.zip'
+      - 'validation/windows-fix1.py'
 permissions:
   contents: read
 concurrency:
@@ -33,6 +34,14 @@ jobs:
           Expand-Archive -LiteralPath $zip -DestinationPath source
           py -3.12-64 -c "import tkinter, sys; assert sys.maxsize > 2**32"
           if ($LASTEXITCODE -ne 0) { throw 'Python x64 verification failed' }
+      - name: Apply reviewed Windows compatibility fix
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $patch = 'validation/windows-fix1.py'
+          if ((Get-FileHash -LiteralPath $patch -Algorithm SHA256).Hash.ToLowerInvariant() -ne '6f3a0811fa8dfa6333866f1771562e727a2c140430015e5e7f13a1404e3248f0') { throw 'Patch hash mismatch' }
+          py -3.12-64 $patch source/Aeris-Desktop-v1.0.0rc1
+          if ($LASTEXITCODE -ne 0) { throw 'Patch application failed' }
       - name: Build portable preview and run native self-tests
         shell: pwsh
         run: |
@@ -57,7 +66,7 @@ jobs:
           }
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
-          name: aeris-unsigned-preview-not-a-release
+          name: aeris-unsigned-preview-fix1-not-a-release
           path: preview-evidence/
           if-no-files-found: error
           retention-days: 7
