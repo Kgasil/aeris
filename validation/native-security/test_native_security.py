@@ -73,24 +73,28 @@ class NativeSecurity(unittest.TestCase):
     def test_native_mutex_cross_process_and_abrupt_exit(self):
         name = r"Local\KGVision.Aeris.Test." + str(uuid.uuid4())
         child = (
-            "import sys,time; import aeris.distribution as d; "
+            "import os,sys,time; import aeris.distribution as d; "
             "sys.frozen=True; d.APP_MUTEX=sys.argv[1]; "
             "lock=d.application_lock(); assert lock.__enter__(); "
-            "print('READY',flush=True); time.sleep(60)"
+            "print('READY:'+str(os.getpid()),flush=True); time.sleep(60)"
         )
         with tempfile.TemporaryDirectory(prefix="aeris-mutex-") as tmp:
             ready = Path(tmp) / "ready.txt"
             # Redirect readiness to a file to enforce a bounded wait.
             import time
             with ready.open("w", encoding="utf-8") as output:
-                p = subprocess.Popen([sys.executable, "-c", child, name],
+                # On Windows a venv executable may be a redirector with a different PID.
+                # Terminate the actual holder, not a launcher that could leave it alive.
+                interpreter = Path(getattr(sys, "_base_executable", sys.executable))
+                self.assertTrue(interpreter.is_file())
+                p = subprocess.Popen([str(interpreter), "-c", child, name],
                                      stdout=output, stderr=subprocess.DEVNULL)
                 try:
                     deadline = time.monotonic() + 15
                     while time.monotonic() < deadline:
                         if p.poll() is not None:
                             self.fail("Mutex holder exited early")
-                        if "READY" in ready.read_text(encoding="utf-8"):
+                        if ready.read_text(encoding="utf-8").strip() == f"READY:{p.pid}":
                             break
                         time.sleep(0.1)
                     else:
