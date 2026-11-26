@@ -10,7 +10,7 @@ def main():
             return 1
     if sys.argv[1:]:
         return 2
-    from aeris.hub import main as run_hub
+    from aeris.experience import main as run_hub
     try:
         with application_lock() as acquired:
             if not acquired:
