@@ -5,16 +5,18 @@ from tkinter import ttk, messagebox, simpledialog
 class LearnWindow:
     def __init__(self,hub):
         self.hub=hub; self.store=hub.learn_store
-        self.window=tk.Toplevel(hub.root); self.window.title('Aeris Learn'); self.window.geometry('760x540'); self.window.minsize(640,460)
+        self.window=tk.Toplevel(hub.root); self.window.title('Aeris Learn'); self.window.geometry('800x600'); self.window.minsize(640,460)
         self.window.bind('<Escape>',lambda _:self.window.destroy())
-        f=ttk.Frame(self.window,padding=14); f.pack(fill='both',expand=True)
-        ttk.Label(f,text='Aeris Learn',font=('Segoe UI',18)).pack(anchor='w')
-        ttk.Label(f,text='Aprenda. Evolua. Transforme. Trilhas temporárias da sessão.').pack(anchor='w',pady=(0,8))
+        f=ttk.Frame(self.window,padding=18); f.pack(fill='both',expand=True)
+        ttk.Label(f,text='Meu plano de estudos',font=('Segoe UI',21,'bold')).pack(anchor='w')
+        ttk.Label(f,text='Crie uma trilha, organize tópicos e acompanhe seu progresso nesta sessão.').pack(anchor='w',pady=(0,8))
+        ttk.Label(f,text='1. Escolha ou crie uma trilha',font=('Segoe UI',11,'bold')).pack(anchor='w',pady=(4,4))
         bar=ttk.Frame(f); bar.pack(fill='x')
         self.selector=ttk.Combobox(bar,state='readonly'); self.selector.pack(side='left',fill='x',expand=True)
         self.selector.bind('<<ComboboxSelected>>',lambda _:self.render())
         for label,cmd in [('Nova trilha',self.create),('Renomear',self.rename),('Excluir',self.delete_plan)]:
             ttk.Button(bar,text=label,command=cmd).pack(side='left',padx=2)
+        ttk.Label(f,text='2. Acompanhe seu progresso',font=('Segoe UI',11,'bold')).pack(anchor='w',pady=(8,0))
         self.stats=tk.StringVar(self.window); ttk.Label(f,textvariable=self.stats).pack(anchor='w',pady=(10,0))
         self.progress=ttk.Progressbar(f,maximum=100); self.progress.pack(fill='x',pady=6)
         self.pending_only=tk.BooleanVar(self.window,False)
@@ -26,9 +28,9 @@ class LearnWindow:
         scroll=ttk.Scrollbar(area,orient='vertical',command=self.tree.yview); self.tree.configure(yscrollcommand=scroll.set)
         self.tree.pack(side='left',fill='both',expand=True); scroll.pack(side='right',fill='y')
         actions=ttk.Frame(f); actions.pack(fill='x',pady=8)
-        for label,cmd in [('Adicionar',self.add),('Editar',self.edit),('Concluir / reabrir',self.toggle),('Subir',lambda:self.move(-1)),('Descer',lambda:self.move(1)),('Excluir tópico',self.delete_topic)]:
-            ttk.Button(actions,text=label,command=cmd).pack(side='left',fill='x',expand=True,padx=1)
-        ttk.Button(f,text='Enviar tópico ao Flashcards',command=self.send_topic).pack(anchor='w',pady=3)
+        for label,cmd in [('Adicionar tópico',self.add),('Editar',self.edit),('Concluir / reabrir',self.toggle),('Subir',lambda:self.move(-1)),('Descer',lambda:self.move(1)),('Excluir tópico',self.delete_topic)]:
+            ttk.Button(actions,text=label,command=cmd,style='Aeris.Primary.TButton' if label=='Adicionar tópico' else 'TButton').pack(side='left',fill='x',expand=True,padx=1)
+        ttk.Button(f,text='Enviar para cartões de estudo',command=self.send_topic).pack(anchor='w',pady=3)
         self.status=tk.StringVar(self.window); ttk.Label(f,textvariable=self.status,wraplength=500).pack(anchor='w')
         self.plan_rows=()
         self.refresh()
