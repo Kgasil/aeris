@@ -26,6 +26,63 @@ class ExperienceTests(unittest.TestCase):
     def tearDown(self):
         self.root.destroy(); self.ui=None; self.h=None; self.root=None
         import gc; gc.collect(); self.tmp.cleanup()
+    def test_setup_panel_progress_and_cancellation_preserve_draft(self):
+        self.h.permissions.set(COMPANION_CHAT,True)
+        self.ui.input.insert('1.0','Rascunho fictício')
+        self.root.update()
+        with patch('aeris.experience.worker_for') as worker:
+            worker.return_value.start.return_value=True
+            self.ui.begin_ai_setup('qwen2.5:1.5b',download=True)
+        self.root.update()
+        self.assertTrue(self.ui.setup_panel.winfo_ismapped())
+        self.assertEqual(str(self.ui.send_button.cget('state')),'disabled')
+        self.assertEqual(str(self.ui.model_entry.cget('state')),'disabled')
+        self.assertEqual(str(self.ui.input.cget('state')),'normal')
+        self.assertIn('pausadas',self.ui.mode_status.get())
+        job=self.ui.job
+        cancel=self.ui.setup_cancel
+        def poll_now():
+            if self.ui.timer is not None:
+                self.ui.window.after_cancel(self.ui.timer)
+                self.ui.timer=None
+            self.ui.poll()
+            self.root.update_idletasks()
+        self.ui.setup_progress.put('Baixando modelo local.')
+        poll_now()
+        self.assertEqual(float(self.ui.setup_bar.cget('value')),2.0)
+        self.assertIn('Etapa 3 de 4',self.ui.setup_step.get())
+        self.ui.setup_stop.invoke()
+        self.assertTrue(cancel.is_set())
+        self.assertIn('Cancelando',self.ui.setup_step.get())
+        self.ui.setup_progress.put('Testando a IA com uma mensagem fictícia…')
+        poll_now()
+        self.assertIn('Cancelando',self.ui.setup_step.get())
+        self.ui.results.put((job,False,'Configuração cancelada.'))
+        poll_now()
+        self.assertFalse(self.ui.busy)
+        self.assertFalse(self.ui.setup_panel.winfo_ismapped())
+        self.assertEqual(self.ui.input.get('1.0','end-1c'),'Rascunho fictício')
+        self.assertEqual(str(self.ui.send_button.cget('state')),'normal')
+        self.assertIn('cancelada',self.ui.ready_state.get())
+
+    def test_restore_panel_does_not_claim_inference_test(self):
+        with patch('aeris.experience.worker_for') as worker:
+            worker.return_value.start.return_value=True
+            self.ui.begin_ai_setup('qwen2.5:1.5b',download=False)
+        self.root.update_idletasks()
+        self.assertEqual(float(self.ui.setup_bar.cget('maximum')),2.0)
+        job=self.ui.job
+        if self.ui.timer is not None:
+            self.ui.window.after_cancel(self.ui.timer)
+            self.ui.timer=None
+        self.ui.results.put((job,True,'qwen2.5:1.5b'))
+        self.ui.poll()
+        self.root.update_idletasks()
+        self.assertFalse(self.ui.busy)
+        self.assertFalse(self.ui.setup_panel.winfo_ismapped())
+        self.assertIn('ainda não executado',self.ui.status.get())
+        self.assertEqual(self.ui.model.get(),'qwen2.5:1.5b')
+
     def test_initial_layout_and_portuguese_search(self):
         self.assertEqual(self.h.view,'chat'); self.assertTrue(self.ui.window.winfo_ismapped())
         self.assertFalse(self.h.legacy_side.winfo_ismapped()); self.assertFalse(self.h.catalog.winfo_ismapped())
