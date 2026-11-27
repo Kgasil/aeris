@@ -3,13 +3,16 @@ import tkinter as tk
 from tkinter import ttk
 
 PALETTES = {
-    'Claro': dict(air='#F0F5F2', soft='#E0ECE5', natural='#8FC7A3', forest='#30694F', deep='#203D30', muted='#B8CEC1', secondary='#476553', focus='#30694F', field='#FFFFFF', selected='#DCEFE3', select_text='#285640'),
-    'Escuro': dict(air='#172820', soft='#243D30', natural='#8FC7A3', forest='#A5D7B4', deep='#E3F1E7', muted='#456453', secondary='#B4CCBD', focus='#A5D7B4', field='#101E17', selected='#345641', select_text='#F0FAF3'),
+    'Claro': dict(air='#F5F7F6', soft='#E8EEEA', natural='#8FC7A3', forest='#30694F', deep='#203D30', muted='#BCCBC2', secondary='#476553', focus='#30694F', field='#FFFFFF', selected='#DCEFE3', select_text='#285640', primary='#285640', primary_hover='#397557', primary_text='#FFFFFF', sidebar='#193D30', sidebar_text='#E3F1E7', sidebar_muted='#A5D7B4', sidebar_hover='#37614E', nav_selected='#DCEFE3', nav_text='#193D30', success='#286446', info='#245D8C', warning='#805500', danger='#A52E36'),
+    'Escuro': dict(air='#101A15', soft='#23382C', natural='#8FC7A3', forest='#A5D7B4', deep='#E3F1E7', muted='#456453', secondary='#B4CCBD', focus='#A5D7B4', field='#192D23', selected='#345641', select_text='#F0FAF3', primary='#8FC7A3', primary_hover='#A5D7B4', primary_text='#193D30', sidebar='#192D23', sidebar_text='#E3F1E7', sidebar_muted='#A5D7B4', sidebar_hover='#294D3A', nav_selected='#345641', nav_text='#F0FAF3', success='#A5D7B4', info='#9EC9F4', warning='#F2C56E', danger='#FFB4B7'),
 }
 
+SPACE = (4, 8, 12, 16, 24, 32)
+FONT = 'Segoe UI'
+TYPE = {'body': (FONT,10), 'section': (FONT,10,'bold'), 'subtitle': (FONT,13,'bold'), 'title': (FONT,21,'bold'), 'detail': (FONT,17,'bold'), 'brand': (FONT,30,'bold')}
 
 # Legacy Hub widgets are created before the shared theme is applied.
-LEGACY_BACKGROUNDS={'#f6faf7':'air','#dcefe3':'soft','#cfdfd5':'muted','#ffffff':'field'}
+LEGACY_BACKGROUNDS={'#f6faf7':'air','#dcefe3':'soft','#cfdfd5':'muted','#ffffff':'field','#f0f5f2':'air','#e0ece5':'soft','#b8cec1':'muted'}
 
 def background_role(value):
     color=value.lower()
@@ -25,11 +28,12 @@ def configure(root, name):
     style.configure('TButton', background=p['soft'], padding=(12,8), borderwidth=1, relief='flat')
     style.map('TButton', background=[('disabled', p['soft']),('active', p['selected'])], foreground=[('disabled', p['secondary'])], bordercolor=[('focus',p['focus'])], focuscolor=[('focus',p['focus'])])
     style.configure('TCheckbutton', background=p['air'])
-    style.map('TCheckbutton', background=[('active', p['air'])], foreground=[('disabled', p['muted'])])
+    style.map('TCheckbutton', background=[('active', p['air'])], foreground=[('disabled', p['secondary'])])
     style.configure('TCombobox', selectbackground=p['selected'], selectforeground=p['select_text'])
     style.map('TCombobox', fieldbackground=[('readonly', p['field'])], foreground=[('readonly', p['deep'])])
-    style.configure('Aeris.Primary.TButton',background='#30694F',foreground='#FFFFFF',padding=(12,7))
-    style.map('Aeris.Primary.TButton',background=[('disabled',p['soft']),('active','#397557'),('!disabled','#30694F')],foreground=[('disabled',p['muted']),('!disabled','#FFFFFF')])
+    for role in ('Aeris.Primary.TButton','Experience.Primary.TButton'):
+        style.configure(role,background=p['primary'],foreground=p['primary_text'],padding=(16,8),borderwidth=1)
+        style.map(role,background=[('disabled',p['soft']),('active',p['primary_hover']),('!disabled',p['primary'])],foreground=[('disabled',p['secondary']),('!disabled',p['primary_text'])],focuscolor=[('focus',p['primary_text'])],bordercolor=[('focus',p['focus'])])
     style.configure('TEntry', padding=(7,5))
     style.map('TEntry',bordercolor=[('focus',p['focus'])],lightcolor=[('focus',p['focus'])],darkcolor=[('focus',p['focus'])])
     style.map('TCombobox',bordercolor=[('focus',p['focus'])],lightcolor=[('focus',p['focus'])],darkcolor=[('focus',p['focus'])])
@@ -48,7 +52,36 @@ def configure(root, name):
     root.option_add('*TCombobox*Listbox.foreground', p['deep'])
     root.option_add('*TCombobox*Listbox.selectBackground', p['selected'])
     root.option_add('*TCombobox*Listbox.selectForeground', p['select_text'])
+    configure_experience(style,p)
     return p
+
+
+def configure_experience(style,p):
+    """Workspace styles also follow the global theme."""
+    style.configure('Experience.Goal.TRadiobutton',padding=(8,5),font=('Segoe UI',10))
+    style.configure('Experience.Title.TLabel',font=('Segoe UI',21,'bold'))
+    style.configure('TNotebook.Tab',padding=(12,8),font=('Segoe UI',10))
+    style.configure('Experience.Brand.TLabel',font=('Segoe UI',30,'bold'),background=p['sidebar'],foreground=p['sidebar_text'])
+    style.configure('Experience.Side.TFrame',background=p['sidebar'])
+    style.configure('Experience.Side.TLabel',background=p['sidebar'],foreground=p['sidebar_text'],font=('Segoe UI',10))
+    style.configure('Experience.SideSection.TLabel',background=p['sidebar'],foreground=p['sidebar_muted'],font=('Segoe UI',9,'bold'))
+    style.configure('Experience.Connection.TLabel',font=('Segoe UI',10,'bold'),foreground=p['forest'])
+    style.configure('Experience.Activity.TLabel',background=p['field'],foreground=p['deep'],font=('Segoe UI',10,'bold'))
+    style.configure('Experience.Horizontal.TProgressbar',background=p['forest'],troughcolor=p['soft'],bordercolor=p['muted'],thickness=6)
+    style.configure('Experience.Card.TFrame',background=p['field'])
+    style.configure('Experience.Card.TLabel',background=p['field'],foreground=p['deep'])
+    style.configure('Experience.Detail.TLabel',background=p['field'],foreground=p['deep'],font=('Segoe UI',17,'bold'))
+    style.configure('Experience.Section.TLabel',font=('Segoe UI',10,'bold'),foreground=p['forest'])
+    style.configure('Experience.Subtitle.TLabel',font=('Segoe UI',13,'bold'))
+    style.configure('Experience.Muted.TLabel',font=('Segoe UI',10),foreground=p['secondary'])
+    style.configure('Experience.Nav.TButton',padding=(12,8),anchor='w',background=p['sidebar'],foreground=p['sidebar_text'],borderwidth=0,relief='flat')
+    style.map('Experience.Nav.TButton',background=[('active',p['sidebar_hover']),('!disabled',p['sidebar'])],foreground=[('!disabled',p['sidebar_text'])],focuscolor=[('focus',p['sidebar_muted'])])
+    style.configure('Experience.Active.TButton',padding=(12,8),anchor='w',background=p['nav_selected'],foreground=p['nav_text'],borderwidth=0,relief='flat')
+    style.map('Experience.Active.TButton',background=[('active',p['nav_selected']),('!disabled',p['nav_selected'])],foreground=[('!disabled',p['nav_text'])],focuscolor=[('focus',p['nav_text'])])
+    for role in ('success','info','warning','danger'):
+        style.configure('Aeris.'+role.title()+'.TLabel',foreground=p[role],background=p['air'],font=TYPE['section'])
+    style.configure('Aeris.Stop.TButton',foreground=p['danger'],background=p['field'],padding=(12,8),borderwidth=1)
+    style.map('Aeris.Stop.TButton',foreground=[('disabled',p['secondary']),('!disabled',p['danger'])],background=[('disabled',p['soft']),('active',p['soft']),('!disabled',p['field'])],focuscolor=[('focus',p['focus'])])
 
 
 def apply_tree(widget, name):

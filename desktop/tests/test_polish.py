@@ -28,6 +28,13 @@ class PolishTests(unittest.TestCase):
             for bg in ('air','soft','field'):
                 self.assertGreaterEqual(contrast_ratio(p['focus'],p[bg]),3.0)
 
+    def test_shared_semantic_contrast(self):
+        for name,p in PALETTES.items():
+            pairs=[['primary_text','primary'],['primary_text','primary_hover'],['sidebar_text','sidebar'],['sidebar_text','sidebar_hover'],['sidebar_muted','sidebar'],['nav_text','nav_selected'],['success','air'],['success','soft'],['success','field'],['info','air'],['info','soft'],['info','field'],['warning','air'],['warning','soft'],['warning','field'],['danger','air'],['danger','soft'],['danger','field'],['deep','air'],['deep','soft'],['deep','field'],['secondary','air'],['secondary','soft'],['secondary','field']]
+            for fg,bg in pairs:
+                with self.subTest(theme=name,foreground=fg,background=bg):
+                    self.assertGreaterEqual(contrast_ratio(p[fg],p[bg]),4.5)
+
     def test_primary_contrast(self):
         for bg in ('#30694F','#285640','#397557'):
             self.assertGreaterEqual(contrast_ratio('#FFFFFF',bg),4.5)
@@ -47,6 +54,15 @@ class PolishTkTests(unittest.TestCase):
             self.assertEqual(style.lookup('TEntry','bordercolor',('focus',)),p['focus'])
             self.assertEqual(style.lookup('TButton','focuscolor',('focus',)),p['focus'])
             self.assertEqual(style.lookup('Aeris.Muted.TLabel','foreground'),p['secondary'])
+
+    def test_shared_styles_follow_theme(self):
+        style=ttk.Style(self.root)
+        for name,p in PALETTES.items():
+            configure(self.root,name)
+            self.assertEqual(style.lookup('Experience.Side.TFrame','background'),p['sidebar'])
+            self.assertEqual(style.lookup('Experience.Active.TButton','foreground'),p['nav_text'])
+            self.assertEqual(style.lookup('Experience.Primary.TButton','background'),p['primary'])
+            self.assertEqual(style.lookup('Aeris.Stop.TButton','foreground'),p['danger'])
 
     def test_theme_roundtrip_preserves_text(self):
         frame=tk.Frame(self.root,bg='#DCEFE3')
