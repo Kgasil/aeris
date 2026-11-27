@@ -57,6 +57,32 @@ class ExperienceTests(unittest.TestCase):
         self.ui.poll()
         self.assertNotIn('Atrasado',self.ui.input.get('1.0','end'))
 
+    def test_screen_panel_freezes_and_requires_explicit_send(self):
+        self.h.navigate('screen'); self.ui.model.set('local-vision')
+        with patch('aeris.experience.ask_confirmation',return_value=True),patch('aeris.experience.ask_permission',return_value=True):
+            self.ui.toggle_vision()
+        self.root.update()
+        self.assertTrue(self.ui.vision.active)
+        self.ui.window.after_cancel(self.ui.vision_timer); self.ui.vision_timer=None
+        self.ui.show_capture(tiny_png())
+        self.ui.vision.record()
+        self.h.permissions.set(COMPANION_MIC,True)
+        with patch.object(self.ui,'start_voice_capture',side_effect=lambda kind:setattr(self.ui,'busy',True)):
+            self.ui.panel_ask()
+        self.assertEqual(self.ui.vision_phase,'listen')
+        pending=self.ui.vision_pending; self.ui.busy=False
+        self.ui.panel_result('panel_listen',True,True,('ok','O que é isso?'))
+        self.assertEqual(self.ui.vision_phase,'review')
+        with patch('aeris.experience.capture_process') as capture:
+            self.ui.vision_next(); capture.assert_not_called()
+        with patch('aeris.experience.ask_permission',return_value=False),patch('aeris.experience.describe_screen') as analyze:
+            self.ui.panel_send(); analyze.assert_not_called()
+        self.assertIs(self.ui.vision_pending,pending)
+        self.h.permissions.set(COMPANION_MIC,False)
+        self.assertFalse(self.ui.vision.active)
+        self.assertIsNone(self.ui.vision_pending)
+        self.assertIsNone(self.ui.vision_badge)
+
     def test_initial_layout_and_portuguese_search(self):
         self.assertEqual(self.h.view,'chat'); self.assertTrue(self.ui.window.winfo_ismapped())
         self.assertFalse(self.h.legacy_side.winfo_ismapped()); self.assertFalse(self.h.catalog.winfo_ismapped())
