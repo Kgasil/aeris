@@ -192,6 +192,20 @@ class ExperienceTests(unittest.TestCase):
             self.assertEqual(self.h.focus_catalog(),'break')
             self.assertTrue(focus.called)
 
+    def test_catalog_detail_scroll_and_focus_reveal(self):
+        from types import SimpleNamespace
+        self.h.navigate('catalog')
+        canvas=self.h.detail_canvas
+        self.assertTrue(canvas.cget('yscrollcommand'))
+        self.assertEqual(str(canvas.cget('takefocus')),'1')
+        with patch.object(canvas,'yview_scroll') as scroll:
+            self.assertEqual(self.h.scroll_catalog_detail(1,'pages'),'break')
+            scroll.assert_called_once_with(1,'pages')
+        with patch.object(canvas,'bbox',return_value=(0,0,300,600)),patch.object(canvas,'winfo_height',return_value=200),patch.object(canvas,'canvasy',return_value=0),patch.object(canvas,'yview_moveto') as move:
+            widget=SimpleNamespace(winfo_y=lambda:500,winfo_height=lambda:30)
+            self.h.reveal_catalog_control(SimpleNamespace(widget=widget))
+            move.assert_called_once_with(330/600)
+
     def test_discover_models_excludes_remote_and_cloud(self):
         class Response:
             status=200
