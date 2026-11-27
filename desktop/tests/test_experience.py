@@ -28,6 +28,22 @@ class ExperienceTests(unittest.TestCase):
     def tearDown(self):
         self.root.destroy(); self.ui=None; self.h=None; self.root=None
         import gc; gc.collect(); self.tmp.cleanup()
+    def test_redesign_composer_and_shortcuts_remain_accessible(self):
+        self.root.geometry('980x660')
+        self.root.update()
+        self.assertIs(self.ui.input.master,self.ui.composer)
+        self.assertIs(self.ui.send_button.master.master,self.ui.composer)
+        self.assertEqual(set(self.ui.quick_actions),{'screen','notes','meeting'})
+        self.assertTrue(self.ui.send_button.winfo_ismapped())
+        self.assertLessEqual(self.ui.send_button.winfo_rooty()+self.ui.send_button.winfo_height(),self.root.winfo_rooty()+self.root.winfo_height())
+        self.ui.input.insert('1.0','Rascunho de teste')
+        self.ui.quick_actions['notes'].invoke(); self.root.update()
+        self.assertEqual(self.h.view,'notes')
+        self.h.navigate('chat'); self.root.update()
+        self.assertEqual(self.ui.input.get('1.0','end-1c'),'Rascunho de teste')
+        self.assertFalse(self.h.permissions.allowed(COMPANION_MIC))
+        self.assertFalse(self.h.permissions.allowed(COMPANION_SCREEN))
+
     def test_theme_switch_persists_and_preserves_draft(self):
         self.assertEqual(self.h.settings.appearance.theme,'Escuro')
         self.ui.input.insert('1.0','Rascunho fictício')

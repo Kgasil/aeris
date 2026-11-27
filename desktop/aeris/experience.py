@@ -99,16 +99,15 @@ class Conversation(CompanionWindow):
         self.meeting_timer=None; self.meeting_generation=0; self.meeting_chunks=[]
         self.meeting_source='mic'; self.meeting_model=None; self.meeting_badge=None; self.meeting_review=None
         self.meeting_phase='idle'; self.meeting_silences=0
-        self.window=w=ttk.Frame(parent,padding=(18,12)); w.bind('<Destroy>',self.destroyed,add='+')
-        top=ttk.Frame(w); top.pack(fill='x',pady=(0,6))
-        ttk.Label(top,text='Aeris · Assistente',style='Experience.Title.TLabel').pack(side='left')
+        self.window=w=ttk.Frame(parent,padding=(24,16)); w.bind('<Destroy>',self.destroyed,add='+')
+        top=ttk.Frame(w); top.pack(fill='x',pady=(0,8))
+        ttk.Label(top,text='Assistente',style='Experience.Title.TLabel').pack(side='left')
         ttk.Button(top,text='Nova conversa',command=self.reset_chat).pack(side='right')
         ttk.Button(top,text='Alternar tema',command=self.hub.toggle_theme).pack(side='right',padx=(0,8))
-        ttk.Label(w,text='Seu assistente local. Suas informações, seu controle.',style='Experience.Muted.TLabel').pack(anchor='w',pady=(0,8))
-        ai_header=ttk.Frame(w); ai_header.pack(fill='x',pady=(0,8))
+        ai_header=ttk.Frame(w,padding=(10,6),style='Experience.Card.TFrame'); ai_header.pack(fill='x',pady=(0,6))
         self.ai_state=tk.StringVar(w,'IA local · escolha um modelo')
-        ttk.Label(ai_header,textvariable=self.ai_state,style='Experience.Connection.TLabel').pack(side='left')
-        self.ai_toggle=ttk.Button(ai_header,text='Configurar IA',command=self.toggle_ai_settings)
+        ttk.Label(ai_header,textvariable=self.ai_state,style='Experience.Model.TLabel',wraplength=330).pack(side='left',fill='x',expand=True)
+        self.ai_toggle=ttk.Button(ai_header,text='Configurar IA',command=self.toggle_ai_settings,style='Experience.Quiet.TButton')
         self.ai_toggle.pack(side='right')
         self.ai_settings=ttk.Frame(w,padding=12,style='Experience.Card.TFrame')
         setup=self.ai_settings
@@ -117,8 +116,8 @@ class Conversation(CompanionWindow):
         modelrow=ttk.Frame(setup,style='Experience.Card.TFrame'); modelrow.pack(fill='x')
         self.ai_header=ai_header
         self.mode_status=tk.StringVar(w,'Pronto · microfone e tela desligados')
-        modes=ttk.Frame(w,padding=(12,8),style='Experience.Card.TFrame'); modes.pack(fill='x',pady=(0,10))
-        ttk.Label(modes,textvariable=self.mode_status,style='Experience.Activity.TLabel',wraplength=600).pack(side='left',fill='x',expand=True)
+        modes=ttk.Frame(w,padding=(10,2)); modes.pack(fill='x',pady=(0,8))
+        ttk.Label(modes,textvariable=self.mode_status,style='Experience.Muted.TLabel',wraplength=440).pack(side='left',fill='x',expand=True)
         self.global_stop=ttk.Button(modes,text='Parar atividade',command=self.stop,style='Aeris.Stop.TButton'); self.global_stop.pack(side='right')
         self.activity_progress=ttk.Progressbar(w,mode='indeterminate',style='Experience.Horizontal.TProgressbar')
         self.ai_open=False
@@ -141,52 +140,55 @@ class Conversation(CompanionWindow):
         self.panes=panes=ttk.Frame(w); panes.pack(fill='both',expand=True)
         panes.columnconfigure(0,weight=3); panes.columnconfigure(1,weight=0); panes.rowconfigure(0,weight=1)
         left=ttk.Frame(panes,padding=(0,0,8,0)); right=ttk.Frame(panes,padding=(8,0,0,0)); left.grid(row=0,column=0,sticky='nsew'); right.grid(row=0,column=1,sticky='nsew'); self.context_panel=right; self.chat_panel=left; right.grid_remove(); self.context_open=False; self.compact=False
-        chathead=ttk.Frame(left); chathead.pack(fill='x',pady=(0,8))
-        ttk.Label(chathead,text='CONVERSA',style='Experience.Section.TLabel').pack(side='left')
-        self.context_toggle=ttk.Button(chathead,text='Mostrar contexto',command=self.toggle_context)
+        self.composer=ttk.Frame(left,padding=(12,8),style='Experience.Card.TFrame'); self.composer.pack(side='bottom',fill='x',pady=(8,0))
+        chathead=ttk.Frame(left); chathead.pack(fill='x',pady=(0,6))
+        ttk.Label(chathead,text='CONVERSA PRIVADA',style='Experience.Section.TLabel').pack(side='left')
+        self.context_toggle=ttk.Button(chathead,text='Mostrar contexto',command=self.toggle_context,style='Experience.Quiet.TButton')
         self.context_toggle.pack(side='right')
-        chatbox=self.chatbox=ttk.Frame(left,style='Experience.Card.TFrame'); chatbox.pack(fill='both',expand=True)
-        self.welcome=ttk.Frame(chatbox,padding=8,height=96,style='Experience.Card.TFrame'); self.welcome.pack_propagate(False)
-        center=ttk.Frame(self.welcome,style='Experience.Card.TFrame'); center.pack(expand=True)
-        self.welcome_mark=wind_mark(center,hub.settings.appearance.theme,size=48); self.welcome_mark.pack(pady=(0,4))
-        ttk.Label(center,text='Como posso ajudar?',style='Experience.Welcome.TLabel',anchor='center').pack(fill='x')
-        ttk.Label(center,text='Converse, analise sua tela ou organize seu trabalho.',style='Experience.WelcomeMuted.TLabel',wraplength=340,justify='center',anchor='center').pack(fill='x',pady=(3,6))
-        quick=ttk.Frame(center,style='Experience.Card.TFrame'); quick.pack(fill='x')
-        for index,(label,view) in enumerate((('Analisar tela','screen'),('Anotações','notes'),('Reuniões','meeting'))):
-            ttk.Button(quick,text=label,command=lambda v=view:self.hub.navigate(v)).grid(row=0,column=index,sticky='ew',padx=3,pady=3)
-        for column in range(3): quick.columnconfigure(column,weight=1)
+        chatbox=self.chatbox=ttk.Frame(left); chatbox.pack(fill='both',expand=True)
+        self.welcome=ttk.Frame(chatbox,padding=8,height=96); self.welcome.pack_propagate(False)
+        center=ttk.Frame(self.welcome); center.pack(expand=True)
+        self.welcome_mark=wind_mark(center,hub.settings.appearance.theme,size=54,surface='air'); self.welcome_mark.pack(pady=(0,4))
+        ttk.Label(center,text='Como posso ajudar?',style='Experience.Hero.TLabel',anchor='center').pack(fill='x')
+        ttk.Label(center,text='Trabalhe com a IA local, do seu jeito.',style='Experience.Muted.TLabel',wraplength=320,justify='center',anchor='center').pack(fill='x',pady=(2,8))
+        quick=ttk.Frame(center); quick.pack(fill='x')
+        self.quick_actions={}
+        for index,(label,detail,view) in enumerate((('Analisar tela','Entenda o que está aberto','screen'),('Anotações','Organize ideias e respostas','notes'),('Reuniões','Prepare transcrições e atas','meeting'))):
+            button=ttk.Button(quick,text=label+'\n'+detail,command=lambda v=view:self.hub.navigate(v),style='Experience.Launch.TButton')
+            button.grid(row=index,column=0,sticky='ew',pady=2); self.quick_actions[view]=button
+        quick.columnconfigure(0,weight=1)
         self.transcript=tk.Text(chatbox,wrap='word',height=5,state='disabled',font=('Segoe UI',11),padx=16,pady=14,relief='flat',highlightthickness=1)
         self.transcript.pack(side='left',fill='both',expand=True)
         self.chat_scroll=ttk.Scrollbar(chatbox,command=self.transcript.yview); self.chat_scroll.pack(side='right',fill='y'); self.transcript.configure(yscrollcommand=self.chat_scroll.set)
-        self.hint_panel=ttk.Frame(left,padding=8,style='Experience.Card.TFrame')
+        self.hint_panel=ttk.Frame(self.composer,padding=8,style='Experience.Card.TFrame')
         self.hint_text=tk.StringVar(w,'')
         ttk.Label(self.hint_panel,textvariable=self.hint_text,wraplength=330,justify='left',style='Experience.Card.TLabel').pack(fill='x')
         self.hint_button=ttk.Button(self.hint_panel,text='Conhecer ferramenta',command=self.open_hint)
         self.hint_button.pack(anchor='w',pady=(4,0))
         self.hint_name=None; self.ai_hint=None
-        self.input=tk.Text(left,wrap='word',height=3,font=('Segoe UI',11),padx=12,pady=8,relief='flat',highlightthickness=1); self.input.pack(fill='x',pady=(12,3))
-        self.count=tk.StringVar(w,'0 / 4000 caracteres'); editor_hint=ttk.Frame(left); editor_hint.pack(fill='x')
+        self.input=tk.Text(self.composer,wrap='word',height=3,font=('Segoe UI',11),padx=10,pady=8,relief='flat',highlightthickness=1); self.input.pack(fill='x',pady=(0,4))
+        self.count=tk.StringVar(w,'0 / 4000 caracteres'); editor_hint=ttk.Frame(self.composer,style='Experience.Card.TFrame'); editor_hint.pack(fill='x')
         ttk.Label(editor_hint,text='Ctrl+Enter para enviar',style='Experience.Muted.TLabel').pack(side='left')
         ttk.Label(editor_hint,textvariable=self.count,style='Experience.Muted.TLabel').pack(side='right')
         self.input.bind('<<Modified>>',self.input_changed); self.input.edit_modified(False)
         self.input.bind('<Control-Return>',self.keyboard_send)
-        self.visual_notice=ttk.Frame(left,padding=6,style='Experience.Card.TFrame')
+        self.visual_notice=ttk.Frame(self.composer,padding=6,style='Experience.Card.TFrame')
         self.visual_notice_text=tk.StringVar(w,'')
         ttk.Label(self.visual_notice,textvariable=self.visual_notice_text,wraplength=330,style='Experience.Card.TLabel').pack(fill='x')
         ttk.Button(self.visual_notice,text='Usar texto sem imagem',command=self.release_question).pack(anchor='w',pady=(4,0))
-        row=ttk.Frame(left); row.pack(fill='x',pady=6)
+        row=ttk.Frame(self.composer,style='Experience.Card.TFrame'); row.pack(fill='x',pady=(6,0))
         self.send_button=ttk.Button(row,text='Enviar',style='Experience.Primary.TButton',command=self.send); self.send_button.pack(side='right')
         self.mic_button=ttk.Button(row,text='Ditar',command=self.listen); self.mic_button.pack(side='left')
         self.voice_button=ttk.Button(row,text='Conversar por voz',command=self.toggle_voice); self.voice_button.pack(side='left',padx=4)
         self.stop_button=ttk.Button(row,text='Parar',command=self.stop); self.stop_button.pack_forget()
         self.advanced_toggle=ttk.Button(row,text='Mais opções',command=self.toggle_advanced); self.advanced_toggle.pack(side='right',padx=4)
         self.voice_indicator=tk.StringVar(w,'Voz desligada')
-        self.voice_strip=ttk.Frame(left); self.voice_strip.pack(fill='x',pady=(3,0),before=self.chatbox)
+        self.voice_strip=ttk.Frame(left)
         self.voice_panel=ttk.Label(self.voice_strip,textvariable=self.voice_indicator,style='Experience.Section.TLabel'); self.voice_panel.pack(anchor='w')
         self.voice_meter=ttk.Progressbar(self.voice_strip,mode='determinate',maximum=100,style='Experience.Horizontal.TProgressbar')
         self.voice_live=tk.StringVar(w,''); self.voice_live_label=ttk.Label(self.voice_strip,textvariable=self.voice_live,wraplength=460,style='Experience.Muted.TLabel')
         self.advanced_open=False
-        self.advanced=ttk.Frame(left,padding=(8,4),style='Experience.Card.TFrame')
+        self.advanced=ttk.Frame(self.composer,padding=(8,4),style='Experience.Card.TFrame')
         extra=ttk.Frame(self.advanced,style='Experience.Card.TFrame'); extra.pack(fill='x')
         self.speak_button=ttk.Button(extra,text='Ouvir resposta',command=self.speak); self.speak_button.pack(side='left')
         self.route_button=ttk.Button(extra,text='Encontrar ferramenta',command=self.route_tool); self.route_button.pack(side='left',padx=4)
@@ -195,7 +197,7 @@ class Conversation(CompanionWindow):
         row=ttk.Frame(self.advanced); row.pack(fill='x')
         self.prepare_button=ttk.Button(row,text='Preparar ação',command=self.prepare_action); self.prepare_button.pack(side='left')
         self.suggest_button=ttk.Button(row,text='Preparar ação com IA',command=self.suggest); self.suggest_button.pack(side='left',padx=4)
-        self.proposal_panel=ttk.Frame(left,padding=5,style='Experience.Card.TFrame')
+        self.proposal_panel=ttk.Frame(self.composer,padding=5,style='Experience.Card.TFrame')
         self.candidate_label=tk.StringVar(w,''); ttk.Label(self.proposal_panel,textvariable=self.candidate_label,wraplength=310,justify='left',style='Experience.Card.TLabel').pack(anchor='w')
         self.preview=tk.StringVar(w,''); ttk.Label(self.proposal_panel,textvariable=self.preview,wraplength=310,justify='left',style='Experience.Card.TLabel').pack(anchor='w')
         row=ttk.Frame(self.proposal_panel,style='Experience.Card.TFrame'); row.pack(fill='x')
@@ -570,13 +572,13 @@ class Conversation(CompanionWindow):
             self.speech('speak')
     def toggle_advanced(self):
         self.advanced_open=not self.advanced_open
-        if self.advanced_open: self.advanced.pack(fill='x',pady=3,before=self.chatbox)
+        if self.advanced_open: self.advanced.pack(fill='x',pady=3,before=self.input)
         else: self.advanced.pack_forget()
         self.advanced_toggle.configure(text='Menos opções' if self.advanced_open else 'Mais opções')
     def refresh(self):
         if self.closed: return
         if self.candidate or self.session.pending:
-            if not self.proposal_panel.winfo_manager(): self.proposal_panel.pack(fill='x',pady=4)
+            if not self.proposal_panel.winfo_manager(): self.proposal_panel.pack(fill='x',pady=4,before=self.input)
         else: self.proposal_panel.pack_forget()
         free=self.idle()
         linked=self.screen_question is not None or self.visual_invalid
@@ -610,7 +612,10 @@ class Conversation(CompanionWindow):
         self.monitor_button.configure(text='Parar acompanhamento' if self.vision.active else 'Acompanhar tela',state='normal' if free or self.vision.active else 'disabled')
         self.vision_state.set(f'TELA ATIVA · {self.vision.frames}/{MAX_FRAMES} capturas' if self.vision.active else 'Acompanhamento desligado')
         self.voice_button.configure(text='Parar voz' if self.voice.active else 'Conversar por voz',state='normal' if free or self.voice.active else 'disabled')
-        self.voice_indicator.set(mode if self.voice.active or self.voice_capture_job==self.job and self.busy else 'Voz desligada')
+        voice_engaged=self.voice.active or self.voice_capture_job==self.job and self.busy
+        self.voice_indicator.set(mode if voice_engaged else 'Voz desligada')
+        if voice_engaged and not self.voice_strip.winfo_manager(): self.voice_strip.pack(fill='x',pady=(3,0),before=self.chatbox)
+        elif not voice_engaged: self.voice_strip.pack_forget()
         self.input.configure(state='disabled' if self.voice.active else 'normal')
         for button in (self.send_button,self.mic_button,self.prepare_button,self.suggest_button,self.capture_button,self.meeting_start,self.detect_button):
             button.configure(state='normal' if free else 'disabled')
@@ -632,8 +637,8 @@ class Conversation(CompanionWindow):
         self.refresh_vision_panel()
     def draw(self):
         self.transcript.configure(state='normal'); self.transcript.delete('1.0','end')
-        self.transcript.tag_configure('person',font=('Segoe UI',10,'bold'),spacing1=12,spacing3=4)
-        self.transcript.tag_configure('message',spacing3=10)
+        self.transcript.tag_configure('person',font=('Segoe UI',11,'bold'),spacing1=16,spacing3=5)
+        self.transcript.tag_configure('message',spacing3=14,lmargin1=8,lmargin2=8,rmargin=12)
         if not self.history and self.stream_pending is None:
             self.transcript.insert('end','Olá! Como posso ajudar hoje?\n','person')
             self.transcript.insert('end','Escreva o que precisa fazer. Posso ajudar a encontrar uma ferramenta, conversar sobre um assunto ou preparar uma ação. Você decide o que compartilhar.','message')
@@ -1451,7 +1456,7 @@ class ExperienceHub(Hub):
         sw=self.root.winfo_screenwidth(); sh=self.root.winfo_screenheight()
         width=min(1240,max(760,sw-44)); height=min(780,max(540,sh-100))
         self.root.geometry(f'{width}x{height}+16+12'); self.root.minsize(min(870,width),min(570,height))
-        side=self.sidebar=ttk.Frame(self.root,padding=16,width=208,style='Experience.Side.TFrame'); side.pack(side='left',fill='y'); side.pack_propagate(False)
+        side=self.sidebar=ttk.Frame(self.root,padding=16,width=216,style='Experience.Side.TFrame'); side.pack(side='left',fill='y'); side.pack_propagate(False)
         self.sidebar_compact=False
         brand=ttk.Frame(side,style='Experience.Side.TFrame'); brand.pack(fill='x',pady=(0,4))
         self.sidebar_mark=wind_mark(brand,self.settings.appearance.theme,size=40,surface='sidebar',ink='sidebar_muted'); self.sidebar_mark.pack(side='left')
@@ -1462,7 +1467,7 @@ class ExperienceHub(Hub):
         self.nav_buttons={}
         for label,command in [('Conversar',lambda:self.navigate('chat')),('Tela',lambda:self.navigate('screen')),('Anotações',lambda:self.navigate('notes')),('Reuniões',lambda:self.navigate('meeting')),('Tarefas',lambda:self.open_friendly('Checklist')),('Ferramentas',lambda:self.navigate('catalog'))]:
             button=ttk.Button(side,text=label,command=command,style='Experience.Nav.TButton'); button.pack(fill='x',pady=2); self.nav_buttons[label]=button
-        ttk.Separator(side).pack(fill='x',pady=16)
+        ttk.Separator(side).pack(fill='x',pady=10)
         ttk.Label(side,text='PREFERÊNCIAS',style='Experience.SideSection.TLabel').pack(anchor='w',pady=(0,8))
         ttk.Button(side,text='Configurações',command=self.open_appearance,style='Experience.Nav.TButton').pack(fill='x',pady=3)
         ttk.Button(side,text='Privacidade',command=self.open_privacy,style='Experience.Nav.TButton').pack(fill='x',pady=3)
@@ -1482,7 +1487,7 @@ class ExperienceHub(Hub):
         self.apply_appearance()
     def toggle_sidebar(self):
         self.sidebar_compact=not self.sidebar_compact
-        self.sidebar.configure(width=154 if self.sidebar_compact else 208,padding=8 if self.sidebar_compact else 16)
+        self.sidebar.configure(width=154 if self.sidebar_compact else 216,padding=8 if self.sidebar_compact else 16)
         self.sidebar_slogan.configure(wraplength=130 if self.sidebar_compact else 165)
         self.sidebar_footer.configure(wraplength=130 if self.sidebar_compact else 150)
         self.sidebar_toggle.configure(text='Expandir menu' if self.sidebar_compact else 'Recolher menu')
@@ -1491,8 +1496,8 @@ class ExperienceHub(Hub):
         self.recent_tools=[]
         self.catalog=ttk.Frame(self.root,padding=18)
         f=self.catalog
-        ttk.Label(f,text='O que você deseja fazer?',style='Experience.Title.TLabel').pack(anchor='w')
-        ttk.Label(f,text='Escolha um objetivo ou pesquise pelo que precisa fazer.',style='Experience.Muted.TLabel').pack(anchor='w',pady=(2,12))
+        ttk.Label(f,text='Biblioteca de ferramentas',style='Experience.Title.TLabel').pack(anchor='w')
+        ttk.Label(f,text='50 ferramentas locais, organizadas por objetivo. Escolha uma para conhecer ou abrir.',style='Experience.Muted.TLabel').pack(anchor='w',pady=(2,12))
         ttk.Label(f,text='Buscar por nome, tarefa ou exemplo',style='Experience.Muted.TLabel').pack(anchor='w')
         filters=ttk.Frame(f); filters.pack(fill='x',pady=(0,8))
         self.search=ttk.Entry(filters,textvariable=self.query); self.search.pack(side='left',fill='x',expand=True,ipady=5)
