@@ -18,6 +18,7 @@ from aeris.ready import inspect_environment, model_selection, check_model, TEST_
 from aeris.ai_setup import ManagedRuntime, load_choice, reset_endpoint
 from aeris.catalog_index import CatalogIndex
 from aeris.polish import compact_workspace
+from aeris.theme import wind_mark
 from aeris.meeting_audio import available as loopback_available, model_path, start_loopback, read_loopback, BLOCK_SECONDS
 from aeris.meeting_intelligence import prepare_minutes
 from aeris.companion_ui import CompanionWindow
@@ -92,9 +93,9 @@ class Conversation(CompanionWindow):
         self.meeting_source='mic'; self.meeting_model=None; self.meeting_badge=None; self.meeting_review=None
         self.window=w=ttk.Frame(parent,padding=(18,12)); w.bind('<Destroy>',self.destroyed,add='+')
         top=ttk.Frame(w); top.pack(fill='x')
-        ttk.Label(top,text='Olá. Como posso ajudar?',style='Experience.Title.TLabel').pack(side='left')
+        ttk.Label(top,text='Seu espaço de trabalho',style='Experience.Title.TLabel').pack(side='left')
         ttk.Button(top,text='Nova conversa',command=self.reset_chat).pack(side='right')
-        ttk.Label(w,text='Seu espaço de trabalho com IA local.',style='Experience.Muted.TLabel').pack(anchor='w',pady=(2,8))
+        ttk.Label(w,text='Assistência local · você controla os acessos.',style='Experience.Muted.TLabel').pack(anchor='w',pady=(2,8))
         ai_header=ttk.Frame(w); ai_header.pack(fill='x',pady=(0,8))
         self.ai_state=tk.StringVar(w,'IA local · escolha um modelo')
         ttk.Label(ai_header,textvariable=self.ai_state,style='Experience.Connection.TLabel').pack(side='left')
@@ -133,10 +134,19 @@ class Conversation(CompanionWindow):
         ttk.Label(chathead,text='CONVERSA',style='Experience.Section.TLabel').pack(side='left')
         self.context_toggle=ttk.Button(chathead,text='Mostrar contexto',command=self.toggle_context)
         self.context_toggle.pack(side='right')
-        chatbox=ttk.Frame(left); chatbox.pack(fill='both',expand=True)
+        chatbox=self.chatbox=ttk.Frame(left,style='Experience.Card.TFrame'); chatbox.pack(fill='both',expand=True)
+        self.welcome=ttk.Frame(chatbox,padding=12,style='Experience.Card.TFrame')
+        center=ttk.Frame(self.welcome,style='Experience.Card.TFrame'); center.pack(expand=True)
+        self.welcome_mark=wind_mark(center,hub.settings.appearance.theme,size=64); self.welcome_mark.pack(pady=(0,8))
+        ttk.Label(center,text='Como posso ajudar?',style='Experience.Welcome.TLabel',anchor='center').pack(fill='x')
+        ttk.Label(center,text='Escreva uma pergunta ou abra um espaço de trabalho.',style='Experience.WelcomeMuted.TLabel',wraplength=340,justify='center',anchor='center').pack(fill='x',pady=(4,12))
+        quick=ttk.Frame(center,style='Experience.Card.TFrame'); quick.pack(fill='x')
+        for index,(label,view) in enumerate((('Analisar tela','screen'),('Anotações','notes'),('Reuniões','meeting'))):
+            ttk.Button(quick,text=label,command=lambda v=view:self.hub.navigate(v)).grid(row=index//2,column=index%2,sticky='ew',padx=3,pady=3,columnspan=2 if index==2 else 1)
+        quick.columnconfigure(0,weight=1); quick.columnconfigure(1,weight=1)
         self.transcript=tk.Text(chatbox,wrap='word',height=5,state='disabled',font=('Segoe UI',11),padx=16,pady=14,relief='flat',highlightthickness=1)
         self.transcript.pack(side='left',fill='both',expand=True)
-        sb=ttk.Scrollbar(chatbox,command=self.transcript.yview); sb.pack(side='right',fill='y'); self.transcript.configure(yscrollcommand=sb.set)
+        self.chat_scroll=ttk.Scrollbar(chatbox,command=self.transcript.yview); self.chat_scroll.pack(side='right',fill='y'); self.transcript.configure(yscrollcommand=self.chat_scroll.set)
         self.hint_panel=ttk.Frame(left,padding=8,style='Experience.Card.TFrame')
         self.hint_text=tk.StringVar(w,'')
         ttk.Label(self.hint_panel,textvariable=self.hint_text,wraplength=330,justify='left',style='Experience.Card.TLabel').pack(fill='x')
@@ -508,6 +518,13 @@ class Conversation(CompanionWindow):
             self.transcript.insert('end',('Você' if role=='user' else 'Aeris')+'\n','person')
             self.transcript.insert('end',value+'\n','message')
         self.transcript.configure(state='disabled'); self.transcript.see('end')
+        if self.history:
+            self.welcome.pack_forget()
+            if not self.transcript.winfo_manager():
+                self.chat_scroll.pack(side='right',fill='y'); self.transcript.pack(side='left',fill='both',expand=True)
+        else:
+            self.transcript.pack_forget(); self.chat_scroll.pack_forget()
+            if not self.welcome.winfo_manager(): self.welcome.pack(fill='both',expand=True)
     def clear_workspace(self):
         self.stop()
         self.discard_screen()
@@ -1085,9 +1102,13 @@ class ExperienceHub(Hub):
         sw=self.root.winfo_screenwidth(); sh=self.root.winfo_screenheight()
         width=min(1240,max(760,sw-44)); height=min(780,max(540,sh-100))
         self.root.geometry(f'{width}x{height}+16+12'); self.root.minsize(min(870,width),min(570,height))
-        side=ttk.Frame(self.root,padding=16,width=208,style='Experience.Side.TFrame'); side.pack(side='left',fill='y'); side.pack_propagate(False)
-        ttk.Label(side,text='aeris.',style='Experience.Brand.TLabel').pack(anchor='w')
-        ttk.Label(side,text='Eficiência e\nSimplicidade.',style='Experience.Side.TLabel').pack(anchor='w',pady=(0,22))
+        side=self.sidebar=ttk.Frame(self.root,padding=16,width=208,style='Experience.Side.TFrame'); side.pack(side='left',fill='y'); side.pack_propagate(False)
+        self.sidebar_compact=False
+        brand=ttk.Frame(side,style='Experience.Side.TFrame'); brand.pack(fill='x',pady=(0,4))
+        self.sidebar_mark=wind_mark(brand,self.settings.appearance.theme,size=40,surface='sidebar',ink='sidebar_muted'); self.sidebar_mark.pack(side='left')
+        ttk.Label(brand,text='aeris.',style='Experience.CompactBrand.TLabel').pack(side='left',padx=(5,0))
+        self.sidebar_slogan=ttk.Label(side,text='Eficiência e Simplicidade.',style='Experience.Side.TLabel',wraplength=165); self.sidebar_slogan.pack(anchor='w',pady=(0,8))
+        self.sidebar_toggle=ttk.Button(side,text='Recolher menu',command=self.toggle_sidebar,style='Experience.Nav.TButton'); self.sidebar_toggle.pack(fill='x',pady=(0,10))
         ttk.Label(side,text='ESPAÇO DE TRABALHO',style='Experience.SideSection.TLabel').pack(anchor='w',pady=(0,8))
         self.nav_buttons={}
         for label,command in [('Conversar',lambda:self.navigate('chat')),('Tela',lambda:self.navigate('screen')),('Anotações',lambda:self.navigate('notes')),('Reuniões',lambda:self.navigate('meeting')),('Tarefas',lambda:self.open_friendly('Checklist')),('Ferramentas',lambda:self.navigate('catalog'))]:
@@ -1097,9 +1118,15 @@ class ExperienceHub(Hub):
         ttk.Button(side,text='Configurações',command=self.open_appearance,style='Experience.Nav.TButton').pack(fill='x',pady=3)
         ttk.Button(side,text='Privacidade',command=self.open_privacy,style='Experience.Nav.TButton').pack(fill='x',pady=3)
         ttk.Button(side,text='Permissões',command=self.open_permissions,style='Experience.Nav.TButton').pack(fill='x',pady=3)
-        ttk.Label(side,text='K&G Vision\nVersão em desenvolvimento',style='Experience.Side.TLabel',wraplength=150).pack(side='bottom',anchor='w')
+        self.sidebar_footer=ttk.Label(side,text='K&G Vision\nVersão em desenvolvimento',style='Experience.Side.TLabel',wraplength=150); self.sidebar_footer.pack(side='bottom',anchor='w')
         self.conversation=Conversation(self,self.root)
         self.navigate('chat')
+    def toggle_sidebar(self):
+        self.sidebar_compact=not self.sidebar_compact
+        self.sidebar.configure(width=154 if self.sidebar_compact else 208,padding=8 if self.sidebar_compact else 16)
+        self.sidebar_slogan.configure(wraplength=130 if self.sidebar_compact else 165)
+        self.sidebar_footer.configure(wraplength=130 if self.sidebar_compact else 150)
+        self.sidebar_toggle.configure(text='Expandir menu' if self.sidebar_compact else 'Recolher menu')
     def build_catalog(self):
         self.catalog_index=CatalogIndex(self.modules,NAMES,CATEGORIES,HELP,GOALS)
         self.catalog=ttk.Frame(self.root,padding=18)

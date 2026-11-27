@@ -1,3 +1,6 @@
 # UX redesign — block 1 / visual foundation
 
 Target: overall audited UX >=9/10, not a claimed result. Keep existing tools and permissions. Clear/dark palettes separate surface, navigation, primary and semantic state colors. Shared ttk styles now live in theme.py; stop activity gets a semantic style. Numeric palette checks (normal text target 4.5:1) are not a full accessibility audit. The next blocks cover layout/navigation, chat latency, AI setup, voice, screen interaction, meetings, existing tools and real Windows acceptance. No public installer changes. CI pending.
+
+## Block 02 — main workspace and brand
+Block 01 source/interface review 46053922987 and Windows/Linux regression jobs of 46053923041 passed; package build was in progress when checked. Reuse the original three native wind curves for welcome and sidebar, shared with legacy Hub. Dedicated welcome state, existing context shortcuts and no duplicate transcript surface. Textual navigation labels in an optional narrower sidebar; no automatic capture or new tools. Add regression test for brand, welcome/history transition and draft preservation. Incremental layout change, not final visual audit; no new score before validation. Public preview unchanged.

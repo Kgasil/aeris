@@ -11,6 +11,20 @@ SPACE = (4, 8, 12, 16, 24, 32)
 FONT = 'Segoe UI'
 TYPE = {'body': (FONT,10), 'section': (FONT,10,'bold'), 'subtitle': (FONT,13,'bold'), 'title': (FONT,21,'bold'), 'detail': (FONT,17,'bold'), 'brand': (FONT,30,'bold')}
 
+# Three curves already used by the original Aeris Hub.
+WIND_CURVES = ((8,24,22,6,36,34,56,14), (6,35,23,17,40,49,60,28), (14,46,30,33,42,57,54,44))
+
+
+def wind_mark(parent, name, *, size=64, surface='field', ink='forest'):
+    """Native rendering of the existing wind mark; no image download."""
+    p=PALETTES[name]
+    mark=tk.Canvas(parent,width=size,height=round(size*60/64),bg=p[surface],highlightthickness=0,borderwidth=0)
+    mark._aeris_wind_roles=(surface,ink)
+    for points in WIND_CURVES:
+        mark.create_line(*(v*size/64 for v in points),smooth=True,width=max(2,size*3/64),fill=p[ink],capstyle=tk.ROUND)
+    return mark
+
+
 # Legacy Hub widgets are created before the shared theme is applied.
 LEGACY_BACKGROUNDS={'#f6faf7':'air','#dcefe3':'soft','#cfdfd5':'muted','#ffffff':'field','#f0f5f2':'air','#e0ece5':'soft','#b8cec1':'muted'}
 
@@ -70,7 +84,10 @@ def configure_experience(style,p):
     style.configure('Experience.Horizontal.TProgressbar',background=p['forest'],troughcolor=p['soft'],bordercolor=p['muted'],thickness=6)
     style.configure('Experience.Card.TFrame',background=p['field'])
     style.configure('Experience.Card.TLabel',background=p['field'],foreground=p['deep'])
-    style.configure('Experience.Detail.TLabel',background=p['field'],foreground=p['deep'],font=('Segoe UI',17,'bold'))
+    style.configure('Experience.Detail.TLabel',background=p['field'],foreground=p['deep'],font=TYPE['detail'])
+    style.configure('Experience.Welcome.TLabel',background=p['field'],foreground=p['deep'],font=TYPE['title'])
+    style.configure('Experience.WelcomeMuted.TLabel',background=p['field'],foreground=p['secondary'],font=TYPE['body'])
+    style.configure('Experience.CompactBrand.TLabel',background=p['sidebar'],foreground=p['sidebar_text'],font=(FONT,18,'bold'))
     style.configure('Experience.Section.TLabel',font=('Segoe UI',10,'bold'),foreground=p['forest'])
     style.configure('Experience.Subtitle.TLabel',font=('Segoe UI',13,'bold'))
     style.configure('Experience.Muted.TLabel',font=('Segoe UI',10),foreground=p['secondary'])
@@ -100,6 +117,9 @@ def apply_tree(widget, name):
         widget.configure(**opts)
     elif isinstance(widget, tk.Scale):
         widget.configure(bg=p['air'], fg=p['deep'], troughcolor=p['soft'], activebackground=p['natural'], highlightbackground=p['air'])
+    elif isinstance(widget, tk.Canvas) and hasattr(widget,'_aeris_wind_roles'):
+        surface,ink=widget._aeris_wind_roles
+        widget.configure(bg=p[surface]); widget.itemconfigure('all',fill=p[ink])
     elif isinstance(widget, (tk.Frame, tk.Label, tk.Canvas)):
         # Preserva as funções cromáticas existentes do Hub ao alternar temas.
         if not hasattr(widget, '_aeris_bg_role'):
