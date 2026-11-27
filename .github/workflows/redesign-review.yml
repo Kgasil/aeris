@@ -60,6 +60,11 @@ jobs:
               assert hub.conversation.send_button.winfo_ismapped(), "Send control not visible"
               data=read_capture(capture_process())
               Path(os.environ["AERIS_EVIDENCE"],"experience-home.png").write_bytes(data)
+              root.geometry('980x600+16+12')
+              root.update()
+              Path(os.environ["AERIS_EVIDENCE"],"redesign-home-compact.png").write_bytes(read_capture(capture_process()))
+              for control in (hub.conversation.send_button,*hub.conversation.quick_actions.values()):
+                  assert control.winfo_ismapped() and control.winfo_height() >= control.winfo_reqheight() and control.winfo_width() >= control.winfo_reqwidth(), control.cget('text') + ': clipped'
               root.geometry('980x660+16+12')
               root.update()
               hub.navigate("screen")
@@ -84,6 +89,9 @@ jobs:
               hub.navigate('chat'); root.update()
               hub.open_appearance(); root.update()
               Path(os.environ["AERIS_EVIDENCE"],"redesign-appearance.png").write_bytes(read_capture(capture_process()))
+              hub.appearance_window.window.destroy(); root.update()
+              hub.toggle_theme(); root.update()
+              Path(os.environ["AERIS_EVIDENCE"],"redesign-home-light.png").write_bytes(read_capture(capture_process()))
               root.destroy()
           '@ | py -3.14-64 -
             if ($LASTEXITCODE -ne 0) {throw 'Interface capture failed'}

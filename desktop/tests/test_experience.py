@@ -34,8 +34,13 @@ class ExperienceTests(unittest.TestCase):
         self.assertIs(self.ui.input.master,self.ui.composer)
         self.assertIs(self.ui.send_button.master.master,self.ui.composer)
         self.assertEqual(set(self.ui.quick_actions),{'screen','notes','meeting'})
-        self.assertTrue(self.ui.send_button.winfo_ismapped())
-        self.assertLessEqual(self.ui.send_button.winfo_rooty()+self.ui.send_button.winfo_height(),self.root.winfo_rooty()+self.root.winfo_height())
+        for width,height in ((980,660),(980,600)):
+            self.root.geometry(f'{width}x{height}'); self.root.update()
+            for control in (self.ui.send_button,*self.ui.quick_actions.values()):
+                self.assertTrue(control.winfo_ismapped(),control.cget('text'))
+                self.assertGreaterEqual(control.winfo_height(),control.winfo_reqheight(),control.cget('text'))
+                self.assertGreaterEqual(control.winfo_width(),control.winfo_reqwidth(),control.cget('text'))
+                self.assertLessEqual(control.winfo_rooty()+control.winfo_height(),self.root.winfo_rooty()+self.root.winfo_height())
         self.ui.input.insert('1.0','Rascunho de teste')
         self.ui.quick_actions['notes'].invoke(); self.root.update()
         self.assertEqual(self.h.view,'notes')

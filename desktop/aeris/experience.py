@@ -117,8 +117,8 @@ class Conversation(CompanionWindow):
         self.ai_header=ai_header
         self.mode_status=tk.StringVar(w,'Pronto · microfone e tela desligados')
         modes=ttk.Frame(w,padding=(10,2)); modes.pack(fill='x',pady=(0,8))
-        ttk.Label(modes,textvariable=self.mode_status,style='Experience.Muted.TLabel',wraplength=440).pack(side='left',fill='x',expand=True)
-        self.global_stop=ttk.Button(modes,text='Parar atividade',command=self.stop,style='Aeris.Stop.TButton'); self.global_stop.pack(side='right')
+        ttk.Label(modes,textvariable=self.mode_status,style='Experience.Muted.TLabel',wraplength=380).pack(side='left',fill='x',expand=True)
+        self.global_stop=ttk.Button(modes,text='Parar atividade',command=self.stop,style='Experience.Stop.TButton'); self.global_stop.pack(side='right')
         self.activity_progress=ttk.Progressbar(w,mode='indeterminate',style='Experience.Horizontal.TProgressbar')
         self.ai_open=False
         ttk.Label(modelrow,text='Modelo local').pack(side='left')
@@ -147,16 +147,19 @@ class Conversation(CompanionWindow):
         self.context_toggle.pack(side='right')
         chatbox=self.chatbox=ttk.Frame(left); chatbox.pack(fill='both',expand=True)
         self.welcome=ttk.Frame(chatbox,padding=8,height=96); self.welcome.pack_propagate(False)
-        center=ttk.Frame(self.welcome); center.pack(expand=True)
-        self.welcome_mark=wind_mark(center,hub.settings.appearance.theme,size=54,surface='air'); self.welcome_mark.pack(pady=(0,4))
-        ttk.Label(center,text='Como posso ajudar?',style='Experience.Hero.TLabel',anchor='center').pack(fill='x')
-        ttk.Label(center,text='Trabalhe com a IA local, do seu jeito.',style='Experience.Muted.TLabel',wraplength=320,justify='center',anchor='center').pack(fill='x',pady=(2,8))
-        quick=ttk.Frame(center); quick.pack(fill='x')
+        # Reserve shortcuts before the flexible hero, so compact windows cannot crop a card.
+        quick=ttk.Frame(self.welcome); quick.pack(side='bottom',fill='x',pady=(2,0))
         self.quick_actions={}
-        for index,(label,detail,view) in enumerate((('Analisar tela','Entenda o que está aberto','screen'),('Anotações','Organize ideias e respostas','notes'),('Reuniões','Prepare transcrições e atas','meeting'))):
+        for index,(label,detail,view) in enumerate((('Tela','Analisar captura','screen'),('Anotações','Organizar ideias','notes'),('Reuniões','Transcrever e revisar','meeting'))):
             button=ttk.Button(quick,text=label+'\n'+detail,command=lambda v=view:self.hub.navigate(v),style='Experience.Launch.TButton')
-            button.grid(row=index,column=0,sticky='ew',pady=2); self.quick_actions[view]=button
-        quick.columnconfigure(0,weight=1)
+            button.grid(row=0,column=index,sticky='nsew',padx=3); self.quick_actions[view]=button
+            quick.columnconfigure(index,weight=1,uniform='launch')
+        center=ttk.Frame(self.welcome); center.pack(fill='both',expand=True)
+        hero=ttk.Frame(center); hero.place(relx=.5,rely=.5,anchor='center')
+        self.welcome_mark=wind_mark(hero,hub.settings.appearance.theme,size=36,surface='air'); self.welcome_mark.pack(pady=(0,2))
+        self.hero_title=ttk.Label(hero,text='Como posso ajudar?',style='Experience.Hero.TLabel',anchor='center'); self.hero_title.pack(fill='x')
+        self.hero_subtitle=ttk.Label(hero,text='Trabalhe com a IA local, do seu jeito.',style='Experience.Muted.TLabel',wraplength=320,justify='center',anchor='center'); self.hero_subtitle.pack(fill='x',pady=(2,0))
+        center.bind('<Configure>',self.resize_hero,add='+')
         self.transcript=tk.Text(chatbox,wrap='word',height=5,state='disabled',font=('Segoe UI',11),padx=16,pady=14,relief='flat',highlightthickness=1)
         self.transcript.pack(side='left',fill='both',expand=True)
         self.chat_scroll=ttk.Scrollbar(chatbox,command=self.transcript.yview); self.chat_scroll.pack(side='right',fill='y'); self.transcript.configure(yscrollcommand=self.chat_scroll.set)
@@ -166,10 +169,10 @@ class Conversation(CompanionWindow):
         self.hint_button=ttk.Button(self.hint_panel,text='Conhecer ferramenta',command=self.open_hint)
         self.hint_button.pack(anchor='w',pady=(4,0))
         self.hint_name=None; self.ai_hint=None
-        self.input=tk.Text(self.composer,wrap='word',height=3,font=('Segoe UI',11),padx=10,pady=8,relief='flat',highlightthickness=1); self.input.pack(fill='x',pady=(0,4))
+        self.input=tk.Text(self.composer,wrap='word',height=2,font=('Segoe UI',11),padx=10,pady=8,relief='flat',highlightthickness=1); self.input.pack(fill='x',pady=(0,4))
         self.count=tk.StringVar(w,'0 / 4000 caracteres'); editor_hint=ttk.Frame(self.composer,style='Experience.Card.TFrame'); editor_hint.pack(fill='x')
-        ttk.Label(editor_hint,text='Ctrl+Enter para enviar',style='Experience.Muted.TLabel').pack(side='left')
-        ttk.Label(editor_hint,textvariable=self.count,style='Experience.Muted.TLabel').pack(side='right')
+        ttk.Label(editor_hint,text='Ctrl+Enter para enviar',style='Experience.ComposerMuted.TLabel').pack(side='left')
+        ttk.Label(editor_hint,textvariable=self.count,style='Experience.ComposerMuted.TLabel').pack(side='right')
         self.input.bind('<<Modified>>',self.input_changed); self.input.edit_modified(False)
         self.input.bind('<Control-Return>',self.keyboard_send)
         self.visual_notice=ttk.Frame(self.composer,padding=6,style='Experience.Card.TFrame')
@@ -211,7 +214,7 @@ class Conversation(CompanionWindow):
         tabs.enable_traversal()
         screen=ttk.Frame(tabs,padding=9); tabs.add(screen,text='Tela')
         ttk.Label(screen,text='Acompanhe a tela principal',style='Experience.Subtitle.TLabel',wraplength=320).pack(anchor='w')
-        ttk.Label(screen,text='Capture uma imagem ou acompanhe a tela por até 5 minutos. Somente a última imagem fica na memória. Revise antes de enviar à IA.',wraplength=320,justify='left').pack(anchor='w',pady=5)
+        ttk.Label(screen,text='Capture a tela ou acompanhe por até 5 minutos. Só a última imagem fica na memória; revise antes de enviar à IA.',wraplength=460,justify='left').pack(anchor='w',pady=5)
         # Reserve the action area before allocating space to the image preview.
         controls=ttk.Frame(screen); controls.pack(side='bottom',fill='x')
         controls.columnconfigure(0,weight=1); controls.columnconfigure(1,weight=1)
@@ -268,6 +271,14 @@ class Conversation(CompanionWindow):
         target=widget.tk_focusNext() if direction==1 else widget.tk_focusPrev()
         if target is not None: target.focus_set()
         return 'break'
+    def resize_hero(self,event):
+        # On short layouts, prioritize actions and message editor, not decoration.
+        compact=event.height<110 or event.width<340
+        if compact:
+            self.welcome_mark.pack_forget(); self.hero_subtitle.pack_forget()
+        else:
+            if not self.welcome_mark.winfo_manager(): self.welcome_mark.pack(before=self.hero_title,pady=(0,2))
+            if not self.hero_subtitle.winfo_manager(): self.hero_subtitle.pack(fill='x',pady=(2,0))
     def resize_workspace(self,width):
         compact=compact_workspace(width)
         if compact!=self.compact:
