@@ -26,6 +26,21 @@ class ExperienceTests(unittest.TestCase):
     def tearDown(self):
         self.root.destroy(); self.ui=None; self.h=None; self.root=None
         import gc; gc.collect(); self.tmp.cleanup()
+    def test_permission_refusal_and_revision_change(self):
+        self.assertEqual(self.h.settings.appearance.theme,'Escuro')
+        with patch('aeris.experience.ask_permission',return_value=False):
+            self.assertFalse(self.ui.authorize(COMPANION_MIC,'Teste fictício'))
+        self.assertFalse(self.h.permissions.allowed(COMPANION_MIC))
+        def stale(*args):
+            self.h.permissions.revoke_all(); return True
+        with patch('aeris.experience.ask_permission',side_effect=stale):
+            self.assertFalse(self.ui.authorize(COMPANION_MIC,'Teste fictício'))
+        self.assertFalse(self.h.permissions.allowed(COMPANION_MIC))
+        with patch('aeris.experience.ask_permission',return_value=True):
+            self.assertTrue(self.ui.authorize(COMPANION_MIC,'Teste fictício'))
+        self.h.permissions.revoke_all()
+        self.assertFalse(self.h.permissions.allowed(COMPANION_MIC))
+
     def test_initial_layout_and_portuguese_search(self):
         self.assertEqual(self.h.view,'chat'); self.assertTrue(self.ui.window.winfo_ismapped())
         self.assertFalse(self.h.legacy_side.winfo_ismapped()); self.assertFalse(self.h.catalog.winfo_ismapped())
@@ -71,14 +86,14 @@ class ExperienceTests(unittest.TestCase):
             def getresponse(self): return Response()
             def close(self): pass
         self.assertEqual(installed_models(connection_factory=Connection),('local',))
-        with patch('aeris.experience.messagebox.askyesno',return_value=True),patch('aeris.experience.installed_models',return_value=('local',)):
+        with patch('aeris.experience.ask_permission',return_value=True),patch('aeris.experience.ask_confirmation',return_value=True),patch('aeris.experience.messagebox.askyesno',return_value=True),patch('aeris.experience.installed_models',return_value=('local',)):
             self.ui.detect_models()
             deadline=time.monotonic()+3
             while self.ui.busy and time.monotonic()<deadline: self.root.update(); time.sleep(.03)
         self.assertFalse(self.ui.busy); self.assertEqual(self.ui.model.get(),'local')
     def test_inline_action_requires_confirmation_and_rejects_edit(self):
         self.ui.input.insert('1.0','Lembre-me de relatório em 30 minutos'); self.root.update()
-        with patch('aeris.experience.messagebox.askyesno',return_value=True): self.ui.send()
+        with patch('aeris.experience.ask_permission',return_value=True),patch('aeris.experience.ask_confirmation',return_value=True),patch('aeris.experience.messagebox.askyesno',return_value=True): self.ui.send()
         self.assertIsNotNone(self.ui.session.pending); self.assertIsNone(self.h.reminder_store)
         self.ui.input.insert('end','!'); self.ui.confirm_action()
         self.assertIsNone(self.h.reminder_store)
@@ -87,7 +102,7 @@ class ExperienceTests(unittest.TestCase):
         self.assertEqual(len(self.h.reminder_store.list()),1)
     def test_notes_and_meeting_saved_to_existing_stores(self):
         self.ui.note.insert('1.0','Nota sintética'); self.ui.meeting_text.insert('1.0','Pauta fictícia')
-        with patch('aeris.experience.messagebox.askyesno',return_value=True):
+        with patch('aeris.experience.ask_permission',return_value=True),patch('aeris.experience.ask_confirmation',return_value=True),patch('aeris.experience.messagebox.askyesno',return_value=True):
             self.ui.save_note(); self.ui.save_meeting()
         self.assertEqual(self.h.capture_store.list()[0].body,'Nota sintética')
         self.assertEqual(self.h.meeting_store.list()[0].notes,'Pauta fictícia')
@@ -98,12 +113,12 @@ class ExperienceTests(unittest.TestCase):
         self.assertFalse(self.h.permissions.allowed(COMPANION_CHAT))
         self.assertEqual(self.ui.input.get('1.0','end-1c'),'')
         self.ui.model.set('local')
-        with patch('aeris.experience.messagebox.askyesno',return_value=False), patch('aeris.experience.prepare_minutes') as prepare:
+        with patch('aeris.experience.ask_permission',return_value=False),patch('aeris.experience.ask_confirmation',return_value=False),patch('aeris.experience.messagebox.askyesno',return_value=False), patch('aeris.experience.prepare_minutes') as prepare:
             self.ui.meeting_summary(); prepare.assert_not_called()
         self.assertFalse(self.h.permissions.allowed(COMPANION_CHAT))
         from aeris.meeting_intelligence import Draft
         draft=Draft('Resumo fictício',())
-        with patch('aeris.experience.messagebox.askyesno',return_value=True), patch('aeris.experience.prepare_minutes',return_value=draft) as prepare:
+        with patch('aeris.experience.ask_permission',return_value=True),patch('aeris.experience.ask_confirmation',return_value=True),patch('aeris.experience.messagebox.askyesno',return_value=True), patch('aeris.experience.prepare_minutes',return_value=draft) as prepare:
             self.ui.meeting_summary()
             deadline=time.monotonic()+3
             while self.ui.busy and time.monotonic()<deadline: self.root.update(); time.sleep(.03)
@@ -116,14 +131,14 @@ class ExperienceTests(unittest.TestCase):
         self.assertIsNone(self.ui.meeting_review)
         self.assertEqual(len(self.h.meeting_store.list()),1)
     def test_screen_requires_consent_and_revocation_discards(self):
-        with patch('aeris.experience.messagebox.askyesno',return_value=False),patch('aeris.experience.capture_process') as cap:
+        with patch('aeris.experience.ask_permission',return_value=False),patch('aeris.experience.ask_confirmation',return_value=False),patch('aeris.experience.messagebox.askyesno',return_value=False),patch('aeris.experience.capture_process') as cap:
             self.ui.capture(); cap.assert_not_called()
         self.h.permissions.set(COMPANION_SCREEN,True)
         self.ui.screen=b'synthetic'
         self.h.permissions.set(COMPANION_SCREEN,False)
         self.assertIsNone(self.ui.screen)
     def test_meeting_requires_consent_and_stop_discards_late_result(self):
-        with patch('aeris.experience.messagebox.askyesno',return_value=False),patch('aeris.experience.speech_process') as mic:
+        with patch('aeris.experience.ask_permission',return_value=False),patch('aeris.experience.ask_confirmation',return_value=False),patch('aeris.experience.messagebox.askyesno',return_value=False),patch('aeris.experience.speech_process') as mic:
             self.ui.start_meeting(); mic.assert_not_called()
         self.h.permissions.set(COMPANION_MIC,True)
         self.ui.meeting_active=True; self.ui.busy=True; self.ui.kind='meeting'; self.ui.cap=COMPANION_MIC
@@ -150,7 +165,7 @@ class ExperienceTests(unittest.TestCase):
         with self.assertRaises(ValueError): validate_png(raw[:16]+struct.pack('>II',9000,9000))
         with self.assertRaises(ValueError): describe_screen('cloud','Veja',raw,connection_factory=factory)
         self.ui.model.set('local'); self.ui.input.insert('1.0','Olá')
-        with patch('aeris.experience.messagebox.askyesno',return_value=True),patch('aeris.companion_ui.chat',return_value='Resposta'):
+        with patch('aeris.experience.ask_permission',return_value=True),patch('aeris.experience.ask_confirmation',return_value=True),patch('aeris.experience.messagebox.askyesno',return_value=True),patch('aeris.companion_ui.chat',return_value='Resposta'):
             self.ui.send()
             deadline=time.monotonic()+3
             while self.ui.busy and time.monotonic()<deadline: self.root.update(); time.sleep(.03)

@@ -8,12 +8,16 @@ class PrivacyWindow:
     def __init__(self, hub):
         self.hub=hub
         self.window=tk.Toplevel(hub.root)
-        self.window.title('Aeris Privacy')
+        self.window.title('Aeris · Privacidade')
         self.window.geometry('800x660'); self.window.minsize(560,460)
         self.window.bind('<Escape>',lambda _:self.window.destroy())
         frame=ttk.Frame(self.window,padding=18); frame.pack(fill='both',expand=True)
         ttk.Label(frame,text='Privacidade e controle',font=('Segoe UI',21,'bold')).pack(anchor='w')
         ttk.Label(frame,text='Consulte acessos e dados da sessão. Não é uma auditoria do sistema nem apagamento seguro.',wraplength=520).pack(anchor='w',pady=4)
+        summary=ttk.Frame(frame,padding=10,style='Experience.Card.TFrame'); summary.pack(fill='x',pady=(6,2))
+        self.access_summary=tk.StringVar(self.window,'')
+        ttk.Label(summary,textvariable=self.access_summary,style='Experience.Activity.TLabel').pack(anchor='w')
+        ttk.Label(summary,text='Permissões internas da sessão · não substituem a segurança do Windows.',style='Experience.Card.TLabel',wraplength=490).pack(anchor='w')
         tabs=ttk.Notebook(frame); tabs.pack(fill='both',expand=True,pady=6)
         overview=ttk.Frame(tabs,padding=8); tabs.add(overview,text='Visão geral')
         self.report=tk.Text(overview,wrap='word',height=12,state='disabled',padx=12,pady=10,relief='flat',highlightthickness=1)
@@ -44,7 +48,7 @@ class PrivacyWindow:
         self.auto_panel=AutoSavePanel(auto,hub,self.refresh)
         actions=ttk.Frame(frame); actions.pack(fill='x')
         for i,(label,cmd) in enumerate([('Atualizar visão geral',self.refresh),('Gerenciar permissões',hub.open_permissions),('Revogar todas',self.revoke),('Bloquear cofres',self.lock),('Limpar sessão',self.clear),('Ocultar atalho flutuante',self.hide)]):
-            ttk.Button(actions,text=label,command=cmd,style='Aeris.Primary.TButton' if label=='Gerenciar permissões' else 'TButton').grid(row=i//2,column=i%2,sticky='ew',padx=2,pady=2)
+            ttk.Button(actions,text=label,command=cmd,style='Aeris.Primary.TButton' if label=='Gerenciar permissões' else 'Aeris.Stop.TButton' if label=='Revogar todas' else 'TButton').grid(row=i//2,column=i%2,sticky='ew',padx=2,pady=2)
         actions.columnconfigure(0,weight=1); actions.columnconfigure(1,weight=1)
         self.status=tk.StringVar(self.window,''); ttk.Label(frame,textvariable=self.status,wraplength=520).pack(anchor='w')
         self.refresh()
@@ -52,6 +56,7 @@ class PrivacyWindow:
         self.storage_panel.refresh()
         self.auto_panel.refresh()
         grants,files,stores,locks=inventory(self.hub)
+        self.access_summary.set(f'{sum(v for _,v in grants)} de {len(grants)} acessos autorizados nesta sessão')
         lines=[f'Permissões autorizadas: {sum(v for _,v in grants)}/{len(grants)}','\nArquivos locais conhecidos (somente presença):']
         lines.extend(f'  {name}: {state}' for name,state in files)
         lines.append('\nItens em memória (não inclui rascunhos abertos):')

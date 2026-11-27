@@ -19,6 +19,7 @@ from aeris.ai_setup import ManagedRuntime, load_choice, reset_endpoint
 from aeris.catalog_index import CatalogIndex
 from aeris.polish import compact_workspace
 from aeris.theme import wind_mark
+from aeris.consent_ui import ask_permission, ask_confirmation
 from aeris.meeting_audio import available as loopback_available, model_path, start_loopback, read_loopback, BLOCK_SECONDS
 from aeris.meeting_intelligence import prepare_minutes
 from aeris.companion_ui import CompanionWindow
@@ -274,8 +275,8 @@ class Conversation(CompanionWindow):
         permissions=self.hub.permissions
         if permissions.allowed(cap): return True
         revision=permissions.revision
-        if not messagebox.askyesno('Autorizar nesta sessão?',label,parent=self.hub.root): return False
-        if self.closed or revision!=permissions.revision: return False
+        if not ask_permission(self.hub.root,self.hub.settings.appearance.theme,cap,label): return False
+        if self.closed or permissions is not self.hub.permissions or revision!=permissions.revision: return False
         permissions.set(cap,True); return True
     def ensure_tool(self,name):
         if not self.hub.enabled(name): self.hub.toggle_tool(name)
@@ -415,7 +416,7 @@ class Conversation(CompanionWindow):
             if not self.ai_open: self.toggle_ai_settings()
             self.configure_ai(); return
         revision=self.hub.permissions.revision
-        if not messagebox.askyesno('Conversar por voz?',f'O microfone será reativado após cada resposta, por até {MAX_TURNS} turnos. A fala reconhecida será enviada ao modelo Ollama local com o histórico da conversa. O Aeris não grava áudio em arquivo. Clique Parar voz a qualquer momento.',parent=self.hub.root): return
+        if not ask_confirmation(self.hub.root,self.hub.settings.appearance.theme,'Conversar por voz?',f'O microfone será reativado após cada resposta, por até {MAX_TURNS} turnos. A fala reconhecida será enviada ao modelo Ollama local com o histórico da conversa. O Aeris não grava áudio em arquivo. Clique Parar voz a qualquer momento.'): return
         if self.closed or revision!=self.hub.permissions.revision or model!=self.model.get().strip(): return
         for cap,label in ((COMPANION_MIC,'Autorizar ditado pelo microfone?'),(COMPANION_CHAT,'Autorizar envio de texto e histórico ao modelo local?'),(COMPANION_SPEAK,'Autorizar reprodução de respostas por voz?')):
             if not self.authorize(cap,label): return
@@ -694,7 +695,7 @@ class Conversation(CompanionWindow):
             self.stop_vision(); return
         if self.closed or self.busy or self.voice.active or self.meeting_active or self.capture_timer is not None: return
         revision=self.hub.permissions.revision
-        if not messagebox.askyesno('Acompanhar tela principal?', 'O Aeris fará capturas periódicas da tela principal a cada 15 segundos, por até 5 minutos ou 20 imagens. Apenas a última captura fica na memória. Nenhuma imagem será enviada automaticamente à IA. Um aviso flutuante permite parar, inclusive enquanto você trabalha em outros aplicativos. Evite abrir dados sensíveis.',parent=self.hub.root): return
+        if not ask_confirmation(self.hub.root,self.hub.settings.appearance.theme,'Acompanhar tela principal?', 'O Aeris fará capturas periódicas da tela principal a cada 15 segundos, por até 5 minutos ou 20 imagens. Apenas a última captura fica na memória. Nenhuma imagem será enviada automaticamente à IA. Um aviso flutuante permite parar, inclusive enquanto você trabalha em outros aplicativos. Evite abrir dados sensíveis.'): return
         if self.closed or revision!=self.hub.permissions.revision: return
         if not self.authorize(COMPANION_SCREEN,'Autorizar captura de tela nesta sessão?'): return
         if self.closed or self.busy or self.voice.active or self.meeting_active or self.capture_timer is not None or self.vision.active or not self.hub.permissions.allowed(COMPANION_SCREEN): return
@@ -830,7 +831,7 @@ class Conversation(CompanionWindow):
         try: validate_message(question)
         except ValueError as e: self.status.set(str(e)); return
         revision=self.hub.permissions.revision
-        if not messagebox.askyesno('Enviar captura?', 'Enviar apenas esta imagem revisada e a pergunta ao modelo de visão local? Não inclui histórico ou outros arquivos.',parent=self.hub.root): return
+        if not ask_confirmation(self.hub.root,self.hub.settings.appearance.theme,'Enviar captura?', 'Enviar apenas esta imagem revisada e a pergunta ao modelo de visão local? Não inclui histórico ou outros arquivos.'): return
         if self.screen is not raw or revision!=self.hub.permissions.revision or model!=self.model.get().strip() or question!=(self.input.get('1.0','end-1c').strip() or 'Explique o que aparece nesta imagem e como posso continuar.') or not self.hub.permissions.allowed(COMPANION_CHAT): return
         if not self.idle() or not self.hub.permissions.allowed(COMPANION_SCREEN): return
         if self.start(COMPANION_SCREEN,lambda:(question,describe_screen(model,question,raw)),kind='vision'):
@@ -865,7 +866,7 @@ class Conversation(CompanionWindow):
         self.close_meeting_review()
         revision=self.hub.permissions.revision
         description=('A saída padrão do Windows inclui TODOS os sons reproduzidos, não apenas a chamada. O áudio é capturado em blocos de 30 segundos, com pausas durante a transcrição local. Até 20 blocos; sem gravação em arquivo.' if source=='internal' else 'Microfone padrão em blocos de ditado, até 20 blocos; sem gravação em arquivo.')
-        if not messagebox.askyesno('Transcrição de reunião','Todos os participantes foram avisados e concordam com a transcrição? '+description+' Você pode interromper a qualquer momento.',parent=self.hub.root): return
+        if not ask_confirmation(self.hub.root,self.hub.settings.appearance.theme,'Transcrição de reunião','Todos os participantes foram avisados e concordam com a transcrição? '+description+' Você pode interromper a qualquer momento.'): return
         if self.closed or self.hub.permissions.revision!=revision: return
         cap=MEETING_LOOPBACK if source=='internal' else COMPANION_MIC
         if not self.authorize(cap,'Autorizar a fonte de áudio selecionada nesta sessão?'): return
@@ -930,7 +931,7 @@ class Conversation(CompanionWindow):
             self.configure_ai(); return
         if not self.authorize(COMPANION_CHAT,'Enviar a transcrição selecionada ao modelo local para gerar uma ata? Não inclui histórico.'): return
         revision=self.hub.permissions.revision
-        if not messagebox.askyesno('Gerar ata?', 'Enviar o texto revisado ao modelo local? A ata poderá conter erros e será revisada antes de salvar.',parent=self.hub.root): return
+        if not ask_confirmation(self.hub.root,self.hub.settings.appearance.theme,'Gerar ata?', 'Enviar o texto revisado ao modelo local? A ata poderá conter erros e será revisada antes de salvar.'): return
         if self.closed or self.busy or revision!=self.hub.permissions.revision or source!=self.meeting_text.get('1.0','end-1c') or model!=self.model.get().strip(): return
         self.close_meeting_review()
         if self.start(COMPANION_CHAT,lambda:(source,model,prepare_minutes(model,text)),kind='minutes'):
@@ -1120,9 +1121,12 @@ class Conversation(CompanionWindow):
             if self.stream_cancel is not None: self.stream_cancel.set()
             self.stream_pending=None; self.stream_partial=''
             if self.progress_running:
-                self.activity_progress.stop(); self.progress_running=False
+                try: self.activity_progress.stop()
+                except tk.TclError: pass
+                self.progress_running=False
             if self.setup_cancel is not None: self.setup_cancel.set()
-            self.setup_bar.stop()
+            try: self.setup_bar.stop()
+            except tk.TclError: pass
             self.ai_runtime.close(); reset_endpoint()
             self.voice.stop(); self.vision.stop()
             if self.meeting_badge is not None:

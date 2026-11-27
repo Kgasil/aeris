@@ -18,7 +18,7 @@ def main():
             s.copy(); assert root.clipboard_get()=='original'
             h.open_search(); q=h.search_window; q.query.set('ficticio'); q.sources['Capture'].set(True); q.refresh(); assert not q.results
             h.open_permissions(); root.update()
-            with patch('aeris.permissions_ui.messagebox.askyesno',return_value=True): h.permissions_window.toggle(SEARCH_CAPTURE)
+            with patch('aeris.permissions_ui.ask_permission',return_value=True): h.permissions_window.toggle(SEARCH_CAPTURE)
             q.sources['Capture'].set(True); q.refresh(); assert len(q.results)==1
             result=q.results[0]; q.items.selection_set(0); q.preview(); h.permissions.set(SEARCH_CAPTURE,False)
             assert not q.results and not q.detail.get('1.0','end-1c') and not h.open_search_result(result)

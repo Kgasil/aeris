@@ -80,11 +80,13 @@ class CoreRefinement(TestCase):
         service=BackupService(h.settings,h.permissions)
         path=Path(self.tmp.name)/"first.aerisbackup"
         second=Path(self.tmp.name)/"second.aerisbackup"
+        h.settings.set_appearance(Appearance(theme="Claro"))
         service.create(path)
         names,digest=service.inspect_with_digest(path)
         self.assertEqual(names,("Aparência",))
         h.settings.set_appearance(Appearance(theme="Escuro"))
         service.create(second)
+        self.assertNotEqual(path.read_bytes(),second.read_bytes())
         path.write_bytes(second.read_bytes())
         h.settings.set_appearance(Appearance(theme="Claro"))
         with self.assertRaisesRegex(ValueError,"alterado"):
