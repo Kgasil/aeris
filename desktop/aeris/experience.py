@@ -85,6 +85,7 @@ class Conversation(CompanionWindow):
         self.busy=False; self.process=None; self.timer=None; self.closed=False
         self.ai_runtime=ManagedRuntime(hub.settings.path); self.setup_cancel=None; self.setup_progress=queue.Queue(); self.test_started=None; self.progress_running=False
         self.chat_allowed=False; self.kind=None; self.candidate=None
+        self.stream_pending=None; self.stream_cancel=None; self.stream_chunks=queue.Queue(); self.stream_partial=''; self.stream_started=None; self.stream_first=None
         self.voice=VoiceSession(); self.voice_timer=None
         self.vision=VisionSession(); self.vision_timer=None; self.vision_expiry=None; self.vision_badge=None
         self.session=CopilotSession(hub); self.action_input=None; self.screen=None; self.photo=None
@@ -135,7 +136,7 @@ class Conversation(CompanionWindow):
         self.context_toggle=ttk.Button(chathead,text='Mostrar contexto',command=self.toggle_context)
         self.context_toggle.pack(side='right')
         chatbox=self.chatbox=ttk.Frame(left,style='Experience.Card.TFrame'); chatbox.pack(fill='both',expand=True)
-        self.welcome=ttk.Frame(chatbox,padding=12,style='Experience.Card.TFrame')
+        self.welcome=ttk.Frame(chatbox,padding=12,height=96,style='Experience.Card.TFrame'); self.welcome.pack_propagate(False)
         center=ttk.Frame(self.welcome,style='Experience.Card.TFrame'); center.pack(expand=True)
         self.welcome_mark=wind_mark(center,hub.settings.appearance.theme,size=64); self.welcome_mark.pack(pady=(0,8))
         ttk.Label(center,text='Como posso ajudar?',style='Experience.Welcome.TLabel',anchor='center').pack(fill='x')
@@ -358,7 +359,57 @@ class Conversation(CompanionWindow):
             if not self.ai_open: self.toggle_ai_settings()
             self.configure_ai(); return
         if self.ensure_tool('Copilot') and self.authorize(COMPANION_CHAT,'Enviar a mensagem e o histórico ao Ollama local? Nenhum outro arquivo será enviado.'):
-            super().send()
+            self.send_stream()
+    def send_stream(self):
+        from aeris import companion_ui
+        try:
+            text=validate_message(self.input.get('1.0','end-1c')); model=self.model.get().strip(); history=tuple(self.history)
+            self.discard_candidate()
+            cancel=threading.Event(); chunks=queue.Queue()
+            def run(): return companion_ui.chat(model,history,text,on_chunk=chunks.put,cancel=cancel)
+            if not self.start(COMPANION_CHAT,run,kind='stream_chat'): return
+        except (ValueError,PermissionError) as exc: self.status.set(str(exc)); return
+        self.stream_pending=text; self.stream_cancel=cancel; self.stream_chunks=chunks; self.stream_partial=''
+        self.stream_started=monotonic(); self.stream_first=None
+        self.input.delete('1.0','end'); self.draw()
+        self.status.set('Carregando modelo ou aguardando a primeira resposta…')
+
+    def restore_stream_draft(self):
+        if self.stream_pending and not self.input.get('1.0','end-1c').strip():
+            self.input.insert('1.0',self.stream_pending)
+
+    def poll_stream(self):
+        self.timer=None
+        if self.closed: return
+        allowed=self.hub.permissions.allowed(COMPANION_CHAT)
+        changed=False
+        try:
+            while True:
+                piece=self.stream_chunks.get_nowait()
+                if allowed and self.stream_pending is not None:
+                    self.stream_partial+=piece; changed=True
+                    if self.stream_first is None: self.stream_first=monotonic()
+        except queue.Empty: pass
+        if changed:
+            self.draw(); self.status.set('Gerando resposta…')
+        try: job,ok,result=self.results.get_nowait()
+        except queue.Empty:
+            self.schedule_poll(); return
+        valid=job==self.job and allowed and self.stream_pending is not None
+        self.busy=False; self.process=None
+        auto=False
+        if valid and ok:
+            self.history.extend((('user',self.stream_pending),('assistant',result))); self.history=self.history[-MAX_HISTORY:]
+            elapsed=monotonic()-self.stream_started
+            first=f' · primeiro texto em {self.stream_first-self.stream_started:.1f}s' if self.stream_first is not None else ''
+            self.status.set(f'Resposta concluída em {elapsed:.1f}s'+first+'. A IA pode errar.')
+            auto=self.auto_speak.get() and self.hub.permissions.allowed(COMPANION_SPEAK)
+        elif valid:
+            self.restore_stream_draft()
+            self.status.set('Resposta não concluída. Confira Ollama, modelo e recursos; o rascunho foi preservado se o editor estava vazio.')
+        self.stream_pending=None; self.stream_cancel=None; self.stream_partial=''; self.draw(); self.refresh()
+        if auto: self.speech('speak')
+
     def toggle_voice(self):
         if self.voice.active:
             self.stop_voice(); return
@@ -452,7 +503,7 @@ class Conversation(CompanionWindow):
             self.speech('speak')
     def toggle_advanced(self):
         self.advanced_open=not self.advanced_open
-        if self.advanced_open: self.advanced.pack(fill='x',pady=3,before=self.proposal_panel) if self.proposal_panel.winfo_manager() else self.advanced.pack(fill='x',pady=3)
+        if self.advanced_open: self.advanced.pack(fill='x',pady=3,before=self.chatbox)
         else: self.advanced.pack_forget()
         self.advanced_toggle.configure(text='Menos opções' if self.advanced_open else 'Mais opções')
     def refresh(self):
@@ -511,14 +562,17 @@ class Conversation(CompanionWindow):
         self.transcript.configure(state='normal'); self.transcript.delete('1.0','end')
         self.transcript.tag_configure('person',font=('Segoe UI',10,'bold'),spacing1=12,spacing3=4)
         self.transcript.tag_configure('message',spacing3=10)
-        if not self.history:
+        if not self.history and self.stream_pending is None:
             self.transcript.insert('end','Olá! Como posso ajudar hoje?\n','person')
             self.transcript.insert('end','Escreva o que precisa fazer. Posso ajudar a encontrar uma ferramenta, conversar sobre um assunto ou preparar uma ação. Você decide o que compartilhar.','message')
         for role,value in self.history:
             self.transcript.insert('end',('Você' if role=='user' else 'Aeris')+'\n','person')
             self.transcript.insert('end',value+'\n','message')
+        if self.stream_pending is not None:
+            self.transcript.insert('end','Você\n','person'); self.transcript.insert('end',self.stream_pending+'\n','message')
+            self.transcript.insert('end','Aeris\n','person'); self.transcript.insert('end',self.stream_partial or 'Preparando resposta…','message')
         self.transcript.configure(state='disabled'); self.transcript.see('end')
-        if self.history:
+        if self.history or self.stream_pending is not None:
             self.welcome.pack_forget()
             if not self.transcript.winfo_manager():
                 self.chat_scroll.pack(side='right',fill='y'); self.transcript.pack(side='left',fill='both',expand=True)
@@ -931,6 +985,10 @@ class Conversation(CompanionWindow):
         if self.hub.alive(self.hub.meeting_window): self.hub.meeting_window.render()
         self.status.set('Ata salva na sessão. Revise participantes e decisões em Reuniões.')
     def stop(self):
+        if self.stream_cancel is not None:
+            self.stream_cancel.set()
+            if self.hub.permissions.allowed(COMPANION_CHAT): self.restore_stream_draft()
+            self.stream_pending=None; self.stream_partial=''; self.draw()
         if self.setup_cancel is not None: self.setup_cancel.set()
         self.detach_question()
         if self.vision.active: self.stop_vision()
@@ -940,6 +998,7 @@ class Conversation(CompanionWindow):
         super().stop()
         if self.hub.root.state()=='withdrawn': self.hub.root.deiconify()
     def poll(self):
+        if self.kind=='stream_chat': return self.poll_stream()
         if self.kind in ('ai_setup','ai_restore'):
             self.timer=None
             if self.closed: return
@@ -1056,6 +1115,8 @@ class Conversation(CompanionWindow):
     def destroyed(self,event):
         if event.widget is self.window:
             self.closed=True; self.meeting_active=False
+            if self.stream_cancel is not None: self.stream_cancel.set()
+            self.stream_pending=None; self.stream_partial=''
             if self.progress_running:
                 self.activity_progress.stop(); self.progress_running=False
             if self.setup_cancel is not None: self.setup_cancel.set()

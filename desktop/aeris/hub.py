@@ -4,7 +4,7 @@ from tkinter import ttk, messagebox
 from aeris import __version__
 from aeris.settings import Settings
 from aeris.permissions import Permissions, SEARCH_CAPTURE, SEARCH_SNIPPETS, COPY_SNIPPETS, READ_CLIPBOARD, WRITE_CLIPBOARD, OPEN_BOOKMARK, CREATE_BACKUP, RESTORE_BACKUP, COPY_TRANSLATION, PLAY_VOICE, COPY_TEXT, TEXT_AI, COPY_EMAIL, PLAY_PRONOUNCE, COPY_AUTOFILL, COPY_EXPAND, BRIDGE_GRANTS, ROUTINE_GRANTS, WORKSPACE_OPEN, VERIFY_READ, METADATA_READ, DOCUMENTS_READ, ORGANIZER_SCAN, DROP_ADD, DROP_COPY, COMPARE_READ, LENS_READ, DATA_READ, DASHBOARD_READ, REPORT_READ, REPORT_COPY, COPILOT_RUN, CONTEXT_PREVIEW, MEETING_COPY
-from aeris.theme import configure, apply_tree, WIND_CURVES
+from aeris.theme import configure, apply_tree, WIND_CURVES, wind_points
 from aeris.scroll_area import scroll_area
 from aeris.window_lifecycle import track_window
 from aeris.registry import load_catalog, filter_catalog, Module
@@ -76,12 +76,12 @@ class Hub:
         side = tk.Frame(self.root, bg=COLORS['soft'], width=200)
         side.pack(side='left', fill='y')
         side.pack_propagate(False)
-        logo = tk.Canvas(side, width=64, height=60, bg=COLORS['soft'], highlightthickness=0)
+        logo = tk.Canvas(side, width=64, height=64, bg=COLORS['soft'], highlightthickness=0)
         logo._aeris_logo = True
         logo.pack(anchor='w', padx=20, pady=(12, 0))
-        # Curvas aproximadas do símbolo oficial, desenhadas nativamente.
-        for points in WIND_CURVES:
-            logo.create_line(*points, smooth=True, width=3, fill=COLORS['forest'], capstyle=tk.ROUND)
+        # Geometria cúbica do SVG oficial do site.
+        for curve in WIND_CURVES:
+            logo.create_line(*wind_points(curve,64), width=3.2, fill=COLORS['forest'], capstyle=tk.ROUND, joinstyle=tk.ROUND)
         self.label(side, 'aeris.', 30, 'soft').pack(anchor='w', padx=20)
         self.label(side, 'Eficiência e Simplicidade.', 10, 'soft').pack(anchor='w', padx=20)
         self.label(side, 'by K&G Vision', 9, 'soft').pack(anchor='w', padx=20, pady=(2,6))

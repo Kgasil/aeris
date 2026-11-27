@@ -4,6 +4,7 @@ import json
 import re
 import os
 import subprocess
+import time
 from pathlib import Path
 from aeris.safe_input import strict_json
 from aeris.ai_setup import local_port
@@ -18,7 +19,7 @@ def validate_message(text):
         raise ValueError('Digite de 1 a 4.000 caracteres válidos.')
     return text.strip()
 
-def chat(model, history, text, *, connection_factory=http.client.HTTPConnection, system=SYSTEM):
+def chat(model, history, text, *, connection_factory=http.client.HTTPConnection, system=SYSTEM, on_chunk=None, cancel=None):
     if not isinstance(model,str) or not re.fullmatch(r'[A-Za-z0-9][A-Za-z0-9_.:-]{0,127}',model) or 'cloud' in model.lower():
         raise ValueError('Informe o nome de um modelo instalado localmente, sem cloud.')
     if len(history)>MAX_HISTORY or len(history)%2: raise ValueError('Histórico inválido.')
@@ -27,13 +28,16 @@ def chat(model, history, text, *, connection_factory=http.client.HTTPConnection,
         if role!=('user' if i%2==0 else 'assistant'): raise ValueError('Histórico inválido.')
         messages.append({'role':role,'content':validate_message(content)})
     messages.append({'role':'user','content':validate_message(text)})
-    body=json.dumps(dict(model=model,messages=messages,stream=False,keep_alive=0,options={'num_predict':512,'num_ctx':4096}),ensure_ascii=True).encode()
+    streaming=on_chunk is not None
+    if cancel is not None and cancel.is_set(): raise InterruptedError('Solicitação interrompida.')
+    body=json.dumps(dict(model=model,messages=messages,stream=streaming,keep_alive='2m' if streaming else 0,options={'num_predict':512,'num_ctx':4096}),ensure_ascii=True).encode()
     # Fixed loopback endpoint, no proxies, redirects, custom host or tool calls.
     conn=connection_factory('127.0.0.1',local_port(),timeout=45)
     try:
         conn.request('POST','/api/chat',body,{'Content-Type':'application/json'})
         response=conn.getresponse()
         if response.status!=200: raise OSError('Servidor local não respondeu com sucesso. Confira o modelo instalado.')
+        if streaming: return read_stream(response,on_chunk,cancel)
         raw=response.read(MAX_RESPONSE+1)
         if len(raw)>MAX_RESPONSE: raise ValueError('Resposta acima do limite.')
         obj=strict_json(raw, MAX_RESPONSE)
@@ -42,6 +46,33 @@ def chat(model, history, text, *, connection_factory=http.client.HTTPConnection,
         if not isinstance(msg,dict) or msg.get('role')!='assistant' or msg.get('tool_calls'): raise ValueError('Resposta inválida ou operação não autorizada.')
         return validate_message(msg.get('content'))
     finally: conn.close()
+
+def read_stream(response,on_chunk,cancel=None):
+    """Bounded Ollama NDJSON; partial text is display-only until done."""
+    total=0; parts=[]; chars=0; deadline=time.monotonic()+120
+    while True:
+        if cancel is not None and cancel.is_set(): raise InterruptedError('Solicitação interrompida.')
+        if time.monotonic()>deadline: raise TimeoutError('Tempo limite da resposta atingido.')
+        raw=response.readline(MAX_RESPONSE-total+1)
+        if not raw: raise ValueError('Resposta interrompida antes da conclusão.')
+        total+=len(raw)
+        if total>MAX_RESPONSE: raise ValueError('Resposta acima do limite.')
+        obj=strict_json(raw,MAX_RESPONSE)
+        if not isinstance(obj,dict) or obj.get('error') or type(obj.get('done')) is not bool:
+            raise ValueError('Resposta inválida.')
+        msg=obj.get('message')
+        if not isinstance(msg,dict) or msg.get('role')!='assistant' or msg.get('tool_calls'):
+            raise ValueError('Resposta inválida ou operação não autorizada.')
+        piece=msg.get('content')
+        if not isinstance(piece,str) or '\\0' in piece:
+            raise ValueError('Resposta inválida.')
+        chars+=len(piece)
+        if chars>MAX_MESSAGE: raise ValueError('Resposta acima do limite.')
+        if cancel is not None and cancel.is_set(): raise InterruptedError('Solicitação interrompida.')
+        if piece:
+            parts.append(piece); on_chunk(piece)
+        if obj['done']: return validate_message(''.join(parts))
+
 
 COMMAND_SYSTEM = ("Converta somente a solicitação explícita em português em UM comando do Aeris. "
     "Não invente informações ou escolha ações que não foram pedidas. Se faltar dado, responda INSUFICIENTE. "

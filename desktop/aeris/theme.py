@@ -11,17 +11,27 @@ SPACE = (4, 8, 12, 16, 24, 32)
 FONT = 'Segoe UI'
 TYPE = {'body': (FONT,10), 'section': (FONT,10,'bold'), 'subtitle': (FONT,13,'bold'), 'title': (FONT,21,'bold'), 'detail': (FONT,17,'bold'), 'brand': (FONT,30,'bold')}
 
-# Three curves already used by the original Aeris Hub.
-WIND_CURVES = ((8,24,22,6,36,34,56,14), (6,35,23,17,40,49,60,28), (14,46,30,33,42,57,54,44))
+# Exact cubic geometry of the website asset assets/aeris-symbol.svg (viewBox 0 0 100 100).
+WIND_CURVES = ((15,38,40,9,55,59,81,25), (12,56,42,27,62,81,88,45), (24,74,49,52,62,90,79,70))
+
+
+def wind_points(curve, size):
+    """Sample the SVG cubic, rather than fitting a different Tk spline."""
+    result=[]
+    for i in range(65):
+        t=i/64; u=1-t
+        for axis in (0,1):
+            result.append((u**3*curve[axis]+3*u*u*t*curve[axis+2]+3*u*t*t*curve[axis+4]+t**3*curve[axis+6])*size/100)
+    return result
 
 
 def wind_mark(parent, name, *, size=64, surface='field', ink='forest'):
-    """Native rendering of the existing wind mark; no image download."""
+    """Render the existing website symbol with theme-aware native strokes."""
     p=PALETTES[name]
-    mark=tk.Canvas(parent,width=size,height=round(size*60/64),bg=p[surface],highlightthickness=0,borderwidth=0)
+    mark=tk.Canvas(parent,width=size,height=size,bg=p[surface],highlightthickness=0,borderwidth=0)
     mark._aeris_wind_roles=(surface,ink)
-    for points in WIND_CURVES:
-        mark.create_line(*(v*size/64 for v in points),smooth=True,width=max(2,size*3/64),fill=p[ink],capstyle=tk.ROUND)
+    for curve in WIND_CURVES:
+        mark.create_line(*wind_points(curve,size),width=max(2,size*.05),fill=p[ink],capstyle=tk.ROUND,joinstyle=tk.ROUND)
     return mark
 
 

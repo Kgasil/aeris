@@ -1,4 +1,6 @@
 import json
+import io
+import threading
 import unittest
 from unittest.mock import Mock
 from aeris.companion import chat, suggest_command, MAX_RESPONSE, COMMAND_SYSTEM
@@ -33,6 +35,31 @@ class CompanionTests(unittest.TestCase):
         factory,conn,response=self.setup_conn(); response.read.return_value=b'x'*(MAX_RESPONSE+1)
         with self.assertRaises(ValueError): chat('local',[],'Oi',connection_factory=factory)
         conn.close.assert_called_once()
+
+    def test_stream_chunks_and_warm_model(self):
+        factory,conn,response=self.setup_conn()
+        lines=[{'done':False,'message':{'role':'assistant','content':'O'}},{'done':True,'message':{'role':'assistant','content':'lá'}}]
+        buf=io.BytesIO(b''.join(json.dumps(x).encode()+b'\n' for x in lines))
+        response.readline.side_effect=buf.readline
+        chunks=[]
+        self.assertEqual(chat('local',[],'Oi',connection_factory=factory,on_chunk=chunks.append),'Olá')
+        self.assertEqual(chunks,['O','lá'])
+        payload=json.loads(conn.request.call_args.args[2])
+        self.assertTrue(payload['stream']); self.assertEqual(payload['keep_alive'],'2m')
+        self.assertNotIn('tools',payload); conn.close.assert_called_once()
+
+    def test_stream_rejects_truncation_tools_and_cancel(self):
+        for lines in ([{'done':False,'message':{'role':'assistant','content':'partial'}}],
+                      [{'done':True,'message':{'role':'assistant','content':'bad','tool_calls':[{}]}}]):
+            factory,conn,response=self.setup_conn()
+            buf=io.BytesIO(b''.join(json.dumps(x).encode()+b'\n' for x in lines))
+            response.readline.side_effect=buf.readline
+            with self.assertRaises(ValueError): chat('local',[],'Oi',connection_factory=factory,on_chunk=lambda _:None)
+            conn.close.assert_called_once()
+        cancel=threading.Event(); cancel.set()
+        factory=Mock()
+        with self.assertRaises(InterruptedError): chat('local',[],'Oi',connection_factory=factory,on_chunk=lambda _:None,cancel=cancel)
+        factory.assert_not_called()
 
     def test_suggest_only_isolated_request(self):
         factory,conn,_=self.setup_conn({'done':True,'message':{'role':'assistant','content':'Lembre-me de revisar em 20 minutos'}})
