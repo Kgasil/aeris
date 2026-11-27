@@ -23,7 +23,7 @@ class Appearance:
     quick_enabled: bool = True
     floating_enabled: bool = False
     floating_topmost: bool = False
-    theme: str = 'Claro'
+    theme: str = 'Escuro'
     favorites: tuple[str, ...] = ()
     favorites_only: bool = False
 

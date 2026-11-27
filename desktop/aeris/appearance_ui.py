@@ -27,7 +27,10 @@ class AppearanceWindow:
         for text,var,low,high in [('Ícone (px)',self.icon,24,64),('Opacidade do painel (%)',self.opacity,80,100)]:
             cell=ttk.Frame(scales); cell.pack(side='left',fill='x',expand=True,padx=2)
             ttk.Label(cell,text=text).pack(anchor='w'); tk.Scale(cell,variable=var,from_=low,to=high,orient='horizontal',highlightthickness=0).pack(fill='x')
-        ttk.Label(frame,text='Tema').pack(anchor='w'); ttk.Combobox(frame,textvariable=self.theme,values=THEMES,state='readonly').pack(fill='x')
+        ttk.Label(frame,text='Tema do aplicativo').pack(anchor='w',pady=(4,0))
+        themes=ttk.Frame(frame); themes.pack(fill='x')
+        for name in ('Escuro','Claro'):
+            ttk.Radiobutton(themes,text=name+(' (padrão)' if name=='Escuro' else ''),value=name,variable=self.theme).pack(side='left',padx=(0,12))
         row=ttk.Frame(frame); row.pack(fill='x',pady=4)
         for i,(name,var) in enumerate(self.favorites.items()): ttk.Checkbutton(row,text=name,variable=var).grid(row=i//3,column=i%3,sticky='w',padx=3)
         ttk.Checkbutton(frame,text='Mostrar somente favoritos ativos',variable=self.favorites_only).pack(anchor='w')

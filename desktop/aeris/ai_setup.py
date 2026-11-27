@@ -6,6 +6,7 @@ listener avoid changing or stopping another Ollama installation.
 """
 import http.client
 import json
+import re
 import os
 from pathlib import Path
 import shutil
@@ -91,6 +92,44 @@ def wait_command(argv, env, cancel, seconds):
                 p.wait(timeout=5)
 
 
+def pull_model(model,cancel,progress,*,connection_factory=http.client.HTTPConnection):
+    """Read official local pull events. Percent refers to a single reported layer."""
+    if model not in MODELS: raise ValueError('Modelo não permitido.')
+    check_cancel(cancel)
+    conn=connection_factory('127.0.0.1',MANAGED_PORT,timeout=30)
+    deadline=time.monotonic()+7200
+    last=0.0
+    try:
+        conn.request('POST','/api/pull',json.dumps({'model':model,'stream':True,'insecure':False}).encode(),{'Content-Type':'application/json'})
+        response=conn.getresponse()
+        if response.status!=200: raise OSError('Ollama não iniciou o download.')
+        while True:
+            check_cancel(cancel)
+            if time.monotonic()>deadline: raise TimeoutError('Tempo limite do download atingido.')
+            raw=response.readline(16385)
+            if not raw: raise OSError('Download interrompido antes da confirmação.')
+            event=strict_json(raw,16384)
+            if not isinstance(event,dict) or event.get('error') or not isinstance(event.get('status'),str):
+                raise OSError('Ollama reportou falha no download.')
+            check_cancel(cancel)
+            status=event['status']
+            if status=='success':
+                progress(('download','Modelo baixado e confirmado pelo Ollama.',None,None)); return
+            digest=event.get('digest')
+            total=event.get('total'); completed=event.get('completed',0)
+            measured=(isinstance(digest,str) and re.fullmatch(r'sha256:[0-9a-f]{64}',digest)
+                      and type(total) is int and type(completed) is int and 0<total<=2**50 and 0<=completed<=total)
+            now=time.monotonic()
+            if now-last>=.2 or measured and completed==total:
+                if measured:
+                    progress(('download','Baixando camada '+digest[7:19],completed,total))
+                else:
+                    progress(('download','Preparando ou verificando arquivos do modelo…',None,None))
+                last=now
+    finally:
+        conn.close()
+
+
 def installed_executable(local_appdata):
     # Do not launch an arbitrary PATH executable or download a script.
     exe = Path(local_appdata) / 'Programs' / 'Ollama' / 'ollama.exe'
@@ -149,6 +188,7 @@ class ManagedRuntime:
         if not local:
             raise OSError('Pasta local do Windows indisponível.')
         check_cancel(cancel)
+        progress(('check','Verificando instalação e espaço disponível…',None,None))
         self.models.mkdir(parents=True, exist_ok=True)
         env = runtime_env(self.models)
         exe = installed_executable(local)
@@ -160,7 +200,7 @@ class ManagedRuntime:
             winget = Path(local)/'Microsoft'/'WindowsApps'/'winget.exe'
             if not winget.is_file():
                 raise OSError('Windows Package Manager indisponível. Abra a fonte oficial do Ollama ou instale o App Installer pela Microsoft Store.')
-            progress('Instalando Ollama pela fonte oficial do WinGet…')
+            progress(('install','Instalando Ollama pelo WinGet · percentual não informado.',None,None))
             wait_command([winget,'install','--id','Ollama.Ollama','--exact','--source','winget',
                           '--scope','user','--silent','--disable-interactivity',
                           '--accept-source-agreements','--accept-package-agreements'],
@@ -171,7 +211,7 @@ class ManagedRuntime:
         check_cancel(cancel)
         select_managed()  # Fail closed on the managed endpoint, never fall back to the other server.
         try:
-            progress('Iniciando IA local (sem nuvem)…')
+            progress(('start','Iniciando servidor de IA local, sem nuvem…',None,None))
             with self.lock:
                 check_cancel(cancel)
                 if self.process is None or self.process.poll() is not None:
@@ -192,16 +232,18 @@ class ManagedRuntime:
             if model not in installed_models():
                 if not download:
                     raise OSError('Modelo ausente. Clique Preparar IA para baixá-lo.')
-                progress('Baixando modelo local. Esta etapa pode demorar; não feche o Aeris…')
-                wait_command([exe,'pull',model],env,cancel,7200)
+                progress(('download','Solicitando modelo ao Ollama…',None,None))
+                pull_model(model,cancel,progress)
             check_cancel(cancel)
             if model not in installed_models() or p.poll() is not None:
                 raise OSError('O modelo local não foi confirmado.')
             if download:
-                progress('Testando a IA com uma mensagem fictícia…')
-                from aeris.ready import check_model
+                from aeris.ready import test_model_response, TEST_PROMPT
                 from aeris.companion import chat
-                check_model(model,chat_fn=chat)
+                progress(('test','Testando: '+TEST_PROMPT,None,None))
+                started=time.monotonic()
+                answer=test_model_response(model,chat_fn=chat)
+                progress(('test',f'Resposta em {time.monotonic()-started:.1f}s: '+answer[:240],None,None))
                 check_cancel(cancel)
                 save_choice(self.choice,model)
             return model

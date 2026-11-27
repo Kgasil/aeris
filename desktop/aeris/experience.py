@@ -14,7 +14,7 @@ from aeris.intelligence import recommend_tool
 from aeris.voice_session import VoiceSession, MAX_TURNS
 from aeris.vision_session import VisionSession, INTERVAL_MS, MAX_SECONDS, MAX_FRAMES
 from aeris.visual_question import VisualQuestion
-from aeris.ready import inspect_environment, model_selection, check_model, TEST_PROMPT
+from aeris.ready import inspect_environment, model_selection, check_model, test_model_response, TEST_PROMPT
 from aeris.ai_setup import ManagedRuntime, load_choice, reset_endpoint
 from aeris.catalog_index import CatalogIndex
 from aeris.polish import compact_workspace
@@ -127,6 +127,8 @@ class Conversation(CompanionWindow):
         audio=('Áudio interno: dependências encontradas; modelo e dispositivo ainda não testados.' if info.loopback_candidate else 'Áudio interno: opcional, exige execução por código-fonte no Windows e dependências próprias.')
         ttk.Label(setup,text=voice+' '+audio,wraplength=580,style='Experience.Card.TLabel').pack(anchor='w',pady=4)
         self.setup_button=ttk.Button(setup,text='Preparar IA automaticamente',command=self.configure_ai,style='Experience.Primary.TButton'); self.setup_button.pack(anchor='w')
+        self.setup_bar=ttk.Progressbar(setup,mode='indeterminate',style='Experience.Horizontal.TProgressbar'); self.setup_phase=tk.StringVar(w,''); self.setup_detail=ttk.Label(setup,textvariable=self.setup_phase,wraplength=580,style='Experience.Card.TLabel')
+        self.setup_result=''
         trace_window(w,self.model,self.model_changed)
         self.panes=panes=ttk.Frame(w); panes.pack(fill='both',expand=True)
         panes.columnconfigure(0,weight=3); panes.columnconfigure(1,weight=0); panes.rowconfigure(0,weight=1)
@@ -297,7 +299,7 @@ class Conversation(CompanionWindow):
             self.ready_state.set('Escolha um modelo instalado primeiro.'); return
         if not self.authorize(COMPANION_CHAT,'Enviar uma saudação fictícia ao Ollama local para testar a resposta? Nenhuma mensagem pessoal, imagem ou arquivo será enviado.'): return
         if not self.idle() or model!=self.model.get().strip(): return
-        if self.start(COMPANION_CHAT,lambda:(model,check_model(model,chat_fn=chat)),kind='ready_test'):
+        if self.start(COMPANION_CHAT,lambda:(model,test_model_response(model,chat_fn=chat)),kind='ready_test'):
             self.test_started=monotonic()
             self.ready_state.set('Teste de texto · mensagem: '+TEST_PROMPT+' Aguardando resposta do modelo local.'); self.status.set('Teste de inferência em andamento. A primeira resposta pode demorar enquanto o modelo é carregado.')
     def configure_ai(self):
@@ -305,21 +307,10 @@ class Conversation(CompanionWindow):
         if not self.ai_open: self.toggle_ai_settings()
         if not inspect_environment().windows:
             messagebox.showinfo('Configuração da IA','A preparação automática exige Windows. Você pode selecionar modelos do Ollama local já instalado.',parent=self.hub.root); return
-        choice=messagebox.askyesnocancel('Preparar IA local',
-            'SIM: conversas + imagens (Qwen2.5-VL 3B, download de cerca de 3,2 GB; reserve 6 GB para o modelo).\n'
-            'NÃO: modo leve de texto (Qwen2.5 1.5B, cerca de 1 GB; reserve 3 GB).\n'
-            'CANCELAR: usar o Aeris sem instalar IA.\n\n'
-            'O Ollama será instalado pelo WinGet se necessário; pode exigir espaço adicional. '
-            'A IA usa um servidor local separado, sem nuvem. Voz pt-BR e áudio interno exigem recursos próprios do Windows.',
-            parent=self.hub.root)
-        if choice is None: return
-        model='qwen2.5vl:3b' if choice else 'qwen2.5:1.5b'
-        if not messagebox.askyesno('Autorizar instalação e download?',
-            'Autoriza a instalação do Ollama pelo catálogo oficial WinGet, o aceite dos termos aplicáveis do pacote e da fonte, e o download do modelo '+model+'? '
-            'Consulte as licenças em ollama.com e no catálogo do modelo. Apenas o modelo e o instalador serão baixados. '
-            'Nenhum áudio, imagem ou dado pessoal será enviado. O teste usa apenas uma saudação fictícia. '
-            'Você pode cancelar; arquivos já baixados podem permanecer para retomar.',
-            parent=self.hub.root): return
+        from aeris.setup_dialog import choose_setup
+        revision=self.hub.permissions.revision
+        model=choose_setup(self.hub.root,self.hub.settings.appearance.theme)
+        if model is None or self.closed or not self.idle() or revision!=self.hub.permissions.revision: return
         if not self.authorize(COMPANION_CHAT,'Autorizar o teste de texto fictício no modelo local?'): return
         self.begin_ai_setup(model,download=True)
     def restore_ai(self):
@@ -328,7 +319,8 @@ class Conversation(CompanionWindow):
             self.begin_ai_setup(model,download=False)
     def begin_ai_setup(self,model,*,download):
         if not self.idle(): return
-        cancel=threading.Event(); progress=self.setup_progress; runtime=self.ai_runtime
+        cancel=threading.Event(); self.setup_progress=queue.Queue(); progress=self.setup_progress; runtime=self.ai_runtime
+        self.setup_result=''
         job=self.job+1; results=self.results
         def work():
             try: return (job,True,runtime.prepare(model,cancel,progress.put,download=download))
@@ -341,6 +333,8 @@ class Conversation(CompanionWindow):
         self.setup_cancel=cancel; self.busy=True; self.cap=COMPANION_CHAT
         self.kind='ai_setup' if download else 'ai_restore'; self.job=job
         self.ready_state.set('Preparando IA local…'); self.status.set('Preparando IA local…')
+        if not self.ai_open and download: self.toggle_ai_settings()
+        self.setup_phase.set('Verificando requisitos…'); self.setup_detail.pack(fill='x',pady=(6,2)); self.setup_bar.pack(fill='x',pady=(0,4)); self.setup_bar.configure(mode='indeterminate'); self.setup_bar.start(14)
         self.refresh(); self.schedule_poll()
     def idle(self):
         return not (self.closed or self.busy or self.voice.active or self.vision.active or self.meeting_active or self.capture_timer is not None)
@@ -1004,14 +998,22 @@ class Conversation(CompanionWindow):
             if self.closed: return
             try:
                 while True:
-                    msg=self.setup_progress.get_nowait(); self.ready_state.set(msg); self.status.set(msg)
+                    stage,msg,completed,total=self.setup_progress.get_nowait()
+                    self.setup_phase.set(msg); self.status.set(msg)
+                    if stage=='test' and msg.startswith('Resposta em '): self.setup_result=msg
+                    if total is not None:
+                        self.setup_bar.stop(); self.setup_bar.configure(mode='determinate',maximum=total,value=completed)
+                        self.setup_phase.set(f'{msg} · {completed/1048576:.1f}/{total/1048576:.1f} MiB · {completed/total:.0%} desta camada')
+                    elif str(self.setup_bar.cget('mode'))!='indeterminate':
+                        self.setup_bar.configure(mode='indeterminate',maximum=100,value=0); self.setup_bar.start(14)
             except queue.Empty: pass
             try: job,ok,result=self.results.get_nowait()
             except queue.Empty: self.schedule_poll(); return
             self.busy=False; self.process=None; self.setup_cancel=None
+            self.setup_bar.stop(); self.setup_bar.pack_forget(); self.setup_detail.pack_forget()
             if job==self.job and ok:
                 self.model_entry.configure(values=(result,)); self.model.set(result)
-                self.ready_state.set('IA local pronta. Texto disponível; teste voz e visão separadamente.')
+                self.ready_state.set(('IA local pronta. '+self.setup_result+' · Visão e voz exigem teste separado.') if self.kind=='ai_setup' else 'Servidor e modelo restaurados. Execute Testar IA para verificar a inferência.')
                 self.status.set('IA local pronta para conversar.')
             elif job==self.job:
                 self.ready_state.set(str(result)); self.status.set('Configuração não concluída.');
@@ -1042,7 +1044,7 @@ class Conversation(CompanionWindow):
             elapsed=f' ({monotonic()-self.test_started:.1f} s)' if self.test_started is not None else ''
             self.test_started=None
             if valid and ok and result[0]==self.model.get().strip() and result[1]:
-                self.ready_state.set('Teste de texto aprovado'+elapsed+'. Visão e voz ainda precisam de verificação própria.')
+                self.ready_state.set('Teste de texto aprovado'+elapsed+'. Resposta: '+str(result[1])[:240]+' · Visão e voz exigem teste separado.')
                 self.status.set('O modelo respondeu à saudação fictícia'+elapsed+'.')
             else:
                 self.ready_state.set('Teste não concluído'+elapsed+'. Confira modelo, Ollama, autorização e recursos do computador.')
@@ -1120,6 +1122,7 @@ class Conversation(CompanionWindow):
             if self.progress_running:
                 self.activity_progress.stop(); self.progress_running=False
             if self.setup_cancel is not None: self.setup_cancel.set()
+            self.setup_bar.stop()
             self.ai_runtime.close(); reset_endpoint()
             self.voice.stop(); self.vision.stop()
             if self.meeting_badge is not None:

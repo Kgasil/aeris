@@ -1,15 +1,35 @@
 import tempfile
+import io
+import json
 import threading
 import unittest
 from pathlib import Path
-from unittest.mock import patch
+from unittest.mock import patch, Mock
 from aeris.ai_setup import (MODELS, ManagedRuntime, load_choice, save_choice, runtime_env,
-                            local_port, select_managed, reset_endpoint, check_cancel)
+                            local_port, select_managed, reset_endpoint, check_cancel, pull_model)
 
 
 class SetupTests(unittest.TestCase):
     def tearDown(self):
         reset_endpoint()
+
+    def test_pull_uses_real_layer_bytes_and_requires_success(self):
+        factory=Mock(); response=factory.return_value.getresponse.return_value; response.status=200
+        rows=[{'status':'pulling','digest':'sha256:'+'a'*64,'total':100,'completed':100},{'status':'success'}]
+        response.readline.side_effect=io.BytesIO(b''.join(json.dumps(row).encode()+b'\n' for row in rows)).readline
+        updates=[]
+        pull_model('qwen2.5:1.5b',threading.Event(),updates.append,connection_factory=factory)
+        self.assertEqual(updates[0][2:],(100,100))
+        self.assertEqual(updates[-1][2:],(None,None))
+        factory.assert_called_once_with('127.0.0.1',11435,timeout=30)
+        self.assertFalse(json.loads(factory.return_value.request.call_args.args[2])['insecure'])
+        factory.return_value.close.assert_called_once()
+
+    def test_pull_rejects_incomplete_and_unknown_model(self):
+        factory=Mock(); response=factory.return_value.getresponse.return_value; response.status=200
+        response.readline.return_value=b''
+        with self.assertRaises(OSError): pull_model('qwen2.5:1.5b',threading.Event(),lambda _:None,connection_factory=factory)
+        with self.assertRaises(ValueError): pull_model('remote',threading.Event(),lambda _:None,connection_factory=factory)
 
     def test_choice_roundtrip_and_reject_arbitrary_models(self):
         with tempfile.TemporaryDirectory() as d:
