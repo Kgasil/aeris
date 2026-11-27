@@ -66,6 +66,19 @@ class PolishTkTests(unittest.TestCase):
             self.assertEqual(style.lookup('Experience.Primary.TButton','background'),p['primary'])
             self.assertEqual(style.lookup('Aeris.Stop.TButton','foreground'),p['danger'])
 
+    def test_scroll_canvas_focus_outline_preserves_contents(self):
+        scroll=tk.Canvas(self.root,highlightthickness=1,takefocus=True)
+        scroll._aeris_scroll=True
+        item=scroll.create_rectangle(2,3,20,30,fill='#123456')
+        preview=tk.Canvas(self.root,bg='#102030')
+        for name in ('Escuro','Claro','Escuro'):
+            p=configure(self.root,name)
+            apply_tree(self.root,name)
+            self.assertEqual(scroll.cget('highlightbackground'),p['muted'])
+            self.assertEqual(scroll.cget('highlightcolor'),p['focus'])
+            self.assertEqual(scroll.itemcget(item,'fill'),'#123456')
+            self.assertEqual(preview.cget('bg'),'#102030')
+
     def test_theme_roundtrip_preserves_text(self):
         frame=tk.Frame(self.root,bg='#DCEFE3')
         editor=tk.Text(frame)
