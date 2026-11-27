@@ -61,6 +61,24 @@ try {
         }
         if (-not $cmd) { $cmd=Join-Path $env:ProgramFiles 'Windows Defender\MpCmdRun.exe' }
         if (-not (Test-Path -LiteralPath $cmd -PathType Leaf) -or (Get-AuthenticodeSignature -LiteralPath $cmd).Status -ne 'Valid') { throw 'Trusted Defender command unavailable' }
+        # Read-only diagnostics for these exact three targets. Never change exclusions.
+        # Capture only target-specific output; do not enumerate host-wide policies.
+        $scan['exclusion_checks']=@()
+        $diagnosticIndex=0
+        foreach ($target in @($setup,$portable,$bundle)) {
+            $diagnosticIndex++
+            $entry=[ordered]@{target=(Split-Path -Leaf $target);status='UNAVAILABLE';exit_code=$null}
+            try {
+                $check=Start-Process -FilePath $cmd -ArgumentList @('-CheckExclusion','-Path',('"' + $target + '"')) -RedirectStandardOutput (Join-Path $e "defender-exclusion-$diagnosticIndex.log") -RedirectStandardError (Join-Path $e "defender-exclusion-$diagnosticIndex-error.log") -PassThru
+                if ($check.WaitForExit(30000)) {
+                    $entry.exit_code=$check.ExitCode
+                    $entry.status='RECORDED_NOT_A_SCAN'
+                } else {
+                    $entry.status='TIMEOUT'
+                }
+            } catch { $entry['error']='Target-specific exclusion check unavailable' }
+            $scan.exclusion_checks+=@([pscustomobject]$entry)
+        }
         $i=0
         foreach ($target in @($setup,$portable,$bundle)) {
             $i++

@@ -53,6 +53,13 @@ try {
     New-Item -ItemType Directory -Path $db | Out-Null
     $conf=Join-Path $temp 'freshclam.conf'
     @(('DatabaseDirectory "'+$db+'"'),'DatabaseMirror database.clamav.net','Checks 1') | Set-Content -LiteralPath $conf -Encoding ascii
+    # Capture official DNS version metadata for diagnosis only; signed database
+    # verification and <=24h age remain mandatory regardless of DNS result.
+    try {
+        $records=@(Resolve-DnsName -Name current.cvd.clamav.net -Type TXT -DnsOnly -QuickTimeout -ErrorAction Stop | Where-Object { $_.Type -eq 'TXT' })
+        $report['official_dns_txt']=@($records | ForEach-Object { $_.Strings -join '' })
+        $report['official_dns_observed_utc']=[DateTime]::UtcNow.ToString('o')
+    } catch { $report['official_dns_status']='UNAVAILABLE' }
     if ((Invoke-Recorded $fresh @("--config-file=$conf",'--stdout') (Join-Path $e 'clamav-freshclam.log')) -ne 0) { throw 'Signature update failed; scan not approved' }
     $daily=@(Get-ChildItem -LiteralPath $db -File | Where-Object { $_.Name -in @('daily.cvd','daily.cld') })
     if ($daily.Count -ne 1) { throw 'Daily signature database missing or ambiguous' }
