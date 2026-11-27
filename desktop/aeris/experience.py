@@ -1424,7 +1424,7 @@ class Conversation(CompanionWindow):
 class ExperienceHub(Hub):
     def __init__(self,root,settings=None):
         super().__init__(root,settings)
-        root.bind('<Control-f>',lambda _:self.navigate('catalog'))
+        root.bind('<Control-f>',self.focus_catalog)
         root.bind('<Control-l>',self.focus_conversation)
         root.bind('<Control-Shift-S>',self.stop_activity)
         root.bind('<Configure>',self.workspace_configure,add='+')
@@ -1432,6 +1432,9 @@ class ExperienceHub(Hub):
     def workspace_configure(self,event):
         if event.widget is self.root and not self.conversation.closed:
             self.conversation.resize_workspace(event.width)
+    def focus_catalog(self,_=None):
+        self.navigate('catalog'); self.search.focus_set()
+        return 'break'
     def focus_conversation(self,_=None):
         if self.conversation.idle():
             self.navigate('chat'); self.conversation.set_context(False); self.conversation.input.focus_set()
@@ -1489,20 +1492,26 @@ class ExperienceHub(Hub):
         for label in ('Todas','Favoritas','Recentes'):
             ttk.Radiobutton(scopes,text=label,value=label,variable=self.catalog_scope,command=self.refresh,style='Experience.Goal.TRadiobutton').pack(side='left',padx=(0,8))
         self.goal=tk.StringVar(self.root,'Todas')
-        choices=ttk.Frame(f); choices.pack(fill='x',pady=(0,8))
-        ttk.Label(choices,text='Objetivo').pack(side='left',padx=(0,5))
-        goalbox=ttk.Combobox(choices,textvariable=self.goal,values=('Todas',*GOALS),state='readonly',width=24)
-        goalbox.pack(side='left',fill='x',expand=True); goalbox.bind('<<ComboboxSelected>>',lambda _:self.refresh())
-        ttk.Label(choices,text='Categoria').pack(side='left',padx=(8,5))
+        choices=self.catalog_choices=ttk.Frame(f); choices.pack(fill='x',pady=(0,8))
+        self.goal_label=ttk.Label(choices,text='Objetivo')
+        self.goalbox=ttk.Combobox(choices,textvariable=self.goal,values=('Todas',*GOALS),state='readonly',width=18)
+        self.goalbox.bind('<<ComboboxSelected>>',lambda _:self.refresh())
+        self.category_label=ttk.Label(choices,text='Categoria')
         self.category_display=tk.StringVar(self.root,'Todas')
-        self.category_box=ttk.Combobox(choices,textvariable=self.category_display,values=('Todas',*CATEGORIES.values()),state='readonly',width=15)
-        self.category_box.pack(side='left',fill='x',expand=True); self.category_box.bind('<<ComboboxSelected>>',self.choose_category)
+        self.category_box=ttk.Combobox(choices,textvariable=self.category_display,values=('Todas',*CATEGORIES.values()),state='readonly',width=13)
+        self.category_box.bind('<<ComboboxSelected>>',self.choose_category)
+        self.catalog_filters_compact=None
+        self.layout_catalog_filters(True)
+        choices.bind('<Configure>',self.resize_catalog_filters,add='+')
         self.count=ttk.Label(f,text='',style='Experience.Muted.TLabel'); self.count.pack(anchor='w',pady=(0,6))
         body=ttk.Frame(f); body.pack(fill='both',expand=True); body.columnconfigure(0,weight=3); body.columnconfigure(1,weight=2); body.rowconfigure(0,weight=1)
         left=ttk.Frame(body); left.grid(row=0,column=0,sticky='nsew',padx=(0,10))
         self.listbox=tk.Listbox(left,font=('Segoe UI',11),relief='flat',highlightthickness=1,exportselection=False,activestyle='none',width=24)
-        self.listbox.pack(side='left',fill='both',expand=True)
-        sb=ttk.Scrollbar(left,command=self.listbox.yview); sb.pack(side='right',fill='y'); self.listbox.configure(yscrollcommand=sb.set)
+        left.columnconfigure(0,weight=1); left.rowconfigure(0,weight=1)
+        self.listbox.grid(row=0,column=0,sticky='nsew')
+        sb=ttk.Scrollbar(left,command=self.listbox.yview); sb.grid(row=0,column=1,sticky='ns')
+        horizontal=ttk.Scrollbar(left,orient='horizontal',command=self.listbox.xview); horizontal.grid(row=1,column=0,sticky='ew')
+        self.listbox.configure(yscrollcommand=sb.set,xscrollcommand=horizontal.set)
         self.listbox.bind('<<ListboxSelect>>',self.show_selected); self.listbox.bind('<Return>',self.open_selected); self.listbox.bind('<Double-1>',self.open_selected)
         self.listbox.bind('<Escape>',self.focus_catalog_search)
         detail=ttk.Frame(body,padding=14,style='Experience.Card.TFrame'); detail.grid(row=0,column=1,sticky='nsew')
@@ -1515,6 +1524,22 @@ class ExperienceHub(Hub):
         self.favorite_button=ttk.Button(detail,text='Adicionar aos favoritos')
         self.catalog_hint=ttk.Label(detail,text='',style='Experience.Card.TLabel',wraplength=215); self.catalog_hint.pack(anchor='w',side='bottom',pady=(6,0),fill='x')
         detail.bind('<Configure>',self.resize_catalog_detail,add='+')
+    def resize_catalog_filters(self,event):
+        if event.width>1: self.layout_catalog_filters(event.width<540)
+    def layout_catalog_filters(self,compact):
+        if compact==self.catalog_filters_compact: return
+        self.catalog_filters_compact=compact
+        for column in range(4): self.catalog_choices.columnconfigure(column,weight=0)
+        self.catalog_choices.columnconfigure(1,weight=1)
+        self.goal_label.grid(row=0,column=0,sticky='w',padx=(0,6),pady=2)
+        self.goalbox.grid(row=0,column=1,sticky='ew',pady=2)
+        if compact:
+            self.category_label.grid(row=1,column=0,sticky='w',padx=(0,6),pady=2)
+            self.category_box.grid(row=1,column=1,sticky='ew',pady=2)
+        else:
+            self.catalog_choices.columnconfigure(3,weight=1)
+            self.category_label.grid(row=0,column=2,sticky='w',padx=(12,6),pady=2)
+            self.category_box.grid(row=0,column=3,sticky='ew',pady=2)
     def resize_catalog_detail(self,event):
         # Use the actual card width; preserve the initial wrapping while unmapped.
         if event.width <= 1: return
