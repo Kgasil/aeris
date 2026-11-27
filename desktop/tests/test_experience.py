@@ -28,6 +28,38 @@ class ExperienceTests(unittest.TestCase):
     def tearDown(self):
         self.root.destroy(); self.ui=None; self.h=None; self.root=None
         import gc; gc.collect(); self.tmp.cleanup()
+    def test_theme_switch_persists_and_preserves_draft(self):
+        self.assertEqual(self.h.settings.appearance.theme,'Escuro')
+        self.ui.input.insert('1.0','Rascunho fictício')
+        self.h.toggle_theme(); self.root.update()
+        self.assertEqual(Settings(self.h.settings.path).appearance.theme,'Claro')
+        self.h.toggle_theme(); self.root.update()
+        self.assertEqual(Settings(self.h.settings.path).appearance.theme,'Escuro')
+        self.assertEqual(self.ui.input.get('1.0','end-1c'),'Rascunho fictício')
+        self.assertFalse(self.h.permissions.allowed(COMPANION_MIC))
+        self.assertFalse(self.h.permissions.allowed(COMPANION_SCREEN))
+
+    def test_appearance_actions_accessible_with_scrollable_tabs(self):
+        from tkinter import ttk
+        self.h.open_appearance()
+        window=self.h.appearance_window.window
+        window.geometry('450x420')
+        self.root.update()
+        def walk(widget):
+            yield widget
+            for child in widget.winfo_children(): yield from walk(child)
+        controls=list(walk(window))
+        tabs=next(w for w in controls if isinstance(w,ttk.Notebook))
+        save=next(w for w in controls if isinstance(w,ttk.Button) and w.cget('text')=='Salvar')
+        self.assertEqual(len(tabs.tabs()),2)
+        for tab in tabs.tabs():
+            tabs.select(tab); self.root.update()
+            self.assertTrue(save.winfo_ismapped())
+            self.assertLessEqual(save.winfo_rooty()+save.winfo_height(),window.winfo_rooty()+window.winfo_height())
+        self.h.appearance_window.theme.set('Claro')
+        save.invoke(); self.root.update()
+        self.assertEqual(Settings(self.h.settings.path).appearance.theme,'Claro')
+
     def test_permission_refusal_and_revision_change(self):
         self.assertEqual(self.h.settings.appearance.theme,'Escuro')
         with patch('aeris.experience.ask_permission',return_value=False):
