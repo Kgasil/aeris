@@ -1504,6 +1504,7 @@ class ExperienceHub(Hub):
         self.listbox.pack(side='left',fill='both',expand=True)
         sb=ttk.Scrollbar(left,command=self.listbox.yview); sb.pack(side='right',fill='y'); self.listbox.configure(yscrollcommand=sb.set)
         self.listbox.bind('<<ListboxSelect>>',self.show_selected); self.listbox.bind('<Return>',self.open_selected); self.listbox.bind('<Double-1>',self.open_selected)
+        self.listbox.bind('<Escape>',self.focus_catalog_search)
         detail=ttk.Frame(body,padding=14,style='Experience.Card.TFrame'); detail.grid(row=0,column=1,sticky='nsew')
         self.detail_name=ttk.Label(detail,text='',style='Experience.Detail.TLabel',wraplength=250,justify='left'); self.detail_name.pack(anchor='w',fill='x')
         self.detail_status=ttk.Label(detail,text='',style='Experience.Card.TLabel',wraplength=215); self.detail_status.pack(anchor='w',pady=(4,12),fill='x')
@@ -1512,7 +1513,18 @@ class ExperienceHub(Hub):
         self.toggle=ttk.Button(detail,text='Ativar')
         self.launch=ttk.Button(detail,text='Abrir',style='Experience.Primary.TButton')
         self.favorite_button=ttk.Button(detail,text='Adicionar aos favoritos')
-        self.catalog_hint=ttk.Label(detail,text='',style='Experience.Card.TLabel',wraplength=215); self.catalog_hint.pack(anchor='w',side='bottom',pady=(6,0))
+        self.catalog_hint=ttk.Label(detail,text='',style='Experience.Card.TLabel',wraplength=215); self.catalog_hint.pack(anchor='w',side='bottom',pady=(6,0),fill='x')
+        detail.bind('<Configure>',self.resize_catalog_detail,add='+')
+    def resize_catalog_detail(self,event):
+        # Use the actual card width; preserve the initial wrapping while unmapped.
+        if event.width <= 1: return
+        width=max(120,min(420,event.width-28))
+        for label in (self.detail_name,self.detail_status,self.detail_desc,self.example,self.catalog_hint):
+            if int(label.cget('wraplength')) != width:
+                label.configure(wraplength=width)
+    def focus_catalog_search(self,_=None):
+        self.search.focus_set()
+        return 'break'
     def clear_filters(self):
         if hasattr(self,'goal'): self.goal.set('Todas')
         if hasattr(self,'catalog_scope'): self.catalog_scope.set('Todas')
