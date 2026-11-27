@@ -1,6 +1,8 @@
 """Paletas locais e estilos compartilhados. Sem integração com o tema do sistema."""
 import tkinter as tk
 from tkinter import ttk
+from pathlib import Path
+import sys
 
 PALETTES = {
     'Claro': dict(air='#F5F7F6', soft='#E8EEEA', natural='#8FC7A3', forest='#30694F', deep='#203D30', muted='#BCCBC2', secondary='#476553', focus='#30694F', field='#FFFFFF', selected='#DCEFE3', select_text='#285640', primary='#285640', primary_hover='#397557', primary_text='#FFFFFF', sidebar='#193D30', sidebar_text='#E3F1E7', sidebar_muted='#A5D7B4', sidebar_hover='#37614E', nav_selected='#DCEFE3', nav_text='#193D30', success='#286446', info='#245D8C', warning='#805500', danger='#A52E36'),
@@ -44,11 +46,32 @@ def background_role(value):
         if color==PALETTES['Claro'][role].lower(): return role
     return LEGACY_BACKGROUNDS.get(color,'air')
 
+def set_window_icon(root):
+    """Use the existing official ICO for Windows source and packaged windows."""
+    if root.tk.call('tk', 'windowingsystem') != 'win32':
+        return False
+    icon = (Path(__file__).resolve().with_name('aeris.ico') if getattr(sys, 'frozen', False)
+            else Path(__file__).resolve().parents[2] / 'distribution' / 'aeris.ico')
+    try:
+        if not icon.is_file():
+            return False
+        root.iconbitmap(default=str(icon))
+        return True
+    except (OSError, tk.TclError):
+        return False
+
+
 def configure(root, name):
     p = PALETTES[name]
     style = ttk.Style(root)
     style.theme_use('clam')
     style.configure('.', background=p['air'], foreground=p['deep'], fieldbackground=p['field'], bordercolor=p['muted'], troughcolor=p['soft'], lightcolor=p['muted'], darkcolor=p['muted'], font=('Segoe UI', 10))
+    for scrollbar in ('Vertical.TScrollbar', 'Horizontal.TScrollbar'):
+        style.configure(scrollbar, background=p['forest'], troughcolor=p['soft'],
+                        bordercolor=p['soft'], lightcolor=p['forest'], darkcolor=p['forest'],
+                        arrowcolor=p['air'], arrowsize=13, relief='flat')
+        states=[('disabled',p['muted']),('pressed',p['primary']),('active',p['primary_hover'])]
+        style.map(scrollbar, background=states, lightcolor=states, darkcolor=states)
     style.configure('TButton', background=p['soft'], padding=(12,8), borderwidth=1, relief='flat')
     style.map('TButton', background=[('disabled', p['soft']),('active', p['selected'])], foreground=[('disabled', p['secondary'])], bordercolor=[('focus',p['focus'])], focuscolor=[('focus',p['focus'])])
     style.configure('TCheckbutton', background=p['air'])

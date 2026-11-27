@@ -4,7 +4,7 @@ from tkinter import ttk, messagebox
 from aeris import __version__
 from aeris.settings import Settings
 from aeris.permissions import Permissions, SEARCH_CAPTURE, SEARCH_SNIPPETS, COPY_SNIPPETS, READ_CLIPBOARD, WRITE_CLIPBOARD, OPEN_BOOKMARK, CREATE_BACKUP, RESTORE_BACKUP, COPY_TRANSLATION, PLAY_VOICE, COPY_TEXT, TEXT_AI, COPY_EMAIL, PLAY_PRONOUNCE, COPY_AUTOFILL, COPY_EXPAND, BRIDGE_GRANTS, ROUTINE_GRANTS, WORKSPACE_OPEN, VERIFY_READ, METADATA_READ, DOCUMENTS_READ, ORGANIZER_SCAN, DROP_ADD, DROP_COPY, COMPARE_READ, LENS_READ, DATA_READ, DASHBOARD_READ, REPORT_READ, REPORT_COPY, COPILOT_RUN, CONTEXT_PREVIEW, MEETING_COPY
-from aeris.theme import configure, apply_tree, WIND_CURVES, wind_points
+from aeris.theme import configure, apply_tree, WIND_CURVES, wind_points, set_window_icon
 from aeris.scroll_area import scroll_area
 from aeris.window_lifecycle import track_window
 from aeris.registry import load_catalog, filter_catalog, Module
@@ -52,6 +52,7 @@ class Hub:
         self.query = tk.StringVar(root)
         self.category = tk.StringVar(root, 'Todas')
         root.title(f'Project Aeris | {__version__}')
+        set_window_icon(root)
         root.geometry('1040x650')
         root.minsize(750, 500)
         root.configure(bg=COLORS['air'])
