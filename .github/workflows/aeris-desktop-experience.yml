@@ -115,6 +115,13 @@ jobs:
           $stages = @(Get-ChildItem -LiteralPath distribution/out -Directory)
           if ($stages.Count -ne 1) { throw 'Expected a single fresh build' }
           & .\distribution\scan-clamav.ps1 -Stage $stages[0].FullName -Evidence (Join-Path $PWD 'candidate-evidence')
+      - name: Require complete and current antivirus evidence
+        if: always()
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          python distribution/check-scan-evidence.py candidate-evidence $env:GITHUB_SHA
+          if ($LASTEXITCODE -ne 0) { throw 'Candidate antivirus evidence incomplete or failed; release remains blocked' }
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         if: always()
         with:
