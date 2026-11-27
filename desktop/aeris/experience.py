@@ -1,6 +1,7 @@
 """Conversation-first desktop workspace. Reuses existing session stores and capabilities."""
 import base64
 from datetime import date
+from time import monotonic
 import json
 import queue
 import subprocess
@@ -13,7 +14,7 @@ from aeris.intelligence import recommend_tool
 from aeris.voice_session import VoiceSession, MAX_TURNS
 from aeris.vision_session import VisionSession, INTERVAL_MS, MAX_SECONDS, MAX_FRAMES
 from aeris.visual_question import VisualQuestion
-from aeris.ready import inspect_environment, model_selection, check_model
+from aeris.ready import inspect_environment, model_selection, check_model, TEST_PROMPT
 from aeris.ai_setup import ManagedRuntime, load_choice, reset_endpoint
 from aeris.catalog_index import CatalogIndex
 from aeris.polish import compact_workspace
@@ -81,7 +82,7 @@ class Conversation(CompanionWindow):
     def __init__(self,hub,parent):
         self.hub=hub; self.history=[]; self.results=queue.Queue(); self.job=0
         self.busy=False; self.process=None; self.timer=None; self.closed=False
-        self.ai_runtime=ManagedRuntime(hub.settings.path); self.setup_cancel=None; self.setup_progress=queue.Queue()
+        self.ai_runtime=ManagedRuntime(hub.settings.path); self.setup_cancel=None; self.setup_progress=queue.Queue(); self.test_started=None; self.progress_running=False
         self.chat_allowed=False; self.kind=None; self.candidate=None
         self.voice=VoiceSession(); self.voice_timer=None
         self.vision=VisionSession(); self.vision_timer=None; self.vision_expiry=None; self.vision_badge=None
@@ -96,19 +97,20 @@ class Conversation(CompanionWindow):
         ttk.Label(w,text='Seu espaço de trabalho com IA local.',style='Experience.Muted.TLabel').pack(anchor='w',pady=(2,8))
         ai_header=ttk.Frame(w); ai_header.pack(fill='x',pady=(0,8))
         self.ai_state=tk.StringVar(w,'IA local · escolha um modelo')
-        ttk.Label(ai_header,textvariable=self.ai_state,style='Experience.Muted.TLabel').pack(side='left')
+        ttk.Label(ai_header,textvariable=self.ai_state,style='Experience.Connection.TLabel').pack(side='left')
         self.ai_toggle=ttk.Button(ai_header,text='Configurar IA',command=self.toggle_ai_settings)
         self.ai_toggle.pack(side='right')
         self.ai_settings=ttk.Frame(w,padding=10,style='Experience.Card.TFrame')
         setup=self.ai_settings
         ttk.Label(setup,text='Configure seu assistente',style='Experience.Card.TLabel',font=('Segoe UI',13,'bold')).pack(anchor='w')
-        ttk.Label(setup,text='Prepare a IA automaticamente ou selecione um modelo já instalado. Você controla os downloads.',wraplength=580,style='Experience.Card.TLabel').pack(anchor='w',pady=(4,6))
+        ttk.Label(setup,text='O Ollama executa a IA no seu computador. Prepare um modelo para conversar sem enviar suas mensagens à nuvem. Os downloads precisam da sua autorização.',wraplength=580,style='Experience.Card.TLabel').pack(anchor='w',pady=(4,6))
         modelrow=ttk.Frame(setup,style='Experience.Card.TFrame'); modelrow.pack(fill='x')
         self.ai_header=ai_header
         self.mode_status=tk.StringVar(w,'Pronto · microfone e tela desligados')
-        modes=ttk.Frame(w,padding=(8,4),style='Experience.Card.TFrame'); modes.pack(fill='x',pady=(0,8))
-        ttk.Label(modes,textvariable=self.mode_status,style='Experience.Card.TLabel',wraplength=520).pack(side='left',fill='x',expand=True)
+        modes=ttk.Frame(w,padding=(12,8),style='Experience.Card.TFrame'); modes.pack(fill='x',pady=(0,10))
+        ttk.Label(modes,textvariable=self.mode_status,style='Experience.Activity.TLabel',wraplength=600).pack(side='left',fill='x',expand=True)
         self.global_stop=ttk.Button(modes,text='Parar atividade',command=self.stop); self.global_stop.pack(side='right')
+        self.activity_progress=ttk.Progressbar(w,mode='indeterminate',style='Experience.Horizontal.TProgressbar')
         self.ai_open=False
         ttk.Label(modelrow,text='Modelo local').pack(side='left')
         self.model=tk.StringVar(w,'')
@@ -117,6 +119,7 @@ class Conversation(CompanionWindow):
         self.test_ai_button=ttk.Button(modelrow,text='Testar IA',command=self.test_ai); self.test_ai_button.pack(side='left',padx=4)
         self.ready_state=tk.StringVar(w,'Nenhum diagnóstico executado.')
         ttk.Label(setup,textvariable=self.ready_state,wraplength=580,style='Experience.Card.TLabel').pack(anchor='w',pady=(6,0))
+        ttk.Label(setup,text='Durante a preparação, as funções que usam a IA ou o mesmo recurso local ficam pausadas. Anotações e ferramentas independentes continuam disponíveis.',wraplength=580,style='Experience.Card.TLabel').pack(anchor='w',pady=(4,0))
         info=inspect_environment()
         voice='Windows detectado; voz e tela ainda não testadas.' if info.windows else 'Voz e tela nativas exigem Windows.'
         audio=('Áudio interno: dependências encontradas; modelo e dispositivo ainda não testados.' if info.loopback_candidate else 'Áudio interno: opcional, exige execução por código-fonte no Windows e dependências próprias.')
@@ -284,7 +287,8 @@ class Conversation(CompanionWindow):
         if not self.authorize(COMPANION_CHAT,'Enviar uma saudação fictícia ao Ollama local para testar a resposta? Nenhuma mensagem pessoal, imagem ou arquivo será enviado.'): return
         if not self.idle() or model!=self.model.get().strip(): return
         if self.start(COMPANION_CHAT,lambda:(model,check_model(model,chat_fn=chat)),kind='ready_test'):
-            self.ready_state.set('Testando resposta de texto do modelo local…'); self.status.set('Testando IA com mensagem fictícia.')
+            self.test_started=monotonic()
+            self.ready_state.set('Teste de texto · mensagem: '+TEST_PROMPT+' Aguardando resposta do modelo local.'); self.status.set('Teste de inferência em andamento. A primeira resposta pode demorar enquanto o modelo é carregado.')
     def configure_ai(self):
         if not self.idle(): return
         if not self.ai_open: self.toggle_ai_settings()
@@ -458,10 +462,19 @@ class Conversation(CompanionWindow):
         elif self.meeting_active: mode='Reunião · '+('áudio interno' if self.meeting_source=='internal' else 'microfone')
         elif self.busy and self.kind=='visual_question': mode='Voz + tela · ditando pergunta'
         elif self.busy and self.kind=='vision': mode='Tela · analisando captura'
+        elif self.busy and self.kind in ('ai_setup','ai_restore'): mode='IA local · preparação em andamento; funções dependentes pausadas'
+        elif self.busy and self.kind=='ready_test': mode='IA local · teste de resposta em andamento'
+        elif self.busy and self.cap==COMPANION_CHAT: mode='IA local · processando; aguarde ou interrompa'
         elif self.busy or self.capture_timer is not None: mode='Operação local em andamento'
         else: mode='Pronto · microfone e tela desligados'
         self.mode_status.set(mode)
+        if self.busy and not self.progress_running:
+            self.activity_progress.pack(fill='x',pady=(0,8),before=self.panes)
+            self.activity_progress.start(14); self.progress_running=True
+        elif not self.busy and self.progress_running:
+            self.activity_progress.stop(); self.activity_progress.pack_forget(); self.progress_running=False
         self.global_stop.configure(state='disabled' if free else 'normal')
+        self.model_entry.configure(state='normal' if free else 'disabled')
         self.test_ai_button.configure(state='normal' if free else 'disabled')
         self.setup_button.configure(state='normal' if free else 'disabled')
         self.monitor_button.configure(text='Parar acompanhamento' if self.vision.active else 'Acompanhar tela',state='normal' if free or self.vision.active else 'disabled')
@@ -950,11 +963,13 @@ class Conversation(CompanionWindow):
                 else: self.status.set('Pedido ou modelo alterado. Sugestão descartada.')
             else: self.status.set('Não foi possível obter uma sugestão válida do modelo local.')
         elif kind=='ready_test':
+            elapsed=f' ({monotonic()-self.test_started:.1f} s)' if self.test_started is not None else ''
+            self.test_started=None
             if valid and ok and result[0]==self.model.get().strip() and result[1]:
-                self.ready_state.set('Teste de texto aprovado. Visão e voz ainda precisam de verificação própria.')
-                self.status.set('O modelo respondeu ao teste fictício.')
+                self.ready_state.set('Teste de texto aprovado'+elapsed+'. Visão e voz ainda precisam de verificação própria.')
+                self.status.set('O modelo respondeu à saudação fictícia'+elapsed+'.')
             else:
-                self.ready_state.set('Teste não concluído. Confira modelo, Ollama e autorização.')
+                self.ready_state.set('Teste não concluído'+elapsed+'. Confira modelo, Ollama, autorização e recursos do computador.')
         elif kind=='models':
             if valid and ok and result:
                 self.model_entry.configure(values=result)
@@ -1024,6 +1039,8 @@ class Conversation(CompanionWindow):
     def destroyed(self,event):
         if event.widget is self.window:
             self.closed=True; self.meeting_active=False
+            if self.progress_running:
+                self.activity_progress.stop(); self.progress_running=False
             if self.setup_cancel is not None: self.setup_cancel.set()
             self.ai_runtime.close(); reset_endpoint()
             self.voice.stop(); self.vision.stop()
@@ -1068,13 +1085,15 @@ class ExperienceHub(Hub):
         sw=self.root.winfo_screenwidth(); sh=self.root.winfo_screenheight()
         width=min(1240,max(760,sw-44)); height=min(780,max(540,sh-100))
         self.root.geometry(f'{width}x{height}+16+12'); self.root.minsize(min(870,width),min(570,height))
-        side=ttk.Frame(self.root,padding=14,width=184,style='Experience.Side.TFrame'); side.pack(side='left',fill='y'); side.pack_propagate(False)
+        side=ttk.Frame(self.root,padding=16,width=208,style='Experience.Side.TFrame'); side.pack(side='left',fill='y'); side.pack_propagate(False)
         ttk.Label(side,text='aeris.',style='Experience.Brand.TLabel').pack(anchor='w')
         ttk.Label(side,text='Eficiência e\nSimplicidade.',style='Experience.Side.TLabel').pack(anchor='w',pady=(0,22))
+        ttk.Label(side,text='ESPAÇO DE TRABALHO',style='Experience.SideSection.TLabel').pack(anchor='w',pady=(0,8))
         self.nav_buttons={}
         for label,command in [('Conversar',lambda:self.navigate('chat')),('Tela',lambda:self.navigate('screen')),('Anotações',lambda:self.navigate('notes')),('Reuniões',lambda:self.navigate('meeting')),('Tarefas',lambda:self.open_friendly('Checklist')),('Ferramentas',lambda:self.navigate('catalog'))]:
             button=ttk.Button(side,text=label,command=command,style='Experience.Nav.TButton'); button.pack(fill='x',pady=2); self.nav_buttons[label]=button
-        ttk.Separator(side).pack(fill='x',pady=18)
+        ttk.Separator(side).pack(fill='x',pady=16)
+        ttk.Label(side,text='PREFERÊNCIAS',style='Experience.SideSection.TLabel').pack(anchor='w',pady=(0,8))
         ttk.Button(side,text='Configurações',command=self.open_appearance,style='Experience.Nav.TButton').pack(fill='x',pady=3)
         ttk.Button(side,text='Privacidade',command=self.open_privacy,style='Experience.Nav.TButton').pack(fill='x',pady=3)
         ttk.Button(side,text='Permissões',command=self.open_permissions,style='Experience.Nav.TButton').pack(fill='x',pady=3)
@@ -1189,6 +1208,10 @@ class ExperienceHub(Hub):
         style.configure('Experience.Brand.TLabel',font=('Segoe UI',30,'bold'),background='#193D30',foreground='#FFFFFF')
         style.configure('Experience.Side.TFrame',background='#193D30')
         style.configure('Experience.Side.TLabel',background='#193D30',foreground='#D9E7DF',font=('Segoe UI',10))
+        style.configure('Experience.SideSection.TLabel',background='#193D30',foreground='#A5D7B4',font=('Segoe UI',9,'bold'))
+        style.configure('Experience.Connection.TLabel',font=('Segoe UI',10,'bold'),foreground=p['forest'])
+        style.configure('Experience.Activity.TLabel',background=p['field'],foreground=p['deep'],font=('Segoe UI',10,'bold'))
+        style.configure('Experience.Horizontal.TProgressbar',background=p['forest'],troughcolor=p['soft'],bordercolor=p['muted'],thickness=6)
         style.configure('Experience.Card.TFrame',background=p['field'])
         style.configure('Experience.Card.TLabel',background=p['field'],foreground=p['deep'])
         style.configure('Experience.Detail.TLabel',background=p['field'],foreground=p['deep'],font=('Segoe UI',17,'bold'))

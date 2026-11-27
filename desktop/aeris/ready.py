@@ -4,6 +4,8 @@ import importlib.util
 import re
 import sys
 
+TEST_PROMPT = 'Responda com uma saudação curta em português.'
+
 
 @dataclass(frozen=True)
 class Readiness:
@@ -40,7 +42,7 @@ def check_model(model, *, chat_fn):
     """A fixed, synthetic request; no user history, screen or files."""
     if not isinstance(model,str) or not re.fullmatch(r'[A-Za-z0-9][A-Za-z0-9_.:-]{0,127}',model) or 'cloud' in model.lower():
         raise ValueError('Escolha um modelo local válido.')
-    response=chat_fn(model, (), 'Responda com uma saudação curta em português.')
+    response=chat_fn(model, (), TEST_PROMPT)
     if not isinstance(response,str) or not response.strip() or len(response)>4000:
         raise ValueError('Resposta de teste inválida.')
     return True
