@@ -53,6 +53,8 @@ class PolishTkTests(unittest.TestCase):
             configure(self.root,name)
             self.assertEqual(style.lookup('TEntry','bordercolor',('focus',)),p['focus'])
             self.assertEqual(style.lookup('TButton','focuscolor',('focus',)),p['focus'])
+            for control in ('TRadiobutton','TCheckbutton','Experience.Goal.TRadiobutton','Treeview'):
+                self.assertEqual(style.lookup(control,'focuscolor',('focus',)),p['focus'])
             self.assertEqual(style.lookup('Aeris.Muted.TLabel','foreground'),p['secondary'])
 
     def test_shared_styles_follow_theme(self):
