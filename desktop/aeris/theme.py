@@ -61,6 +61,9 @@ def configure(root, name):
     style.configure('TEntry', padding=(7,5))
     style.map('TEntry',bordercolor=[('focus',p['focus'])],lightcolor=[('focus',p['focus'])],darkcolor=[('focus',p['focus'])])
     style.map('TCombobox',bordercolor=[('focus',p['focus'])],lightcolor=[('focus',p['focus'])],darkcolor=[('focus',p['focus'])])
+    # Keep focus visible on keyboard-operated controls, including catalogue filters.
+    for control in ('TRadiobutton','TCheckbutton','Experience.Goal.TRadiobutton','Treeview'):
+        style.map(control,focuscolor=[('focus',p['focus'])])
     style.configure('Aeris.Muted.TLabel',foreground=p['secondary'])
     style.configure('TCombobox', padding=(7,5))
     style.configure('TNotebook', borderwidth=0)
