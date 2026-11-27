@@ -2,9 +2,11 @@
 const $=id=>document.getElementById(id);
 const num=s=>/^[+-]?(?:\d+(?:[.,]\d+)?|[.,]\d+)$/.test(s.trim())?Number(s.trim().replace(",",".")):NaN;
 const fmt=n=>Number.isFinite(n)?n.toLocaleString("pt-BR",{maximumSignificantDigits:12}):"—";
+const pct=n=>Number.isFinite(n)?n.toLocaleString("pt-BR",{maximumFractionDigits:2})+"%":"—";
 function convert(){const n=num($("cv").value);const units={speed:[n/3.6,"m/s"],length:[n*2.54,"cm"],mass:[n*.45359237,"kg"],temp:[n*9/5+32,"°F"],data:[n*1048576,"B"]};const [v,u]=units[$("unit").value];$("convert").textContent=Number.isFinite(v)&&($("unit").value!=="temp"||n>=-273.15)?fmt(v)+" "+u:"Valor inválido / Invalid value"}
-function finance(){const r=num($("revenue").value),c=num($("cost").value);$("finance").textContent=Number.isFinite(r)&&Number.isFinite(c)&&r>0&&c>=0?"Margem / Margin: "+fmt((r-c)/r*100)+"%\nMarkup: "+(c>0?fmt((r-c)/c*100)+"%":"—"):"Valor inválido / Invalid value"}
+function finance(){const r=num($("revenue").value),c=num($("cost").value);$("finance").textContent=Number.isFinite(r)&&Number.isFinite(c)&&r>0&&c>=0?"Margem / Margin: "+pct((r-c)/r*100)+"\nMarkup: "+(c>0?pct((r-c)/c*100):"—"):"Valor inválido / Invalid value"}
 ["cv","unit"].forEach(id=>$(id).addEventListener("input",convert));["revenue","cost"].forEach(id=>$(id).addEventListener("input",finance));convert();finance();
+$("source").addEventListener("input",()=>{$("review").textContent="";});
 const rules={ola:"olá",voce:"você",voces:"vocês",tambem:"também",nao:"não",reuniao:"reunião",concerteza:"com certeza"};
 $("revise").addEventListener("click",()=>{$("review").textContent=$("source").value.replace(/\b(ola|voce|voces|tambem|nao|reuniao|concerteza)\b/gi,w=>{const r=rules[w.toLowerCase()];return w===w.toUpperCase()?r.toUpperCase():w[0]===w[0].toUpperCase()?r[0].toUpperCase()+r.slice(1):r})});
 function progress(){const a=[...$("tasks").querySelectorAll("input")];$("progress").textContent=a.filter(x=>x.checked).length+"/"+a.length+" concluídas / complete"}
