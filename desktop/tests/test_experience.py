@@ -152,7 +152,7 @@ class ExperienceTests(unittest.TestCase):
                 self.assertTrue(description.strip()); self.assertTrue(example.strip())
                 self.assertEqual(self.h.detail_name.cget('text'),NAMES[module.name])
                 self.assertEqual(self.h.detail_desc.cget('text'),description)
-                self.assertEqual(self.h.example.cget('text'),'COMO USAR\\n'+example)
+                self.assertEqual(self.h.example.cget('text'),'COMO USAR\n'+example)
         self.assertEqual(self.h.recent_tools,[])
         for cap in (COMPANION_SCREEN,COMPANION_MIC,COMPANION_CHAT,COPILOT_RUN):
             self.assertFalse(self.h.permissions.allowed(cap))
