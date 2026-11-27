@@ -87,7 +87,14 @@ jobs:
               root.update()
               Path(os.environ["AERIS_EVIDENCE"],"experience-catalog.png").write_bytes(read_capture(capture_process()))
               hub.navigate('meeting'); root.update()
+              ui.meeting_text.insert('1.0','Exemplo fictício de transcrição.\nDecisão: revisar o documento na próxima reunião.')
+              ui.meeting_notes.insert('1.0','Exemplo fictício de anotação.')
+              root.update()
               Path(os.environ["AERIS_EVIDENCE"],"redesign-meeting.png").write_bytes(read_capture(capture_process()))
+              assert ui.meeting_text.winfo_ismapped() and ui.meeting_text.winfo_height() >= 60, 'Transcript editor clipped'
+              ui.meeting_editors.select(1); root.update()
+              Path(os.environ["AERIS_EVIDENCE"],"redesign-meeting-notes.png").write_bytes(read_capture(capture_process()))
+              assert ui.meeting_notes.winfo_ismapped() and ui.meeting_notes.winfo_height() >= 60, 'Notes editor clipped'
               hub.navigate('chat'); root.update()
               ui.voice_indicator.set('Prévia visual · microfone desligado')
               ui.voice_strip.pack(fill='x',before=ui.chatbox); root.update()

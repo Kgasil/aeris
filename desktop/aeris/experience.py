@@ -236,30 +236,33 @@ class Conversation(CompanionWindow):
         self.note=tk.Text(notes,wrap='word',height=7,relief='flat',highlightthickness=1,padx=8,pady=5); self.note.pack(fill='both',expand=True)
         ttk.Button(notes,text='Adicionar última resposta',command=self.append_answer).pack(fill='x',pady=(8,3))
         ttk.Button(notes,text='Salvar anotação na sessão',command=self.save_note).pack(fill='x')
-        meetings=ttk.Frame(tabs,padding=9); tabs.add(meetings,text='Reunião')
-        ttk.Label(meetings,text='Central de reuniões',style='Experience.Subtitle.TLabel').pack(anchor='w')
-        self.meeting_steps=ttk.Frame(meetings); self.meeting_steps.pack(fill='x',pady=(5,4))
+        meetings=ttk.Frame(tabs,padding=8); tabs.add(meetings,text='Reunião')
+        self.meeting_steps=ttk.Frame(meetings); self.meeting_steps.pack(fill='x',pady=(0,4))
         self.meeting_step_labels=[]
         for index,title in enumerate(('1  Preparar','2  Transcrever','3  Revisar')):
             step=ttk.Label(self.meeting_steps,text=title,style='Experience.Step.TLabel',anchor='center'); step.grid(row=0,column=index,sticky='ew',padx=2); self.meeting_steps.columnconfigure(index,weight=1); self.meeting_step_labels.append(step)
         self.meeting_status=tk.StringVar(w,'1 · Preparar áudio')
-        ttk.Label(meetings,textvariable=self.meeting_status,style='Experience.Section.TLabel',wraplength=310).pack(anchor='w',pady=(2,0))
+        self.meeting_status_label=ttk.Label(meetings,textvariable=self.meeting_status,style='Experience.Section.TLabel',wraplength=310); self.meeting_status_label.pack(anchor='w')
         self.meeting_detail=tk.StringVar(w,'Avise os participantes antes de iniciar.')
-        ttk.Label(meetings,textvariable=self.meeting_detail,style='Experience.Muted.TLabel',wraplength=310,justify='left').pack(anchor='w',pady=(2,4))
+        self.meeting_detail_label=ttk.Label(meetings,textvariable=self.meeting_detail,style='Experience.Muted.TLabel',wraplength=310,justify='left'); self.meeting_detail_label.pack(anchor='w',pady=(1,3))
         self.meeting_meter=ttk.Progressbar(meetings,maximum=100,mode='determinate',style='Experience.Horizontal.TProgressbar')
-        row=ttk.Frame(meetings); row.pack(fill='x',pady=3)
-        self.meeting_start=ttk.Button(row,text='Iniciar microfone',command=self.start_meeting,style='Experience.Primary.TButton'); self.meeting_start.pack(side='left',fill='x',expand=True)
-        self.meeting_loopback=ttk.Button(row,text='Áudio interno',command=self.start_internal_meeting); self.meeting_loopback.pack(side='left',fill='x',expand=True,padx=(4,0))
-        ttk.Label(meetings,text='Áudio interno: '+('experimental, exige modelo Whisper local.' if loopback_available() else 'indisponível nesta instalação.'),style='Experience.Muted.TLabel',wraplength=310).pack(anchor='w')
-        self.meeting_stop=ttk.Button(meetings,text='Parar transcrição',command=self.stop_meeting,style='Aeris.Stop.TButton'); self.meeting_stop.pack(fill='x',pady=3)
-        meeting_actions=ttk.Frame(meetings); meeting_actions.pack(side='bottom',fill='x',pady=(4,0))
-        self.minutes_button=ttk.Button(meeting_actions,text='Revisar ata com IA',command=self.meeting_summary,style='Experience.Primary.TButton'); self.minutes_button.pack(fill='x',pady=2)
-        self.meeting_save=ttk.Button(meeting_actions,text='Salvar texto na sessão',command=self.save_meeting); self.meeting_save.pack(fill='x',pady=2)
+        self.meeting_controls=ttk.Frame(meetings); self.meeting_controls.pack(fill='x',pady=3)
+        self.meeting_start=ttk.Button(self.meeting_controls,text='Iniciar microfone',command=self.start_meeting,style='Experience.Primary.TButton')
+        self.meeting_loopback=ttk.Button(self.meeting_controls,text='Áudio interno',command=self.start_internal_meeting)
+        self.meeting_stop=ttk.Button(self.meeting_controls,text='Parar transcrição',command=self.stop_meeting,style='Experience.Stop.TButton')
+        self.meeting_actions=ttk.Frame(meetings); self.meeting_actions.pack(side='bottom',fill='x',pady=(4,0))
+        self.minutes_button=ttk.Button(self.meeting_actions,text='Revisar ata com IA',command=self.meeting_summary,style='Experience.Primary.TButton')
+        self.meeting_save=ttk.Button(self.meeting_actions,text='Salvar texto na sessão',command=self.save_meeting)
+        self.meeting_wide=None; self.layout_meeting_controls(False)
+        meetings.bind('<Configure>',self.resize_meeting,add='+')
         self.meeting_editors=ttk.Notebook(meetings); self.meeting_editors.pack(fill='both',expand=True,pady=4); self.meeting_editors.enable_traversal()
         transcript_tab=ttk.Frame(self.meeting_editors,padding=3); self.meeting_editors.add(transcript_tab,text='Transcrição')
         notes_tab=ttk.Frame(self.meeting_editors,padding=3); self.meeting_editors.add(notes_tab,text='Minhas notas')
-        self.meeting_text=tk.Text(transcript_tab,wrap='word',height=5,relief='flat',highlightthickness=1,padx=8,pady=5); self.meeting_text.pack(fill='both',expand=True)
-        self.meeting_notes=tk.Text(notes_tab,wrap='word',height=5,relief='flat',highlightthickness=1,padx=8,pady=5); self.meeting_notes.pack(fill='both',expand=True)
+        self.meeting_text=tk.Text(transcript_tab,wrap='word',height=3,relief='flat',highlightthickness=1,padx=8,pady=5)
+        self.meeting_notes=tk.Text(notes_tab,wrap='word',height=3,relief='flat',highlightthickness=1,padx=8,pady=5)
+        for editor,tab in ((self.meeting_text,transcript_tab),(self.meeting_notes,notes_tab)):
+            scroll=ttk.Scrollbar(tab,orient='vertical',command=editor.yview); scroll.pack(side='right',fill='y')
+            editor.configure(yscrollcommand=scroll.set); editor.pack(side='left',fill='both',expand=True)
         for editor in (self.input,self.transcript,self.note,self.meeting_text,self.meeting_notes):
             editor.bind('<Tab>',lambda e:self.traverse_editor(e.widget,1))
             editor.bind('<Shift-Tab>',lambda e:self.traverse_editor(e.widget,-1))
@@ -278,6 +281,22 @@ class Conversation(CompanionWindow):
         target=widget.tk_focusNext() if direction==1 else widget.tk_focusPrev()
         if target is not None: target.focus_set()
         return 'break'
+    def resize_meeting(self,event):
+        if event.width<=1: return
+        width=max(180,event.width-20)
+        self.meeting_status_label.configure(wraplength=width)
+        self.meeting_detail_label.configure(wraplength=width)
+        self.layout_meeting_controls(width>=480)
+    def layout_meeting_controls(self,wide):
+        if wide==self.meeting_wide: return
+        self.meeting_wide=wide
+        for frame,controls in ((self.meeting_controls,(self.meeting_start,self.meeting_loopback,self.meeting_stop)),(self.meeting_actions,(self.minutes_button,self.meeting_save))):
+            for column in range(3): frame.columnconfigure(column,weight=0)
+            columns=len(controls) if wide else (2 if frame is self.meeting_controls else 1)
+            for column in range(columns): frame.columnconfigure(column,weight=1)
+            for index,control in enumerate(controls):
+                span=2 if not wide and frame is self.meeting_controls and index==2 else 1
+                control.grid(row=index//columns,column=index%columns,columnspan=span,sticky='ew',padx=2,pady=2)
     def resize_hero(self,event):
         # On short layouts, prioritize actions and message editor, not decoration.
         compact=event.height<110 or event.width<340
@@ -1155,7 +1174,7 @@ class Conversation(CompanionWindow):
                 state=self.voice_capture_state if self.busy and self.kind=='meeting_mic' and self.voice_capture_job==self.job else 'preparing'
                 label={'preparing':'Preparando microfone','Silence':'Microfone ativo · aguardando fala','Speech':'Microfone ativo · reconhecendo','Stopped':'Finalizando trecho'}.get(state,'Preparando microfone')
                 level=self.voice_level if state in ('Silence','Speech') else 0
-                if not self.meeting_meter.winfo_manager(): self.meeting_meter.pack(fill='x',before=self.meeting_stop,pady=2)
+                if not self.meeting_meter.winfo_manager(): self.meeting_meter.pack(fill='x',before=self.meeting_controls,pady=2)
                 self.meeting_meter.configure(value=level)
                 if self.meeting_badge is not None and self.meeting_badge.winfo_exists(): self.meeting_badge_meter.configure(value=level)
                 detail=(self.voice_partial[:180] if self.voice_partial else 'Ditado em blocos · pausas entre trechos.')
@@ -1175,7 +1194,7 @@ class Conversation(CompanionWindow):
                 self.meeting_detail.set('Nenhuma tarefa ou ata será salva automaticamente.')
             else:
                 self.meeting_status.set('1 · Preparar áudio')
-                self.meeting_detail.set('Avise todos os participantes. Não identifica interlocutores.')
+                self.meeting_detail.set('Avise os participantes. Sem identificação de interlocutores. '+('Áudio interno experimental: Whisper local.' if loopback_available() else 'Áudio interno indisponível.'))
 
     def meeting_content(self):
         transcript=self.meeting_text.get('1.0','end-1c')

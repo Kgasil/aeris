@@ -56,6 +56,11 @@ class ExperienceTests(unittest.TestCase):
         for control in (self.ui.meeting_start,self.ui.meeting_stop,self.ui.minutes_button,self.ui.meeting_save):
             self.assertTrue(control.winfo_ismapped(),control.cget('text'))
             self.assertGreaterEqual(control.winfo_height(),control.winfo_reqheight(),control.cget('text'))
+        self.assertTrue(self.ui.meeting_text.winfo_ismapped())
+        self.assertGreaterEqual(self.ui.meeting_text.winfo_height(),60,'Transcript editor must have usable space')
+        self.ui.meeting_editors.select(1); self.root.update()
+        self.assertTrue(self.ui.meeting_notes.winfo_ismapped())
+        self.assertGreaterEqual(self.ui.meeting_notes.winfo_height(),60,'Notes editor must have usable space')
         self.ui.meeting_phase='review'; self.ui.refresh_meeting_status()
         self.assertEqual(self.ui.meeting_step_labels[2].cget('style'),'Experience.CurrentStep.TLabel')
         self.assertFalse(self.h.permissions.allowed(COMPANION_MIC))
