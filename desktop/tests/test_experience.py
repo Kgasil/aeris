@@ -177,7 +177,7 @@ class ExperienceTests(unittest.TestCase):
         from types import SimpleNamespace
         self.h.navigate('catalog')
         self.h.goal.set('Analisar informações')
-        self.h.category_display.set('Negócios')
+        self.h.category.set('Business')
         self.h.query.set('dados')
         for width,row,column in ((400,1,1),(700,0,3),(400,1,1)):
             with self.subTest(width=width):
