@@ -1514,7 +1514,17 @@ class ExperienceHub(Hub):
         self.listbox.configure(yscrollcommand=sb.set,xscrollcommand=horizontal.set)
         self.listbox.bind('<<ListboxSelect>>',self.show_selected); self.listbox.bind('<Return>',self.open_selected); self.listbox.bind('<Double-1>',self.open_selected)
         self.listbox.bind('<Escape>',self.focus_catalog_search)
-        detail=ttk.Frame(body,padding=14,style='Experience.Card.TFrame'); detail.grid(row=0,column=1,sticky='nsew')
+        detail_host=ttk.Frame(body,style='Experience.Card.TFrame'); detail_host.grid(row=0,column=1,sticky='nsew')
+        self.detail_canvas=tk.Canvas(detail_host,highlightthickness=1,takefocus=True,width=180,height=120)
+        self.detail_canvas._aeris_scroll=True
+        detail_scroll=ttk.Scrollbar(detail_host,orient='vertical',command=self.detail_canvas.yview)
+        detail_scroll.pack(side='right',fill='y'); self.detail_canvas.pack(side='left',fill='both',expand=True)
+        self.detail_canvas.configure(yscrollcommand=detail_scroll.set)
+        detail=ttk.Frame(self.detail_canvas,padding=14,style='Experience.Card.TFrame')
+        self.detail_canvas_item=self.detail_canvas.create_window(0,0,anchor='nw',window=detail)
+        self.detail_canvas.bind('<Configure>',lambda e:self.detail_canvas.itemconfigure(self.detail_canvas_item,width=e.width))
+        for key,amount,unit in (('<Up>',-1,'units'),('<Down>',1,'units'),('<Prior>',-1,'pages'),('<Next>',1,'pages')):
+            self.detail_canvas.bind(key,lambda e,a=amount,u=unit:self.scroll_catalog_detail(a,u))
         self.detail_name=ttk.Label(detail,text='',style='Experience.Detail.TLabel',wraplength=250,justify='left'); self.detail_name.pack(anchor='w',fill='x')
         self.detail_status=ttk.Label(detail,text='',style='Experience.Card.TLabel',wraplength=215); self.detail_status.pack(anchor='w',pady=(4,12),fill='x')
         self.detail_desc=ttk.Label(detail,text='',style='Experience.Card.TLabel',wraplength=215,justify='left'); self.detail_desc.pack(anchor='w',fill='x')
@@ -1524,6 +1534,30 @@ class ExperienceHub(Hub):
         self.favorite_button=ttk.Button(detail,text='Adicionar aos favoritos')
         self.catalog_hint=ttk.Label(detail,text='',style='Experience.Card.TLabel',wraplength=215); self.catalog_hint.pack(anchor='w',side='bottom',pady=(6,0),fill='x')
         detail.bind('<Configure>',self.resize_catalog_detail,add='+')
+        detail.bind('<Configure>',lambda e:self.detail_canvas.configure(scrollregion=self.detail_canvas.bbox('all')),add='+')
+        for control in (self.toggle,self.launch,self.favorite_button):
+            control.bind('<FocusIn>',self.reveal_catalog_control,add='+')
+        for control in (self.detail_canvas,detail,self.detail_name,self.detail_status,self.detail_desc,self.example,self.catalog_hint,self.toggle,self.launch,self.favorite_button):
+            control.bind('<MouseWheel>',self.catalog_detail_wheel,add='+')
+            control.bind('<Button-4>',lambda e:self.scroll_catalog_detail(-1,'units'),add='+')
+            control.bind('<Button-5>',lambda e:self.scroll_catalog_detail(1,'units'),add='+')
+    def scroll_catalog_detail(self,amount,unit):
+        self.detail_canvas.yview_scroll(amount,unit)
+        return 'break'
+    def catalog_detail_wheel(self,event):
+        if event.delta: return self.scroll_catalog_detail(-1 if event.delta>0 else 1,'units')
+    def reveal_catalog_control(self,event):
+        canvas=self.detail_canvas
+        bounds=canvas.bbox('all')
+        if not bounds: return
+        height=bounds[3]-bounds[1]
+        visible=canvas.winfo_height()
+        if height<=visible or visible<=1: return
+        top=canvas.canvasy(0)
+        y=event.widget.winfo_y()
+        bottom=y+event.widget.winfo_height()
+        if y<top: canvas.yview_moveto(max(0,y/height))
+        elif bottom>top+visible: canvas.yview_moveto(max(0,(bottom-visible)/height))
     def resize_catalog_filters(self,event):
         if event.width>1: self.layout_catalog_filters(event.width<540)
     def layout_catalog_filters(self,compact):
