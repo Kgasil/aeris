@@ -36,13 +36,15 @@ class MeetingWindow:
         for label,var in [('Atividade',self.action_title),('Responsável',self.owner),('Prazo (AAAA-MM-DD)',self.due)]:
             row=ttk.Frame(tab); row.pack(fill='x'); ttk.Label(row,text=label,width=22).pack(side='left'); ttk.Entry(row,textvariable=var).pack(side='left',fill='x',expand=True)
         row=ttk.Frame(tab); row.pack(fill='x')
-        for label,cmd in [('Adicionar',self.add_action),('Carregar',self.load_action),('Atualizar',self.edit_action),('Alternar conclusão',self.toggle_action),('Excluir',self.delete_action),('Limpar campos',self.clear_action_fields)]: ttk.Button(row,text=label,command=cmd).pack(side='left',padx=2)
+        for i,(label,cmd) in enumerate([('Adicionar',self.add_action),('Carregar',self.load_action),('Atualizar',self.edit_action),('Alternar conclusão',self.toggle_action),('Excluir',self.delete_action),('Limpar campos',self.clear_action_fields)]):
+            row.columnconfigure(i%3,weight=1)
+            ttk.Button(row,text=label,command=cmd,style='Aeris.Primary.TButton' if label=='Adicionar' else 'Aeris.Stop.TButton' if label=='Excluir' else 'TButton').grid(row=i//3,column=i%3,sticky='ew',padx=2,pady=2)
         transfer=ttk.Frame(tab); transfer.pack(fill='x',pady=2)
         ttk.Button(transfer,text='Enviar para tarefas',command=lambda:self.transfer('Checklist')).pack(side='left',padx=2)
         ttk.Button(transfer,text='Criar lembrete',command=lambda:self.transfer('Reminder')).pack(side='left',padx=2)
         self.progress=tk.StringVar(w); ttk.Label(tab,textvariable=self.progress).pack(anchor='w')
         row=ttk.Frame(f); row.pack(fill='x',pady=4)
-        for label,cmd in [('Nova reunião',self.new),('Salvar reunião',self.save),('Excluir reunião',self.delete),('Prévia da ata salva',self.preview)]: ttk.Button(row,text=label,command=cmd,style='Aeris.Primary.TButton' if label=='Salvar reunião' else 'TButton').pack(side='left',padx=2)
+        for label,cmd in [('Nova reunião',self.new),('Salvar reunião',self.save),('Excluir reunião',self.delete),('Prévia da ata salva',self.preview)]: ttk.Button(row,text=label,command=cmd,style='Aeris.Primary.TButton' if label=='Salvar reunião' else 'Aeris.Stop.TButton' if label=='Excluir reunião' else 'TButton').pack(side='left',padx=2)
         self.status=tk.StringVar(w); ttk.Label(f,textvariable=self.status,wraplength=600).pack(anchor='w')
         self.preview_window=None; self.copy_button=None; self.render(); self.render_actions()
     def values(self): return (self.title.get(),self.day.get(),*(getattr(self,n).get('1.0','end-1c') for n in ('participants','agenda','notes')),tuple(self.actions))

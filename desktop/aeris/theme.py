@@ -142,3 +142,22 @@ def apply_tree(widget, name):
             widget.itemconfigure('all', fill=p['forest'])
     for child in widget.winfo_children():
         apply_tree(child, name)
+
+
+# Conservative visual normalization: no callbacks, layout managers, values or permissions change.
+# Explicit action labels only; ambiguous operations keep their original style.
+_STOP_LABELS=frozenset(('Cancelar','Parar','Parar reprodução','Parar transcrição','Excluir','Excluir lista','Excluir tarefa','Excluir reunião','Revogar acesso','Revogar todos os acessos','Apagar registro','Limpar sessão'))
+
+
+def polish_tool_window(window):
+    """Use the shared action hierarchy without changing any tool semantics."""
+    for widget in window.winfo_children():
+        if isinstance(widget,tk.Toplevel): continue
+        if isinstance(widget,ttk.Button) and widget.cget('style') in ('','TButton') and widget.cget('text') in _STOP_LABELS:
+            widget.configure(style='Aeris.Stop.TButton')
+        if isinstance(widget,ttk.Label) and widget.cget('style') in ('','TLabel'):
+            # Existing explicit heading fonts encode intent; leave custom previews alone.
+            font=str(widget.cget('font'))
+            if font in ('{Segoe UI} 21 bold','{Segoe UI} 18 bold','Segoe UI 21 bold','Segoe UI 18 bold'):
+                widget.configure(font=TYPE['title'])
+        polish_tool_window(widget)

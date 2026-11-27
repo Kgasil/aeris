@@ -110,6 +110,25 @@ class ExperienceTests(unittest.TestCase):
         self.assertFalse(self.h.permissions.allowed(COMPANION_MIC))
         self.assertFalse(self.h.permissions.allowed(COMPANION_SCREEN))
 
+    def test_catalog_favorites_recent_and_scope_preserve_permissions(self):
+        self.h.navigate('catalog')
+        self.h.toggle_favorite('Data')
+        self.assertIn('Data',self.h.settings.appearance.favorites)
+        self.h.catalog_scope.set('Favoritas'); self.h.refresh()
+        self.assertEqual([m.name for m in self.h.visible],['Data'])
+        self.h.open_friendly('Data'); self.root.update()
+        self.assertEqual(self.h.recent_tools[0],'Data')
+        self.assertFalse(self.h.permissions.allowed(COMPANION_MIC))
+        from aeris.permissions import DATA_READ
+        self.assertFalse(self.h.permissions.allowed(DATA_READ))
+        self.h.catalog_scope.set('Recentes'); self.h.refresh()
+        self.assertEqual([m.name for m in self.h.visible],['Data'])
+        self.h.toggle_favorite('Data')
+        self.assertNotIn('Data',self.h.settings.appearance.favorites)
+        self.h.clear_filters()
+        self.assertEqual(len(self.h.visible),50)
+        self.assertEqual(self.h.catalog_scope.get(),'Todas')
+
     def test_catalog_explains_all_existing_tools_and_advanced_controls_are_hidden(self):
         self.assertEqual(set(HELP),{m.name for m in self.h.modules})
         self.assertFalse(self.ui.advanced.winfo_ismapped())
