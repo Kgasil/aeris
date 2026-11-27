@@ -1,0 +1,368 @@
+name: Aeris controlled release handoff
+on:
+  push:
+    branches: [aeris-controlled-release-handoff]
+    paths:
+      - '.github/workflows/aeris-controlled-release-handoff.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: aeris-controlled-release-handoff
+  cancel-in-progress: false
+jobs:
+  candidate-build:
+    if: github.ref == 'refs/heads/aeris-controlled-release-handoff'
+    permissions:
+      contents: write
+    runs-on: windows-2022
+    timeout-minutes: 50
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065
+        with:
+          python-version: '3.14.10'
+          architecture: x64
+      - name: Verify official signed ClamAV definitions before compiling
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $tmp = Join-Path $env:RUNNER_TEMP ('aeris-preflight-' + [guid]::NewGuid().ToString('N'))
+          New-Item -ItemType Directory -Path $tmp | Out-Null
+          $zip = Join-Path $tmp 'clamav.zip'
+          Invoke-WebRequest -Uri 'https://github.com/Cisco-Talos/clamav/releases/download/clamav-1.5.5/clamav-1.5.5.win.x64.zip' -OutFile $zip -TimeoutSec 300
+          if ((Get-Item -LiteralPath $zip).Length -ne 225800047 -or (Get-FileHash -LiteralPath $zip -Algorithm SHA256).Hash.ToLowerInvariant() -cne '90169f5e551010bfbd0208b50d9b2fa8988ef396cccbd46b0cc8cae03e22a4a4') { throw 'Scanner archive mismatch' }
+          Expand-Archive -LiteralPath $zip -DestinationPath (Join-Path $tmp 'engine')
+          $fresh = @(Get-ChildItem -LiteralPath (Join-Path $tmp 'engine') -Recurse -File -Filter freshclam.exe)
+          if ($fresh.Count -ne 1) { throw 'Expected exactly one FreshClam' }
+          $db = Join-Path $tmp 'database'
+          New-Item -ItemType Directory -Path $db | Out-Null
+          $conf = Join-Path $tmp 'freshclam.conf'
+          @(('DatabaseDirectory "'+$db+'"'),'DatabaseMirror database.clamav.net','Checks 1') | Set-Content -LiteralPath $conf -Encoding ascii
+          & $fresh[0].FullName "--config-file=$conf" --stdout
+          if ($LASTEXITCODE -ne 0) { throw 'Official update failed; no build' }
+          $daily = @(Get-ChildItem -LiteralPath $db -File | Where-Object { $_.Name -in @('daily.cvd','daily.cld') })
+          if ($daily.Count -ne 1) { throw 'Daily definitions missing or ambiguous' }
+          $sig = Join-Path $fresh[0].DirectoryName 'sigtool.exe'
+          $info = (& $sig --info $daily[0].FullName | Out-String)
+          if ($LASTEXITCODE -ne 0 -or $info -notmatch '(?m)^Verification OK\.?\s*
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $evidence = Join-Path $PWD 'candidate-evidence'
+          New-Item -ItemType Directory -Path $evidence | Out-Null
+          $candidates = @()
+          if (${env:ProgramFiles(x86)}) { $candidates += (Join-Path ${env:ProgramFiles(x86)} 'Inno Setup 6\ISCC.exe') }
+          if ($env:LOCALAPPDATA) { $candidates += (Join-Path $env:LOCALAPPDATA 'Programs\Inno Setup 6\ISCC.exe') }
+          $iscc = $candidates | Where-Object { Test-Path -LiteralPath $_ -PathType Leaf } | Select-Object -First 1
+          $mode = if ($iscc) { 'installer-and-portable' } else { 'portable-only' }
+          [pscustomobject]@{commit=$env:GITHUB_SHA; mode=$mode; installer_compiler_found=[bool]$iscc; release_approved=$false} | ConvertTo-Json | Set-Content (Join-Path $evidence 'attempt.json')
+          try {
+            if ($iscc) {
+              & .\distribution\build.ps1 -Iscc $iscc *>&1 | Tee-Object -FilePath (Join-Path $evidence 'build.log')
+            } else {
+              & .\distribution\build.ps1 -PortableOnly *>&1 | Tee-Object -FilePath (Join-Path $evidence 'build.log')
+            }
+            $stages = @(Get-ChildItem -LiteralPath distribution/out -Directory)
+            if ($stages.Count -ne 1) { throw 'Expected exactly one build staging directory' }
+            $stage = $stages[0].FullName
+            foreach ($name in @('SHA256SUMS.txt','AERIS-EXE-SHA256.txt','build-info.json','build-dependencies.txt','runtime-reduction.json')) {
+              Copy-Item -LiteralPath (Join-Path $stage $name) -Destination $evidence
+            }
+            $files = @(Get-ChildItem -LiteralPath $stage -File | Where-Object { $_.Name -match '^Aeris-1\.1\.0rc1-Windows-x64-(Setup\.exe|portable\.zip)$' })
+            $expected = if ($iscc) { 2 } else { 1 }
+            if ($files.Count -ne $expected) { throw 'Candidate artifact count mismatch' }
+            $files | ForEach-Object { [pscustomobject]@{name=$_.Name; bytes=$_.Length; sha256=(Get-FileHash -LiteralPath $_.FullName -Algorithm SHA256).Hash.ToLowerInvariant()} } | ConvertTo-Json -AsArray | Set-Content (Join-Path $evidence 'artifact-inventory.json')
+            if (-not $iscc) { Write-Warning 'Installer not generated: Inno Setup absent. Portable build only.' }
+          } catch {
+            $_ | Out-String | Add-Content (Join-Path $evidence 'build.log')
+            throw
+          }
+      - name: Collect candidate assurance evidence
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $stages = @(Get-ChildItem -LiteralPath distribution/out -Directory)
+          if ($stages.Count -ne 1) { throw 'Expected a single fresh build' }
+          $e = Join-Path $PWD 'candidate-evidence'
+          & .\distribution\assurance.ps1 -Stage $stages[0].FullName -Evidence $e
+          python distribution/audit-dependencies.py (Join-Path $e 'build-dependencies.txt') (Join-Path $e 'dependency-advisories.json')
+          if ($LASTEXITCODE -ne 0) { throw 'Dependency advisory found or evidence incomplete; review required' }
+      - name: Homologate installer on disposable hosted runner
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $stage = @(Get-ChildItem -LiteralPath distribution/out -Directory)
+          if ($stage.Count -ne 1) { throw 'Expected a single fresh build' }
+          & .\distribution\homologate-candidate.ps1 -Stage $stage[0].FullName -Evidence (Join-Path $PWD 'candidate-evidence') -ConfirmDisposableRunner
+      - name: Independent ClamAV scan of exact candidate bytes
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $stages = @(Get-ChildItem -LiteralPath distribution/out -Directory)
+          if ($stages.Count -ne 1) { throw 'Expected a single fresh build' }
+          & .\distribution\scan-clamav.ps1 -Stage $stages[0].FullName -Evidence (Join-Path $PWD 'candidate-evidence')
+      - name: Require complete and current antivirus evidence
+        if: always()
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          python distribution/check-scan-evidence.py candidate-evidence $env:GITHUB_SHA
+          if ($LASTEXITCODE -ne 0) { throw 'Candidate antivirus evidence incomplete or failed; release remains blocked' }
+      - name: Preserve verified candidate in unpublished draft only
+        if: success()
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $e = Join-Path $PWD 'candidate-evidence'
+          $stages = @(Get-ChildItem -LiteralPath distribution/out -Directory)
+          if ($stages.Count -ne 1) { throw 'Ambiguous candidate staging' }
+          $stage = $stages[0].FullName
+          $inventory = @(Get-Content -LiteralPath (Join-Path $e 'artifact-inventory.json') -Raw | ConvertFrom-Json)
+          $assets = @()
+          foreach ($name in @('Aeris-1.1.0rc1-Windows-x64-Setup.exe','Aeris-1.1.0rc1-Windows-x64-portable.zip')) {
+            $entry = @($inventory | Where-Object { $_.name -ceq $name })
+            $p = Join-Path $stage $name
+            if ($entry.Count -ne 1 -or (Get-FileHash -LiteralPath $p -Algorithm SHA256).Hash.ToLowerInvariant() -cne $entry[0].sha256) { throw 'Final package hash mismatch' }
+            $assets += $p
+          }
+          $assets += (Join-Path $e 'SHA256SUMS.txt')
+          $assets += (Join-Path $e 'artifact-inventory.json')
+          $assets += (Join-Path $e 'assurance.json')
+          $assets += (Join-Path $e 'clamav-assurance.json')
+          $assets += (Join-Path $e 'dependency-advisories.json')
+          $tag = 'aeris-desktop-1.1.0rc1-controlled-' + $env:GITHUB_RUN_ID
+          $notes = 'Controlled unpublished candidate. Source baseline d6e03bc; workflow commit ' + $env:GITHUB_SHA + '. Complete CI antivirus gate passed for these exact hashes. Native acceptance, licenses, final quality score and all release gates still require independent review. Do not publish until all requirements are satisfied.'
+          gh release create $tag @assets --repo $env:GITHUB_REPOSITORY --target $env:GITHUB_SHA --title 'Aeris 1.1.0 RC1 - controlled candidate (draft)' --notes $notes --draft --prerelease
+          if ($LASTEXITCODE -ne 0) { throw 'Draft creation failed; no public release' }
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: aeris-candidate-build-evidence
+          path: candidate-evidence/
+          if-no-files-found: warn
+          retention-days: 14
+ -or $info -notmatch '(?m)^Build time:\s*(.+)
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $evidence = Join-Path $PWD 'candidate-evidence'
+          New-Item -ItemType Directory -Path $evidence | Out-Null
+          $candidates = @()
+          if (${env:ProgramFiles(x86)}) { $candidates += (Join-Path ${env:ProgramFiles(x86)} 'Inno Setup 6\ISCC.exe') }
+          if ($env:LOCALAPPDATA) { $candidates += (Join-Path $env:LOCALAPPDATA 'Programs\Inno Setup 6\ISCC.exe') }
+          $iscc = $candidates | Where-Object { Test-Path -LiteralPath $_ -PathType Leaf } | Select-Object -First 1
+          $mode = if ($iscc) { 'installer-and-portable' } else { 'portable-only' }
+          [pscustomobject]@{commit=$env:GITHUB_SHA; mode=$mode; installer_compiler_found=[bool]$iscc; release_approved=$false} | ConvertTo-Json | Set-Content (Join-Path $evidence 'attempt.json')
+          try {
+            if ($iscc) {
+              & .\distribution\build.ps1 -Iscc $iscc *>&1 | Tee-Object -FilePath (Join-Path $evidence 'build.log')
+            } else {
+              & .\distribution\build.ps1 -PortableOnly *>&1 | Tee-Object -FilePath (Join-Path $evidence 'build.log')
+            }
+            $stages = @(Get-ChildItem -LiteralPath distribution/out -Directory)
+            if ($stages.Count -ne 1) { throw 'Expected exactly one build staging directory' }
+            $stage = $stages[0].FullName
+            foreach ($name in @('SHA256SUMS.txt','AERIS-EXE-SHA256.txt','build-info.json','build-dependencies.txt','runtime-reduction.json')) {
+              Copy-Item -LiteralPath (Join-Path $stage $name) -Destination $evidence
+            }
+            $files = @(Get-ChildItem -LiteralPath $stage -File | Where-Object { $_.Name -match '^Aeris-1\.1\.0rc1-Windows-x64-(Setup\.exe|portable\.zip)$' })
+            $expected = if ($iscc) { 2 } else { 1 }
+            if ($files.Count -ne $expected) { throw 'Candidate artifact count mismatch' }
+            $files | ForEach-Object { [pscustomobject]@{name=$_.Name; bytes=$_.Length; sha256=(Get-FileHash -LiteralPath $_.FullName -Algorithm SHA256).Hash.ToLowerInvariant()} } | ConvertTo-Json -AsArray | Set-Content (Join-Path $evidence 'artifact-inventory.json')
+            if (-not $iscc) { Write-Warning 'Installer not generated: Inno Setup absent. Portable build only.' }
+          } catch {
+            $_ | Out-String | Add-Content (Join-Path $evidence 'build.log')
+            throw
+          }
+      - name: Collect candidate assurance evidence
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $stages = @(Get-ChildItem -LiteralPath distribution/out -Directory)
+          if ($stages.Count -ne 1) { throw 'Expected a single fresh build' }
+          $e = Join-Path $PWD 'candidate-evidence'
+          & .\distribution\assurance.ps1 -Stage $stages[0].FullName -Evidence $e
+          python distribution/audit-dependencies.py (Join-Path $e 'build-dependencies.txt') (Join-Path $e 'dependency-advisories.json')
+          if ($LASTEXITCODE -ne 0) { throw 'Dependency advisory found or evidence incomplete; review required' }
+      - name: Homologate installer on disposable hosted runner
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $stage = @(Get-ChildItem -LiteralPath distribution/out -Directory)
+          if ($stage.Count -ne 1) { throw 'Expected a single fresh build' }
+          & .\distribution\homologate-candidate.ps1 -Stage $stage[0].FullName -Evidence (Join-Path $PWD 'candidate-evidence') -ConfirmDisposableRunner
+      - name: Independent ClamAV scan of exact candidate bytes
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $stages = @(Get-ChildItem -LiteralPath distribution/out -Directory)
+          if ($stages.Count -ne 1) { throw 'Expected a single fresh build' }
+          & .\distribution\scan-clamav.ps1 -Stage $stages[0].FullName -Evidence (Join-Path $PWD 'candidate-evidence')
+      - name: Require complete and current antivirus evidence
+        if: always()
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          python distribution/check-scan-evidence.py candidate-evidence $env:GITHUB_SHA
+          if ($LASTEXITCODE -ne 0) { throw 'Candidate antivirus evidence incomplete or failed; release remains blocked' }
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: aeris-candidate-build-evidence
+          path: candidate-evidence/
+          if-no-files-found: warn
+          retention-days: 14
+) { throw 'Signed database verification failed' }
+          Write-Host $info
+          $raw = $Matches[1].Trim() -replace '([+-]\d{2})(\d{2})
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $evidence = Join-Path $PWD 'candidate-evidence'
+          New-Item -ItemType Directory -Path $evidence | Out-Null
+          $candidates = @()
+          if (${env:ProgramFiles(x86)}) { $candidates += (Join-Path ${env:ProgramFiles(x86)} 'Inno Setup 6\ISCC.exe') }
+          if ($env:LOCALAPPDATA) { $candidates += (Join-Path $env:LOCALAPPDATA 'Programs\Inno Setup 6\ISCC.exe') }
+          $iscc = $candidates | Where-Object { Test-Path -LiteralPath $_ -PathType Leaf } | Select-Object -First 1
+          $mode = if ($iscc) { 'installer-and-portable' } else { 'portable-only' }
+          [pscustomobject]@{commit=$env:GITHUB_SHA; mode=$mode; installer_compiler_found=[bool]$iscc; release_approved=$false} | ConvertTo-Json | Set-Content (Join-Path $evidence 'attempt.json')
+          try {
+            if ($iscc) {
+              & .\distribution\build.ps1 -Iscc $iscc *>&1 | Tee-Object -FilePath (Join-Path $evidence 'build.log')
+            } else {
+              & .\distribution\build.ps1 -PortableOnly *>&1 | Tee-Object -FilePath (Join-Path $evidence 'build.log')
+            }
+            $stages = @(Get-ChildItem -LiteralPath distribution/out -Directory)
+            if ($stages.Count -ne 1) { throw 'Expected exactly one build staging directory' }
+            $stage = $stages[0].FullName
+            foreach ($name in @('SHA256SUMS.txt','AERIS-EXE-SHA256.txt','build-info.json','build-dependencies.txt','runtime-reduction.json')) {
+              Copy-Item -LiteralPath (Join-Path $stage $name) -Destination $evidence
+            }
+            $files = @(Get-ChildItem -LiteralPath $stage -File | Where-Object { $_.Name -match '^Aeris-1\.1\.0rc1-Windows-x64-(Setup\.exe|portable\.zip)$' })
+            $expected = if ($iscc) { 2 } else { 1 }
+            if ($files.Count -ne $expected) { throw 'Candidate artifact count mismatch' }
+            $files | ForEach-Object { [pscustomobject]@{name=$_.Name; bytes=$_.Length; sha256=(Get-FileHash -LiteralPath $_.FullName -Algorithm SHA256).Hash.ToLowerInvariant()} } | ConvertTo-Json -AsArray | Set-Content (Join-Path $evidence 'artifact-inventory.json')
+            if (-not $iscc) { Write-Warning 'Installer not generated: Inno Setup absent. Portable build only.' }
+          } catch {
+            $_ | Out-String | Add-Content (Join-Path $evidence 'build.log')
+            throw
+          }
+      - name: Collect candidate assurance evidence
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $stages = @(Get-ChildItem -LiteralPath distribution/out -Directory)
+          if ($stages.Count -ne 1) { throw 'Expected a single fresh build' }
+          $e = Join-Path $PWD 'candidate-evidence'
+          & .\distribution\assurance.ps1 -Stage $stages[0].FullName -Evidence $e
+          python distribution/audit-dependencies.py (Join-Path $e 'build-dependencies.txt') (Join-Path $e 'dependency-advisories.json')
+          if ($LASTEXITCODE -ne 0) { throw 'Dependency advisory found or evidence incomplete; review required' }
+      - name: Homologate installer on disposable hosted runner
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $stage = @(Get-ChildItem -LiteralPath distribution/out -Directory)
+          if ($stage.Count -ne 1) { throw 'Expected a single fresh build' }
+          & .\distribution\homologate-candidate.ps1 -Stage $stage[0].FullName -Evidence (Join-Path $PWD 'candidate-evidence') -ConfirmDisposableRunner
+      - name: Independent ClamAV scan of exact candidate bytes
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $stages = @(Get-ChildItem -LiteralPath distribution/out -Directory)
+          if ($stages.Count -ne 1) { throw 'Expected a single fresh build' }
+          & .\distribution\scan-clamav.ps1 -Stage $stages[0].FullName -Evidence (Join-Path $PWD 'candidate-evidence')
+      - name: Require complete and current antivirus evidence
+        if: always()
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          python distribution/check-scan-evidence.py candidate-evidence $env:GITHUB_SHA
+          if ($LASTEXITCODE -ne 0) { throw 'Candidate antivirus evidence incomplete or failed; release remains blocked' }
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: aeris-candidate-build-evidence
+          path: candidate-evidence/
+          if-no-files-found: warn
+          retention-days: 14
+,'$1:$2'
+          $date = [DateTimeOffset]::ParseExact($raw,'dd MMM yyyy HH:mm zzz',[Globalization.CultureInfo]::InvariantCulture)
+          $age = ([DateTimeOffset]::UtcNow-$date).TotalSeconds
+          if ($age -lt 0 -or $age -gt 86400) { throw 'Official definitions stale; no compilation or release' }
+          Write-Host 'Signed daily definitions fresh; normal build and complete scans still required.'
+      - name: Build candidate without publishing
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $evidence = Join-Path $PWD 'candidate-evidence'
+          New-Item -ItemType Directory -Path $evidence | Out-Null
+          $candidates = @()
+          if (${env:ProgramFiles(x86)}) { $candidates += (Join-Path ${env:ProgramFiles(x86)} 'Inno Setup 6\ISCC.exe') }
+          if ($env:LOCALAPPDATA) { $candidates += (Join-Path $env:LOCALAPPDATA 'Programs\Inno Setup 6\ISCC.exe') }
+          $iscc = $candidates | Where-Object { Test-Path -LiteralPath $_ -PathType Leaf } | Select-Object -First 1
+          $mode = if ($iscc) { 'installer-and-portable' } else { 'portable-only' }
+          [pscustomobject]@{commit=$env:GITHUB_SHA; mode=$mode; installer_compiler_found=[bool]$iscc; release_approved=$false} | ConvertTo-Json | Set-Content (Join-Path $evidence 'attempt.json')
+          try {
+            if ($iscc) {
+              & .\distribution\build.ps1 -Iscc $iscc *>&1 | Tee-Object -FilePath (Join-Path $evidence 'build.log')
+            } else {
+              & .\distribution\build.ps1 -PortableOnly *>&1 | Tee-Object -FilePath (Join-Path $evidence 'build.log')
+            }
+            $stages = @(Get-ChildItem -LiteralPath distribution/out -Directory)
+            if ($stages.Count -ne 1) { throw 'Expected exactly one build staging directory' }
+            $stage = $stages[0].FullName
+            foreach ($name in @('SHA256SUMS.txt','AERIS-EXE-SHA256.txt','build-info.json','build-dependencies.txt','runtime-reduction.json')) {
+              Copy-Item -LiteralPath (Join-Path $stage $name) -Destination $evidence
+            }
+            $files = @(Get-ChildItem -LiteralPath $stage -File | Where-Object { $_.Name -match '^Aeris-1\.1\.0rc1-Windows-x64-(Setup\.exe|portable\.zip)$' })
+            $expected = if ($iscc) { 2 } else { 1 }
+            if ($files.Count -ne $expected) { throw 'Candidate artifact count mismatch' }
+            $files | ForEach-Object { [pscustomobject]@{name=$_.Name; bytes=$_.Length; sha256=(Get-FileHash -LiteralPath $_.FullName -Algorithm SHA256).Hash.ToLowerInvariant()} } | ConvertTo-Json -AsArray | Set-Content (Join-Path $evidence 'artifact-inventory.json')
+            if (-not $iscc) { Write-Warning 'Installer not generated: Inno Setup absent. Portable build only.' }
+          } catch {
+            $_ | Out-String | Add-Content (Join-Path $evidence 'build.log')
+            throw
+          }
+      - name: Collect candidate assurance evidence
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $stages = @(Get-ChildItem -LiteralPath distribution/out -Directory)
+          if ($stages.Count -ne 1) { throw 'Expected a single fresh build' }
+          $e = Join-Path $PWD 'candidate-evidence'
+          & .\distribution\assurance.ps1 -Stage $stages[0].FullName -Evidence $e
+          python distribution/audit-dependencies.py (Join-Path $e 'build-dependencies.txt') (Join-Path $e 'dependency-advisories.json')
+          if ($LASTEXITCODE -ne 0) { throw 'Dependency advisory found or evidence incomplete; review required' }
+      - name: Homologate installer on disposable hosted runner
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $stage = @(Get-ChildItem -LiteralPath distribution/out -Directory)
+          if ($stage.Count -ne 1) { throw 'Expected a single fresh build' }
+          & .\distribution\homologate-candidate.ps1 -Stage $stage[0].FullName -Evidence (Join-Path $PWD 'candidate-evidence') -ConfirmDisposableRunner
+      - name: Independent ClamAV scan of exact candidate bytes
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $stages = @(Get-ChildItem -LiteralPath distribution/out -Directory)
+          if ($stages.Count -ne 1) { throw 'Expected a single fresh build' }
+          & .\distribution\scan-clamav.ps1 -Stage $stages[0].FullName -Evidence (Join-Path $PWD 'candidate-evidence')
+      - name: Require complete and current antivirus evidence
+        if: always()
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          python distribution/check-scan-evidence.py candidate-evidence $env:GITHUB_SHA
+          if ($LASTEXITCODE -ne 0) { throw 'Candidate antivirus evidence incomplete or failed; release remains blocked' }
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: aeris-candidate-build-evidence
+          path: candidate-evidence/
+          if-no-files-found: warn
+          retention-days: 14
