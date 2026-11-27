@@ -6,7 +6,7 @@ import sys
 
 PALETTES = {
     'Claro': dict(air='#F5F7F6', soft='#E8EEEA', natural='#8FC7A3', forest='#30694F', deep='#203D30', muted='#BCCBC2', secondary='#476553', focus='#30694F', field='#FFFFFF', selected='#DCEFE3', select_text='#285640', primary='#285640', primary_hover='#397557', primary_text='#FFFFFF', sidebar='#193D30', sidebar_text='#E3F1E7', sidebar_muted='#A5D7B4', sidebar_hover='#37614E', nav_selected='#DCEFE3', nav_text='#193D30', success='#286446', info='#245D8C', warning='#805500', danger='#A52E36'),
-    'Escuro': dict(air='#101A15', soft='#23382C', natural='#8FC7A3', forest='#A5D7B4', deep='#E3F1E7', muted='#456453', secondary='#B4CCBD', focus='#A5D7B4', field='#192D23', selected='#345641', select_text='#F0FAF3', primary='#8FC7A3', primary_hover='#A5D7B4', primary_text='#193D30', sidebar='#192D23', sidebar_text='#E3F1E7', sidebar_muted='#A5D7B4', sidebar_hover='#294D3A', nav_selected='#345641', nav_text='#F0FAF3', success='#A5D7B4', info='#9EC9F4', warning='#F2C56E', danger='#FFB4B7'),
+    'Escuro': dict(air='#101614', soft='#27332E', natural='#8FC7A3', forest='#A5D7B4', deep='#E3F1E7', muted='#52665C', secondary='#B4CCBD', focus='#A5D7B4', field='#1B2521', selected='#345641', select_text='#F0FAF3', primary='#8FC7A3', primary_hover='#A5D7B4', primary_text='#193D30', sidebar='#14201B', sidebar_text='#E3F1E7', sidebar_muted='#A5D7B4', sidebar_hover='#294D3A', nav_selected='#345641', nav_text='#F0FAF3', success='#A5D7B4', info='#9EC9F4', warning='#F2C56E', danger='#FFB4B7'),
 }
 
 SPACE = (4, 8, 12, 16, 24, 32)
