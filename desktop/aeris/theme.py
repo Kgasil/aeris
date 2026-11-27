@@ -140,6 +140,8 @@ def apply_tree(widget, name):
             widget._aeris_bg_role = background_role(old)
         if not isinstance(widget, tk.Canvas) or getattr(widget,'_aeris_logo',False) or getattr(widget,'_aeris_scroll',False):
             widget.configure(bg=p[widget._aeris_bg_role])
+        if isinstance(widget, tk.Canvas) and getattr(widget,'_aeris_scroll',False):
+            widget.configure(highlightbackground=p['muted'],highlightcolor=p['focus'])
         if isinstance(widget, tk.Label): widget.configure(fg=p['deep'])
         if getattr(widget,'_aeris_logo',False):
             widget.itemconfigure('all', fill=p['forest'])
