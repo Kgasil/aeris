@@ -115,8 +115,10 @@ if ($p.action -eq 'listen') {
 } elseif ($p.action -eq 'speak') {
     $s=New-Object System.Speech.Synthesis.SpeechSynthesizer
     try {
-        $v=$s.GetInstalledVoices() | Where-Object { $_.Enabled -and $_.VoiceInfo.Gender -eq 'Male' -and $_.VoiceInfo.Culture.Name -eq 'pt-BR' } | Select-Object -First 1
-        if (-not $v) { throw 'No male pt-BR voice' }
+        $voices=@($s.GetInstalledVoices() | Where-Object { $_.Enabled -and $_.VoiceInfo.Culture.Name -eq 'pt-BR' })
+        $v=$voices | Where-Object { $_.VoiceInfo.Gender -eq 'Male' } | Select-Object -First 1
+        if (-not $v) { $v=$voices | Select-Object -First 1 }
+        if (-not $v) { throw 'No pt-BR voice' }
         $s.SelectVoice($v.VoiceInfo.Name); $s.Rate=0; $s.Volume=80
         $s.SetOutputToDefaultAudioDevice(); $s.Speak([string]$p.text)
     } finally { $s.Dispose() }

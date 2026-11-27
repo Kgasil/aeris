@@ -41,6 +41,22 @@ class ExperienceTests(unittest.TestCase):
         self.h.permissions.revoke_all()
         self.assertFalse(self.h.permissions.allowed(COMPANION_MIC))
 
+    def test_microphone_feedback_requires_current_authorized_capture(self):
+        self.h.permissions.set(COMPANION_MIC,True)
+        self.ui.busy=True; self.ui.kind='voice_dictation'; self.ui.cap=COMPANION_MIC
+        self.ui.voice_capture_job=self.ui.job
+        self.ui.voice_events.put(('level',43)); self.ui.voice_events.put(('partial','Pergunta fictícia'))
+        self.ui.drain_voice_feedback()
+        self.assertEqual(self.ui.voice_level,43)
+        self.assertIn('Pergunta fictícia',self.ui.voice_live.get())
+        self.h.permissions.set(COMPANION_MIC,False)
+        self.ui.voice_events.put(('partial','Atrasado'))
+        self.ui.drain_voice_feedback()
+        self.assertNotIn('Atrasado',self.ui.voice_live.get())
+        self.ui.results.put((self.ui.job-1,True,('ok','Atrasado')))
+        self.ui.poll()
+        self.assertNotIn('Atrasado',self.ui.input.get('1.0','end'))
+
     def test_initial_layout_and_portuguese_search(self):
         self.assertEqual(self.h.view,'chat'); self.assertTrue(self.ui.window.winfo_ismapped())
         self.assertFalse(self.h.legacy_side.winfo_ismapped()); self.assertFalse(self.h.catalog.winfo_ismapped())

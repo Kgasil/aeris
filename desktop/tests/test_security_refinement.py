@@ -41,11 +41,11 @@ class SecurityRefinement(TestCase):
         self.h.open_permissions(); ui=self.h.permissions_window
         before=self.h.permissions.revision
         def revoke(*args,**kwargs): self.h.permissions.revoke_all(); return True
-        with patch('aeris.permissions_ui.messagebox.askyesno',side_effect=revoke): ui.toggle(SEARCH_CAPTURE)
+        with patch('aeris.permissions_ui.ask_permission',side_effect=revoke): ui.toggle(SEARCH_CAPTURE)
         self.assertGreater(self.h.permissions.revision,before)
         self.assertFalse(self.h.permissions.allowed(SEARCH_CAPTURE))
         self.assertIn('alteradas',ui.status.get())
-        with patch('aeris.permissions_ui.messagebox.askyesno',return_value=True): ui.toggle(SEARCH_CAPTURE)
+        with patch('aeris.permissions_ui.ask_permission',return_value=True): ui.toggle(SEARCH_CAPTURE)
         self.assertTrue(self.h.permissions.allowed(SEARCH_CAPTURE))
         self.assertTrue(ui.summary.get().startswith('1/'))
         ui.toggle(SEARCH_CAPTURE)
