@@ -42,6 +42,18 @@ try {
         $scan['signature_version']=$status.AntivirusSignatureVersion
         $scan['signature_last_updated']=$status.AntivirusSignatureLastUpdated
         if (-not $status.AntivirusEnabled -or -not $status.AMServiceEnabled) { throw 'Defender inactive; no settings changed' }
+        $scan['signature_before_update']=$status.AntivirusSignatureVersion
+        Update-MpSignature -ErrorAction Stop | Out-Null
+        $status=Get-MpComputerStatus -ErrorAction Stop
+        if (-not $status.AntivirusEnabled -or -not $status.AMServiceEnabled) { throw 'Defender inactive after update' }
+        $scan['engine_version']=$status.AMEngineVersion
+        $scan['signature_version']=$status.AntivirusSignatureVersion
+        $scan['signature_last_updated']=$status.AntivirusSignatureLastUpdated
+        if (-not $status.AntivirusSignatureLastUpdated) { throw 'Defender definition timestamp missing' }
+        $age=([DateTime]::UtcNow-([DateTime]$status.AntivirusSignatureLastUpdated).ToUniversalTime()).TotalSeconds
+        $scan['definition_age_seconds']=[math]::Round($age)
+        if ($age -lt 0 -or $age -gt 86400) { throw 'Defender definitions not within 24 hours; scan blocked' }
+        $scan['definitions_fresh']=$true
         $platform=Join-Path $env:ProgramData 'Microsoft\Windows Defender\Platform'
         $cmd=$null
         if (Test-Path -LiteralPath $platform) {
