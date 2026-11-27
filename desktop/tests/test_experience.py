@@ -15,8 +15,10 @@ from aeris.screen_context import validate_png,describe_screen,installed_models
 from aeris.experience_help import HELP
 
 def tiny_png():
-    r=tk.PhotoImage(width=2,height=2); r.put('#285640',to=(0,0,2,2))
-    return base64.b64decode(r.data(format='png')) if not isinstance(r.data(format='png'),bytes) else r.data(format='png')
+    import zlib
+    def chunk(kind,data):
+        return struct.pack('>I',len(data))+kind+data+struct.pack('>I',zlib.crc32(kind+data)&0xffffffff)
+    return b'\x89PNG\r\n\x1a\n'+chunk(b'IHDR',struct.pack('>IIBBBBB',2,2,8,2,0,0,0))+chunk(b'IDAT',zlib.compress((b'\0'+b'\x28\x56\x40'*2)*2))+chunk(b'IEND',b'')
 
 class ExperienceTests(unittest.TestCase):
     def setUp(self):
@@ -179,6 +181,21 @@ class ExperienceTests(unittest.TestCase):
         self.ui.screen=b'synthetic'
         self.h.permissions.set(COMPANION_SCREEN,False)
         self.assertIsNone(self.ui.screen)
+    def test_meeting_notes_stay_separate_and_are_saved_explicitly(self):
+        self.ui.meeting_text.insert('1.0','Transcrição fictícia')
+        self.ui.meeting_notes.insert('1.0','Minha nota')
+        self.assertEqual(self.ui.meeting_content(),'Transcrição fictícia\n\nNotas manuais:\nMinha nota')
+        self.assertIsNone(self.h.meeting_store)
+        with patch('aeris.experience.messagebox.askyesno',return_value=False):
+            self.ui.save_meeting()
+        self.assertIsNone(self.h.meeting_store)
+        with patch('aeris.experience.messagebox.askyesno',return_value=True):
+            self.ui.save_meeting()
+        self.assertIn('Minha nota',self.h.meeting_store.list()[0].notes)
+        self.ui.clear_workspace()
+        self.assertEqual(self.ui.meeting_notes.get('1.0','end-1c'),'')
+        self.assertEqual(self.ui.meeting_text.get('1.0','end-1c'),'')
+
     def test_meeting_requires_consent_and_stop_discards_late_result(self):
         with patch('aeris.experience.ask_permission',return_value=False),patch('aeris.experience.ask_confirmation',return_value=False),patch('aeris.experience.messagebox.askyesno',return_value=False),patch('aeris.experience.speech_process') as mic:
             self.ui.start_meeting(); mic.assert_not_called()
