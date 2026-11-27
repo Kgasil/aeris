@@ -1179,9 +1179,10 @@ class Conversation(CompanionWindow):
         if not model:
             if not self.ai_open: self.toggle_ai_settings()
             self.configure_ai(); return
-        if not self.authorize(COMPANION_CHAT,'Enviar a transcrição selecionada ao modelo local para gerar uma ata? Não inclui histórico.'): return
+        scope='Somente o trecho selecionado da transcrição, sem notas manuais.' if text!=source.strip() else 'Transcrição e notas manuais, quando presentes.'
+        if not self.authorize(COMPANION_CHAT,'Gerar uma ata com o modelo local? '+scope+' Não inclui histórico.'): return
         revision=self.hub.permissions.revision
-        if not ask_confirmation(self.hub.root,self.hub.settings.appearance.theme,'Gerar ata?', 'Enviar o texto revisado ao modelo local? A ata poderá conter erros e será revisada antes de salvar.'): return
+        if not ask_confirmation(self.hub.root,self.hub.settings.appearance.theme,'Gerar ata?', scope+' Enviar ao modelo local '+str(len(text))+' caracteres? A ata poderá conter erros e será revisada antes de salvar.'): return
         if self.closed or self.busy or revision!=self.hub.permissions.revision or source!=self.meeting_content() or model!=self.model.get().strip(): return
         self.close_meeting_review()
         if self.start(COMPANION_CHAT,lambda:(source,model,prepare_minutes(model,text)),kind='minutes'):
