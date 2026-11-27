@@ -173,6 +173,25 @@ class ExperienceTests(unittest.TestCase):
             focus.assert_called_once_with()
         self.assertEqual(self.h.query.get(),'Anotações')
 
+    def test_responsive_catalog_filters_preserve_selection_and_query(self):
+        from types import SimpleNamespace
+        self.h.navigate('catalog')
+        self.h.goal.set('Analisar informações')
+        self.h.category_display.set('Negócios')
+        self.h.query.set('dados')
+        for width,row,column in ((400,1,1),(700,0,3),(400,1,1)):
+            with self.subTest(width=width):
+                self.h.resize_catalog_filters(SimpleNamespace(width=width))
+                self.assertEqual(int(self.h.category_box.grid_info()['row']),row)
+                self.assertEqual(int(self.h.category_box.grid_info()['column']),column)
+                self.assertEqual(self.h.goal.get(),'Analisar informações')
+                self.assertEqual(self.h.category_display.get(),'Negócios')
+                self.assertEqual(self.h.query.get(),'dados')
+        self.assertTrue(self.h.listbox.cget('xscrollcommand'))
+        with patch.object(self.h.search,'focus_set') as focus:
+            self.assertEqual(self.h.focus_catalog(),'break')
+            self.assertTrue(focus.called)
+
     def test_discover_models_excludes_remote_and_cloud(self):
         class Response:
             status=200
