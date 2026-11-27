@@ -14,7 +14,7 @@ from aeris.voice_session import VoiceSession, MAX_TURNS
 from aeris.vision_session import VisionSession, INTERVAL_MS, MAX_SECONDS, MAX_FRAMES
 from aeris.visual_question import VisualQuestion
 from aeris.ready import inspect_environment, model_selection, check_model
-from aeris.ai_setup import ManagedRuntime, load_choice, reset_endpoint
+from aeris.ai_setup import ManagedRuntime, load_choice, reset_endpoint, setup_stage
 from aeris.catalog_index import CatalogIndex
 from aeris.polish import compact_workspace
 from aeris.meeting_audio import available as loopback_available, model_path, start_loopback, read_loopback, BLOCK_SECONDS
@@ -110,6 +110,15 @@ class Conversation(CompanionWindow):
         ttk.Label(modes,textvariable=self.mode_status,style='Experience.Card.TLabel',wraplength=520).pack(side='left',fill='x',expand=True)
         self.global_stop=ttk.Button(modes,text='Parar atividade',command=self.stop); self.global_stop.pack(side='right')
         self.ai_open=False
+        self.setup_panel=ttk.Frame(w,padding=(10,8),style='Experience.Card.TFrame')
+        self.setup_step=tk.StringVar(w,'Verificando requisitos…')
+        ttk.Label(self.setup_panel,textvariable=self.setup_step,style='Experience.Card.TLabel',wraplength=560).pack(anchor='w')
+        self.setup_bar=ttk.Progressbar(self.setup_panel,mode='determinate',maximum=4,value=0)
+        self.setup_bar.pack(fill='x',pady=(5,3))
+        self.setup_activity=ttk.Progressbar(self.setup_panel,mode='indeterminate',length=160)
+        self.setup_activity.pack(fill='x',pady=(0,4))
+        ttk.Label(self.setup_panel,text='Progresso por etapas, não por bytes. Conversa, voz, tela e outras operações do assistente ficam temporariamente indisponíveis durante a configuração. Seu rascunho permanece editável.',wraplength=560,style='Experience.Card.TLabel').pack(anchor='w')
+        self.setup_stop=ttk.Button(self.setup_panel,text='Cancelar configuração',command=self.stop); self.setup_stop.pack(anchor='w',pady=(4,0))
         ttk.Label(modelrow,text='Modelo local').pack(side='left')
         self.model=tk.StringVar(w,'')
         self.model_entry=ttk.Combobox(modelrow,textvariable=self.model,width=19); self.model_entry.pack(side='left',padx=6)
@@ -325,6 +334,11 @@ class Conversation(CompanionWindow):
             self.ready_state.set('Outra operação local ainda está em andamento.'); return
         self.setup_cancel=cancel; self.busy=True; self.cap=COMPANION_CHAT
         self.kind='ai_setup' if download else 'ai_restore'; self.job=job
+        self.setup_bar.configure(maximum=4 if download else 2,value=0)
+        self.setup_step.set('Verificando requisitos…')
+        self.setup_panel.pack(fill='x',pady=(0,8),before=self.panes)
+        self.setup_activity.start(15)
+        self.setup_stop.configure(state='normal')
         self.ready_state.set('Preparando IA local…'); self.status.set('Preparando IA local…')
         self.refresh(); self.schedule_poll()
     def idle(self):
@@ -458,12 +472,14 @@ class Conversation(CompanionWindow):
         elif self.meeting_active: mode='Reunião · '+('áudio interno' if self.meeting_source=='internal' else 'microfone')
         elif self.busy and self.kind=='visual_question': mode='Voz + tela · ditando pergunta'
         elif self.busy and self.kind=='vision': mode='Tela · analisando captura'
+        elif self.busy and self.kind in ('ai_setup','ai_restore'): mode='Configuração da IA · funções do assistente pausadas'
         elif self.busy or self.capture_timer is not None: mode='Operação local em andamento'
         else: mode='Pronto · microfone e tela desligados'
         self.mode_status.set(mode)
         self.global_stop.configure(state='disabled' if free else 'normal')
         self.test_ai_button.configure(state='normal' if free else 'disabled')
         self.setup_button.configure(state='normal' if free else 'disabled')
+        self.model_entry.configure(state='disabled' if self.busy and self.kind in ('ai_setup','ai_restore') else 'normal')
         self.monitor_button.configure(text='Parar acompanhamento' if self.vision.active else 'Acompanhar tela',state='normal' if free or self.vision.active else 'disabled')
         self.vision_state.set(f'TELA ATIVA · {self.vision.frames}/{MAX_FRAMES} capturas' if self.vision.active else 'Acompanhamento desligado')
         self.voice_button.configure(text='Parar voz' if self.voice.active else 'Conversar por voz',state='normal' if free or self.voice.active else 'disabled')
@@ -901,7 +917,10 @@ class Conversation(CompanionWindow):
         if self.hub.alive(self.hub.meeting_window): self.hub.meeting_window.render()
         self.status.set('Ata salva na sessão. Revise participantes e decisões em Reuniões.')
     def stop(self):
-        if self.setup_cancel is not None: self.setup_cancel.set()
+        if self.setup_cancel is not None:
+            self.setup_cancel.set()
+            self.setup_step.set('Cancelando… aguardando a operação local encerrar.')
+            self.setup_stop.configure(state='disabled')
         self.detach_question()
         if self.vision.active: self.stop_vision()
         if self.voice.active: self.stop_voice()
@@ -915,18 +934,29 @@ class Conversation(CompanionWindow):
             if self.closed: return
             try:
                 while True:
-                    msg=self.setup_progress.get_nowait(); self.ready_state.set(msg); self.status.set(msg)
+                    msg=self.setup_progress.get_nowait()
+                    if self.setup_cancel is not None and not self.setup_cancel.is_set():
+                        stage,label=setup_stage(msg,download=self.kind=='ai_setup')
+                        self.setup_bar.configure(value=stage)
+                        self.setup_step.set(label); self.ready_state.set(msg); self.status.set(msg)
             except queue.Empty: pass
             try: job,ok,result=self.results.get_nowait()
             except queue.Empty: self.schedule_poll(); return
+            download=self.kind=='ai_setup'
+            self.setup_activity.stop(); self.setup_panel.pack_forget()
             self.busy=False; self.process=None; self.setup_cancel=None
             if job==self.job and ok:
                 self.model_entry.configure(values=(result,)); self.model.set(result)
-                self.ready_state.set('IA local pronta. Texto disponível; teste voz e visão separadamente.')
-                self.status.set('IA local pronta para conversar.')
+                if download:
+                    self.ready_state.set('IA local pronta. Teste de texto concluído; teste voz e visão separadamente.')
+                    self.status.set('IA local pronta para conversar.')
+                else:
+                    self.ready_state.set('Modelo local restaurado. Clique Testar IA para verificar a resposta.')
+                    self.status.set('Modelo restaurado; teste de resposta ainda não executado nesta sessão.')
             elif job==self.job:
-                self.ready_state.set(str(result)); self.status.set('Configuração não concluída.');
-            else: self.ready_state.set('Configuração cancelada.')
+                self.ready_state.set(str(result)); self.status.set('Configuração não concluída. '+str(result))
+            else:
+                self.ready_state.set('Configuração cancelada.'); self.status.set('Configuração cancelada. Dependências já instaladas ou downloads parciais podem permanecer.')
             self.refresh(); return
         if self.kind not in ('screen','vision','meeting','models','route','voice_listen','voice_chat','voice_speak','monitor_screen','minutes','visual_question','ready_test'): return super().poll()
         self.timer=None

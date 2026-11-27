@@ -1,0 +1,27 @@
+name: Aeris setup UX candidate tests
+on:
+  push:
+    branches: [aeris-setup-experience-review]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  source-review:
+    runs-on: windows-2025
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.14'
+      - name: Compile and test source without installing Ollama
+        working-directory: desktop
+        run: |
+          python -m compileall -q aeris
+          python -m unittest -v tests.test_ai_setup tests.test_setup_progress tests.test_experience
+          python -m unittest discover -v
+      - name: Scope
+        if: always()
+        run: echo "Source regression only; no real installer, Ollama download or release approval." >> $env:GITHUB_STEP_SUMMARY

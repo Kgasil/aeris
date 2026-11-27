@@ -23,6 +23,21 @@ MANAGED_PORT = 11435
 _port = DEFAULT_PORT
 
 
+
+def setup_stage(message, *, download):
+    """Completed stage count, not byte progress. Unknown status is conservative."""
+    if message.startswith('Instalando Ollama'):
+        return 0, 'Etapa 1 de 4 · Instalando Ollama'
+    if message.startswith('Iniciando IA local'):
+        return (1, 'Etapa 2 de 4 · Iniciando servidor local') if download else (0, 'Etapa 1 de 2 · Restaurando servidor local')
+    if message.startswith('Baixando modelo local'):
+        return 2, 'Etapa 3 de 4 · Baixando modelo local (duração variável)'
+    if message.startswith('Testando a IA'):
+        return 3, 'Etapa 4 de 4 · Testando resposta fictícia'
+    if message.startswith('Verificando modelo local'):
+        return 1, 'Etapa 2 de 2 · Verificando modelo existente'
+    return 0, str(message)[:180]
+
 def local_port():
     return _port
 
@@ -188,6 +203,8 @@ class ManagedRuntime:
                 cancel.wait(.5)
             if p.poll() is not None:
                 raise OSError('O servidor local terminou inesperadamente.')
+            if not download:
+                progress('Verificando modelo local existente…')
             from aeris.screen_context import installed_models
             if model not in installed_models():
                 if not download:
