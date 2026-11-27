@@ -62,7 +62,8 @@ def main(inventory, destination):
         report['error'] = str(exc)
     Path(destination).write_text(json.dumps(report, indent=2) + '\n', encoding='utf-8')
     print('OSV build dependency review:', report['status'])
-    return 1 if report['status'] == 'ADVISORIES_FOUND' else 0
+    # Missing or incomplete advisory evidence must not pass the candidate gate.
+    return {'NO_REPORTED_ADVISORIES': 0, 'ADVISORIES_FOUND': 1, 'INCONCLUSIVE': 2}[report['status']]
 
 
 if __name__ == '__main__':
