@@ -8,7 +8,7 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 import tkinter as tk
-from aeris.experience import ExperienceHub
+from aeris.experience import ExperienceHub,NAMES
 from aeris.settings import Settings
 from aeris.permissions import COMPANION_SCREEN,COMPANION_MIC,COMPANION_CHAT,COPILOT_RUN
 from aeris.screen_context import validate_png,describe_screen,installed_models
@@ -139,6 +139,40 @@ class ExperienceTests(unittest.TestCase):
         i=next(i for i,m in enumerate(self.h.visible) if m.name=='Capture')
         self.h.listbox.selection_clear(0,'end'); self.h.listbox.selection_set(i); self.h.show_selected()
         self.assertIn('COMO USAR',self.h.example.cget('text')); self.assertIn('título',self.h.example.cget('text'))
+    def test_all_fifty_catalog_cards_show_correct_help_without_granting_access(self):
+        self.h.navigate('catalog'); self.h.clear_filters()
+        self.assertEqual(len(self.h.visible),50)
+        self.assertEqual(len(NAMES),50)
+        self.assertEqual(set(NAMES),set(HELP))
+        for i,module in enumerate(self.h.visible):
+            with self.subTest(tool=module.name):
+                self.h.listbox.selection_clear(0,'end')
+                self.h.listbox.selection_set(i); self.h.show_selected()
+                description,example=HELP[module.name]
+                self.assertTrue(description.strip()); self.assertTrue(example.strip())
+                self.assertEqual(self.h.detail_name.cget('text'),NAMES[module.name])
+                self.assertEqual(self.h.detail_desc.cget('text'),description)
+                self.assertEqual(self.h.example.cget('text'),'COMO USAR\\n'+example)
+        self.assertEqual(self.h.recent_tools,[])
+        for cap in (COMPANION_SCREEN,COMPANION_MIC,COMPANION_CHAT,COPILOT_RUN):
+            self.assertFalse(self.h.permissions.allowed(cap))
+
+    def test_catalog_detail_wrap_and_keyboard_return(self):
+        from types import SimpleNamespace
+        self.h.navigate('catalog')
+        labels=(self.h.detail_name,self.h.detail_status,self.h.detail_desc,self.h.example,self.h.catalog_hint)
+        for width,expected in ((180,152),(320,292),(700,420)):
+            self.h.resize_catalog_detail(SimpleNamespace(width=width))
+            for label in labels:
+                self.assertEqual(int(label.cget('wraplength')),expected)
+        self.h.resize_catalog_detail(SimpleNamespace(width=1))
+        self.assertEqual(int(self.h.example.cget('wraplength')),420)
+        self.h.query.set('Anotações')
+        with patch.object(self.h.search,'focus_set') as focus:
+            self.assertEqual(self.h.focus_catalog_search(),'break')
+            focus.assert_called_once_with()
+        self.assertEqual(self.h.query.get(),'Anotações')
+
     def test_discover_models_excludes_remote_and_cloud(self):
         class Response:
             status=200
