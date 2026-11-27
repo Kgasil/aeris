@@ -2,7 +2,7 @@ import unittest
 import tkinter as tk
 from tkinter import ttk
 from aeris.polish import compact_workspace, COMPACT_WIDTH, contrast_ratio
-from aeris.theme import PALETTES, configure, apply_tree
+from aeris.theme import PALETTES, configure, apply_tree, set_window_icon
 
 
 class PolishTests(unittest.TestCase):
@@ -53,6 +53,8 @@ class PolishTkTests(unittest.TestCase):
             configure(self.root,name)
             self.assertEqual(style.lookup('TEntry','bordercolor',('focus',)),p['focus'])
             self.assertEqual(style.lookup('TButton','focuscolor',('focus',)),p['focus'])
+            for control in ('TRadiobutton','TCheckbutton','Experience.Goal.TRadiobutton','Treeview'):
+                self.assertEqual(style.lookup(control,'focuscolor',('focus',)),p['focus'])
             self.assertEqual(style.lookup('Aeris.Muted.TLabel','foreground'),p['secondary'])
 
     def test_shared_styles_follow_theme(self):
@@ -63,6 +65,41 @@ class PolishTkTests(unittest.TestCase):
             self.assertEqual(style.lookup('Experience.Active.TButton','foreground'),p['nav_text'])
             self.assertEqual(style.lookup('Experience.Primary.TButton','background'),p['primary'])
             self.assertEqual(style.lookup('Aeris.Stop.TButton','foreground'),p['danger'])
+
+    def test_scrollbar_palette_roundtrip(self):
+        style=ttk.Style(self.root)
+        canvas=tk.Canvas(self.root)
+        vertical=ttk.Scrollbar(self.root, orient='vertical', command=canvas.yview)
+        horizontal=ttk.Scrollbar(self.root, orient='horizontal', command=canvas.xview)
+        commands=(vertical.cget('command'), horizontal.cget('command'))
+        for name in ('Escuro','Claro','Escuro'):
+            p=configure(self.root,name)
+            for control in ('Vertical.TScrollbar','Horizontal.TScrollbar'):
+                self.assertEqual(style.lookup(control,'background'),p['forest'])
+                self.assertEqual(style.lookup(control,'troughcolor'),p['soft'])
+                self.assertEqual(style.lookup(control,'background',('active',)),p['primary_hover'])
+                self.assertEqual(style.lookup(control,'background',('pressed',)),p['primary'])
+                self.assertGreaterEqual(contrast_ratio(p['forest'],p['soft']),3.0)
+            self.assertEqual((vertical.cget('command'),horizontal.cget('command')),commands)
+
+    def test_official_native_window_icon(self):
+        if self.root.tk.call('tk','windowingsystem') == 'win32':
+            self.assertTrue(set_window_icon(self.root))
+        else:
+            self.assertFalse(set_window_icon(self.root))
+
+    def test_scroll_canvas_focus_outline_preserves_contents(self):
+        scroll=tk.Canvas(self.root,highlightthickness=1,takefocus=True)
+        scroll._aeris_scroll=True
+        item=scroll.create_rectangle(2,3,20,30,fill='#123456')
+        preview=tk.Canvas(self.root,bg='#102030')
+        for name in ('Escuro','Claro','Escuro'):
+            p=configure(self.root,name)
+            apply_tree(self.root,name)
+            self.assertEqual(scroll.cget('highlightbackground'),p['muted'])
+            self.assertEqual(scroll.cget('highlightcolor'),p['focus'])
+            self.assertEqual(scroll.itemcget(item,'fill'),'#123456')
+            self.assertEqual(preview.cget('bg'),'#102030')
 
     def test_theme_roundtrip_preserves_text(self):
         frame=tk.Frame(self.root,bg='#DCEFE3')

@@ -1,6 +1,7 @@
 """Conversation-first desktop workspace. Reuses existing session stores and capabilities."""
 import base64
 from datetime import date
+from dataclasses import replace
 from time import monotonic
 import json
 import queue
@@ -18,7 +19,8 @@ from aeris.ready import inspect_environment, model_selection, check_model, test_
 from aeris.ai_setup import ManagedRuntime, load_choice, reset_endpoint
 from aeris.catalog_index import CatalogIndex
 from aeris.polish import compact_workspace
-from aeris.theme import wind_mark
+from aeris.theme import wind_mark, polish_tool_window
+from aeris.settings import FAVORITES
 from aeris.consent_ui import ask_permission, ask_confirmation
 from aeris.voice_feedback import feedback_process, listen_with_feedback, ERRORS
 from aeris.meeting_audio import available as loopback_available, model_path, start_loopback, read_loopback, BLOCK_SECONDS
@@ -1422,7 +1424,7 @@ class Conversation(CompanionWindow):
 class ExperienceHub(Hub):
     def __init__(self,root,settings=None):
         super().__init__(root,settings)
-        root.bind('<Control-f>',lambda _:self.navigate('catalog'))
+        root.bind('<Control-f>',self.focus_catalog)
         root.bind('<Control-l>',self.focus_conversation)
         root.bind('<Control-Shift-S>',self.stop_activity)
         root.bind('<Configure>',self.workspace_configure,add='+')
@@ -1430,6 +1432,9 @@ class ExperienceHub(Hub):
     def workspace_configure(self,event):
         if event.widget is self.root and not self.conversation.closed:
             self.conversation.resize_workspace(event.width)
+    def focus_catalog(self,_=None):
+        self.navigate('catalog'); self.search.focus_set()
+        return 'break'
     def focus_conversation(self,_=None):
         if self.conversation.idle():
             self.navigate('chat'); self.conversation.set_context(False); self.conversation.input.focus_set()
@@ -1472,39 +1477,116 @@ class ExperienceHub(Hub):
         self.sidebar_toggle.configure(text='Expandir menu' if self.sidebar_compact else 'Recolher menu')
     def build_catalog(self):
         self.catalog_index=CatalogIndex(self.modules,NAMES,CATEGORIES,HELP,GOALS)
+        self.recent_tools=[]
         self.catalog=ttk.Frame(self.root,padding=18)
         f=self.catalog
         ttk.Label(f,text='O que você deseja fazer?',style='Experience.Title.TLabel').pack(anchor='w')
         ttk.Label(f,text='Escolha um objetivo ou pesquise pelo que precisa fazer.',style='Experience.Muted.TLabel').pack(anchor='w',pady=(2,12))
-        self.goal=tk.StringVar(self.root,'Todas')
-        goals=ttk.Frame(f); goals.pack(fill='x',pady=(0,12))
-        for i,name in enumerate(('Todas',*GOALS)):
-            goals.columnconfigure(i%2,weight=1,uniform='goal')
-            ttk.Radiobutton(goals,text=name,value=name,variable=self.goal,command=self.refresh,style='Experience.Goal.TRadiobutton').grid(row=i//2,column=i%2,sticky='ew',padx=3,pady=2)
         ttk.Label(f,text='Buscar por nome, tarefa ou exemplo',style='Experience.Muted.TLabel').pack(anchor='w')
         filters=ttk.Frame(f); filters.pack(fill='x',pady=(0,8))
         self.search=ttk.Entry(filters,textvariable=self.query); self.search.pack(side='left',fill='x',expand=True,ipady=5)
         self.search.bind('<Return>',self.focus_results); self.search.bind('<Escape>',lambda _:self.clear_filters())
-        ttk.Button(filters,text='Limpar',command=self.clear_filters).pack(side='right',padx=(5,0))
+        ttk.Button(filters,text='Limpar filtros',command=self.clear_filters).pack(side='right',padx=(5,0))
+        scopes=ttk.Frame(f); scopes.pack(fill='x',pady=(0,8))
+        self.catalog_scope=tk.StringVar(self.root,'Todas')
+        for label in ('Todas','Favoritas','Recentes'):
+            ttk.Radiobutton(scopes,text=label,value=label,variable=self.catalog_scope,command=self.refresh,style='Experience.Goal.TRadiobutton').pack(side='left',padx=(0,8))
+        self.goal=tk.StringVar(self.root,'Todas')
+        choices=self.catalog_choices=ttk.Frame(f); choices.pack(fill='x',pady=(0,8))
+        self.goal_label=ttk.Label(choices,text='Objetivo')
+        self.goalbox=ttk.Combobox(choices,textvariable=self.goal,values=('Todas',*GOALS),state='readonly',width=18)
+        self.goalbox.bind('<<ComboboxSelected>>',lambda _:self.refresh())
+        self.category_label=ttk.Label(choices,text='Categoria')
         self.category_display=tk.StringVar(self.root,'Todas')
-        self.category_box=ttk.Combobox(filters,textvariable=self.category_display,values=('Todas',*CATEGORIES.values()),state='readonly',width=15)
+        self.category_box=ttk.Combobox(choices,textvariable=self.category_display,values=('Todas',*CATEGORIES.values()),state='readonly',width=13)
         self.category_box.bind('<<ComboboxSelected>>',self.choose_category)
+        self.catalog_filters_compact=None
+        self.layout_catalog_filters(True)
+        choices.bind('<Configure>',self.resize_catalog_filters,add='+')
         self.count=ttk.Label(f,text='',style='Experience.Muted.TLabel'); self.count.pack(anchor='w',pady=(0,6))
         body=ttk.Frame(f); body.pack(fill='both',expand=True); body.columnconfigure(0,weight=3); body.columnconfigure(1,weight=2); body.rowconfigure(0,weight=1)
         left=ttk.Frame(body); left.grid(row=0,column=0,sticky='nsew',padx=(0,10))
         self.listbox=tk.Listbox(left,font=('Segoe UI',11),relief='flat',highlightthickness=1,exportselection=False,activestyle='none',width=24)
-        self.listbox.pack(side='left',fill='both',expand=True)
-        sb=ttk.Scrollbar(left,command=self.listbox.yview); sb.pack(side='right',fill='y'); self.listbox.configure(yscrollcommand=sb.set)
+        left.columnconfigure(0,weight=1); left.rowconfigure(0,weight=1)
+        self.listbox.grid(row=0,column=0,sticky='nsew')
+        sb=ttk.Scrollbar(left,command=self.listbox.yview); sb.grid(row=0,column=1,sticky='ns')
+        horizontal=ttk.Scrollbar(left,orient='horizontal',command=self.listbox.xview); horizontal.grid(row=1,column=0,sticky='ew')
+        self.listbox.configure(yscrollcommand=sb.set,xscrollcommand=horizontal.set)
         self.listbox.bind('<<ListboxSelect>>',self.show_selected); self.listbox.bind('<Return>',self.open_selected); self.listbox.bind('<Double-1>',self.open_selected)
-        detail=ttk.Frame(body,padding=14,style='Experience.Card.TFrame'); detail.grid(row=0,column=1,sticky='nsew')
+        self.listbox.bind('<Escape>',self.focus_catalog_search)
+        detail_host=ttk.Frame(body,style='Experience.Card.TFrame'); detail_host.grid(row=0,column=1,sticky='nsew')
+        self.detail_canvas=tk.Canvas(detail_host,highlightthickness=1,takefocus=True,width=180,height=120)
+        self.detail_canvas._aeris_scroll=True
+        detail_scroll=ttk.Scrollbar(detail_host,orient='vertical',command=self.detail_canvas.yview)
+        detail_scroll.pack(side='right',fill='y'); self.detail_canvas.pack(side='left',fill='both',expand=True)
+        self.detail_canvas.configure(yscrollcommand=detail_scroll.set)
+        detail=ttk.Frame(self.detail_canvas,padding=14,style='Experience.Card.TFrame')
+        self.detail_canvas_item=self.detail_canvas.create_window(0,0,anchor='nw',window=detail)
+        self.detail_canvas.bind('<Configure>',lambda e:self.detail_canvas.itemconfigure(self.detail_canvas_item,width=e.width))
+        for key,amount,unit in (('<Up>',-1,'units'),('<Down>',1,'units'),('<Prior>',-1,'pages'),('<Next>',1,'pages')):
+            self.detail_canvas.bind(key,lambda e,a=amount,u=unit:self.scroll_catalog_detail(a,u))
         self.detail_name=ttk.Label(detail,text='',style='Experience.Detail.TLabel',wraplength=250,justify='left'); self.detail_name.pack(anchor='w',fill='x')
         self.detail_status=ttk.Label(detail,text='',style='Experience.Card.TLabel',wraplength=215); self.detail_status.pack(anchor='w',pady=(4,12),fill='x')
         self.detail_desc=ttk.Label(detail,text='',style='Experience.Card.TLabel',wraplength=215,justify='left'); self.detail_desc.pack(anchor='w',fill='x')
         self.example=ttk.Label(detail,text='',style='Experience.Card.TLabel',wraplength=215,justify='left'); self.example.pack(anchor='w',pady=(12,6),fill='x')
         self.toggle=ttk.Button(detail,text='Ativar')
         self.launch=ttk.Button(detail,text='Abrir',style='Experience.Primary.TButton')
+        self.favorite_button=ttk.Button(detail,text='Adicionar aos favoritos')
+        self.catalog_hint=ttk.Label(detail,text='',style='Experience.Card.TLabel',wraplength=215); self.catalog_hint.pack(anchor='w',side='bottom',pady=(6,0),fill='x')
+        detail.bind('<Configure>',self.resize_catalog_detail,add='+')
+        detail.bind('<Configure>',lambda e:self.detail_canvas.configure(scrollregion=self.detail_canvas.bbox('all')),add='+')
+        for control in (self.toggle,self.launch,self.favorite_button):
+            control.bind('<FocusIn>',self.reveal_catalog_control,add='+')
+        for control in (self.detail_canvas,detail,self.detail_name,self.detail_status,self.detail_desc,self.example,self.catalog_hint,self.toggle,self.launch,self.favorite_button):
+            control.bind('<MouseWheel>',self.catalog_detail_wheel,add='+')
+            control.bind('<Button-4>',lambda e:self.scroll_catalog_detail(-1,'units'),add='+')
+            control.bind('<Button-5>',lambda e:self.scroll_catalog_detail(1,'units'),add='+')
+    def scroll_catalog_detail(self,amount,unit):
+        self.detail_canvas.yview_scroll(amount,unit)
+        return 'break'
+    def catalog_detail_wheel(self,event):
+        if event.delta: return self.scroll_catalog_detail(-1 if event.delta>0 else 1,'units')
+    def reveal_catalog_control(self,event):
+        canvas=self.detail_canvas
+        bounds=canvas.bbox('all')
+        if not bounds: return
+        height=bounds[3]-bounds[1]
+        visible=canvas.winfo_height()
+        if height<=visible or visible<=1: return
+        top=canvas.canvasy(0)
+        y=event.widget.winfo_y()
+        bottom=y+event.widget.winfo_height()
+        if y<top: canvas.yview_moveto(max(0,y/height))
+        elif bottom>top+visible: canvas.yview_moveto(max(0,(bottom-visible)/height))
+    def resize_catalog_filters(self,event):
+        if event.width>1: self.layout_catalog_filters(event.width<540)
+    def layout_catalog_filters(self,compact):
+        if compact==self.catalog_filters_compact: return
+        self.catalog_filters_compact=compact
+        for column in range(4): self.catalog_choices.columnconfigure(column,weight=0)
+        self.catalog_choices.columnconfigure(1,weight=1)
+        self.goal_label.grid(row=0,column=0,sticky='w',padx=(0,6),pady=2)
+        self.goalbox.grid(row=0,column=1,sticky='ew',pady=2)
+        if compact:
+            self.category_label.grid(row=1,column=0,sticky='w',padx=(0,6),pady=2)
+            self.category_box.grid(row=1,column=1,sticky='ew',pady=2)
+        else:
+            self.catalog_choices.columnconfigure(3,weight=1)
+            self.category_label.grid(row=0,column=2,sticky='w',padx=(12,6),pady=2)
+            self.category_box.grid(row=0,column=3,sticky='ew',pady=2)
+    def resize_catalog_detail(self,event):
+        # Use the actual card width; preserve the initial wrapping while unmapped.
+        if event.width <= 1: return
+        width=max(120,min(420,event.width-28))
+        for label in (self.detail_name,self.detail_status,self.detail_desc,self.example,self.catalog_hint):
+            if int(label.cget('wraplength')) != width:
+                label.configure(wraplength=width)
+    def focus_catalog_search(self,_=None):
+        self.search.focus_set()
+        return 'break'
     def clear_filters(self):
         if hasattr(self,'goal'): self.goal.set('Todas')
+        if hasattr(self,'catalog_scope'): self.catalog_scope.set('Todas')
         return super().clear_filters()
     def choose_category(self,_=None):
         selected=self.category_display.get()
@@ -1524,7 +1606,7 @@ class ExperienceHub(Hub):
         active={'catalog':'Ferramentas','screen':'Tela','notes':'Anotações','meeting':'Reuniões'}.get(view,'Conversar')
         for label,button in self.nav_buttons.items(): button.configure(style='Experience.Active.TButton' if label==active else 'Experience.Nav.TButton')
     def open_search_result(self,result):
-        if result.source=='Ferramentas': self.goal.set('Todas')
+        if result.source=='Ferramentas': self.goal.set('Todas'); self.catalog_scope.set('Todas')
         found=super().open_search_result(result)
         if found and result.source=='Ferramentas': self.navigate('catalog')
         return found
@@ -1537,7 +1619,11 @@ class ExperienceHub(Hub):
             return
         window=instance.window
         if isinstance(window,tk.Toplevel):
-            window.title('Aeris | '+NAMES.get(name,name))
+            window.title('Aeris · '+NAMES.get(name,name))
+            polish_tool_window(window)
+        if name in self.recent_tools: self.recent_tools.remove(name)
+        self.recent_tools.insert(0,name); del self.recent_tools[12:]
+        if self.catalog_scope.get()=='Recentes': self.refresh()
     def open_friendly(self,name):
         if not self.enabled(name): self.toggle_tool(name)
         if self.enabled(name): self.open_tool(name)
@@ -1546,16 +1632,21 @@ class ExperienceHub(Hub):
         selected=self.visible[old[0]].name if old and old[0]<len(self.visible) else None
         self.listbox.delete(0,'end')
         self.category_display.set(CATEGORIES.get(self.category.get(),'Todas'))
-        self.visible=self.catalog_index.search(self.query.get(),self.category.get(),self.goal.get())
-        for m in self.visible: self.listbox.insert('end',f'  {NAMES.get(m.name,m.name)}')
-        self.count.configure(text=f'{len(self.visible)} ferramentas encontradas')
+        rows=self.catalog_index.search(self.query.get(),self.category.get(),self.goal.get())
+        favorites=self.settings.appearance.favorites; scope=self.catalog_scope.get()
+        if scope=='Favoritas': rows=tuple(m for m in rows if m.name in favorites)
+        elif scope=='Recentes':
+            by_name={m.name:m for m in rows}; rows=tuple(by_name[n] for n in self.recent_tools if n in by_name)
+        self.visible=rows
+        for m in self.visible: self.listbox.insert('end',('★  ' if m.name in favorites else '    ')+NAMES.get(m.name,m.name)+'  ·  '+CATEGORIES.get(m.category,m.category))
+        self.count.configure(text=f'{len(self.visible)} de {len(self.modules)} itens · '+scope)
         if self.visible:
             index=next((i for i,m in enumerate(self.visible) if m.name==selected),0)
             self.listbox.selection_set(index); self.listbox.activate(index); self.listbox.see(index)
         self.show_selected()
     def show_selected(self,*_):
         super().show_selected(*_)
-        self.example.configure(text='')
+        self.example.configure(text=''); self.favorite_button.pack_forget(); self.catalog_hint.configure(text='')
         sel=self.listbox.curselection()
         if sel and sel[0]<len(self.visible):
             m=self.visible[sel[0]]; self.detail_name.configure(text=NAMES.get(m.name,m.name))
@@ -1567,13 +1658,39 @@ class ExperienceHub(Hub):
                 if self.enabled(m.name):
                     self.toggle.configure(text='Desativar ferramenta',command=lambda name=m.name:self.toggle_tool(name))
                     self.toggle.pack(fill='x',pady=4)
-                self.detail_status.configure(text='Disponível nesta sessão' if self.enabled(m.name) else 'Pronta para ativar ao abrir')
+                self.detail_status.configure(text=CATEGORIES.get(m.category,m.category)+' · '+('Ativada' if self.enabled(m.name) else 'Ative ao abrir'))
+                self.toggle.configure(style='Aeris.Stop.TButton')
+            elif m.name=='Hub':
+                self.detail_status.configure(text='Espaço de trabalho')
+                self.launch.configure(text='Voltar à conversa',command=lambda:self.navigate('chat')); self.launch.pack(fill='x',pady=8)
+            elif m.name=='Privacy': self.launch.configure(text='Abrir privacidade')
+            elif m.name=='Spotlight': self.toggle.configure(style='TButton')
+            if m.name in FAVORITES:
+                self.favorite_button.configure(text='Remover dos favoritos' if m.name in self.settings.appearance.favorites else 'Adicionar aos favoritos',command=lambda n=m.name:self.toggle_favorite(n)); self.favorite_button.pack(fill='x',pady=4)
+            self.catalog_hint.configure(text='Abrir não autoriza acessos sensíveis. Revise as permissões quando solicitadas.' if m.name in self.tool_buttons else '')
+        elif self.catalog_scope.get()=='Favoritas': self.detail_desc.configure(text='Adicione uma ferramenta aos favoritos na aba Todas.')
+        elif self.catalog_scope.get()=='Recentes': self.detail_desc.configure(text='As ferramentas abertas nesta sessão aparecem aqui.')
+    def toggle_favorite(self,name):
+        if name not in FAVORITES: return
+        prefs=self.settings.appearance
+        values=tuple(n for n in prefs.favorites if n!=name) if name in prefs.favorites else (*prefs.favorites,name)
+        try: self.settings.set_appearance(replace(prefs,favorites=values))
+        except OSError:
+            self.catalog_hint.configure(text='Não foi possível salvar a preferência.'); return
+        self.workspace_changed(); self.refresh()
+    def open_privacy(self):
+        super().open_privacy()
+        if self.alive(self.privacy_window): polish_tool_window(self.privacy_window.window)
+    def open_permissions(self):
+        super().open_permissions()
+        if self.alive(self.permissions_window): polish_tool_window(self.permissions_window.window)
     def permissions_changed(self):
         super().permissions_changed()
         if hasattr(self,'conversation'): self.conversation.permissions_changed()
     def clear_session(self):
         if not super().clear_session(): return False
         self.conversation.clear_workspace()
+        self.recent_tools.clear(); self.refresh()
         return True
     def close(self):
         if self.conversation.dirty() and not messagebox.askyesno('Encerrar Aeris?', 'A conversa, captura, transcrição e rascunhos desta sessão serão descartados. Encerrar?',parent=self.root): return

@@ -42,6 +42,18 @@ try {
         $scan['signature_version']=$status.AntivirusSignatureVersion
         $scan['signature_last_updated']=$status.AntivirusSignatureLastUpdated
         if (-not $status.AntivirusEnabled -or -not $status.AMServiceEnabled) { throw 'Defender inactive; no settings changed' }
+        $scan['signature_before_update']=$status.AntivirusSignatureVersion
+        Update-MpSignature -ErrorAction Stop | Out-Null
+        $status=Get-MpComputerStatus -ErrorAction Stop
+        if (-not $status.AntivirusEnabled -or -not $status.AMServiceEnabled) { throw 'Defender inactive after update' }
+        $scan['engine_version']=$status.AMEngineVersion
+        $scan['signature_version']=$status.AntivirusSignatureVersion
+        $scan['signature_last_updated']=$status.AntivirusSignatureLastUpdated
+        if (-not $status.AntivirusSignatureLastUpdated) { throw 'Defender definition timestamp missing' }
+        $age=([DateTime]::UtcNow-([DateTime]$status.AntivirusSignatureLastUpdated).ToUniversalTime()).TotalSeconds
+        $scan['definition_age_seconds']=[math]::Round($age)
+        if ($age -lt 0 -or $age -gt 86400) { throw 'Defender definitions not within 24 hours; scan blocked' }
+        $scan['definitions_fresh']=$true
         $platform=Join-Path $env:ProgramData 'Microsoft\Windows Defender\Platform'
         $cmd=$null
         if (Test-Path -LiteralPath $platform) {
@@ -49,6 +61,24 @@ try {
         }
         if (-not $cmd) { $cmd=Join-Path $env:ProgramFiles 'Windows Defender\MpCmdRun.exe' }
         if (-not (Test-Path -LiteralPath $cmd -PathType Leaf) -or (Get-AuthenticodeSignature -LiteralPath $cmd).Status -ne 'Valid') { throw 'Trusted Defender command unavailable' }
+        # Read-only diagnostics for these exact three targets. Never change exclusions.
+        # Capture only target-specific output; do not enumerate host-wide policies.
+        $scan['exclusion_checks']=@()
+        $diagnosticIndex=0
+        foreach ($target in @($setup,$portable,$bundle)) {
+            $diagnosticIndex++
+            $entry=[ordered]@{target=(Split-Path -Leaf $target);status='UNAVAILABLE';exit_code=$null}
+            try {
+                $check=Start-Process -FilePath $cmd -ArgumentList @('-CheckExclusion','-Path',('"' + $target + '"')) -RedirectStandardOutput (Join-Path $e "defender-exclusion-$diagnosticIndex.log") -RedirectStandardError (Join-Path $e "defender-exclusion-$diagnosticIndex-error.log") -PassThru
+                if ($check.WaitForExit(30000)) {
+                    $entry.exit_code=$check.ExitCode
+                    $entry.status='RECORDED_NOT_A_SCAN'
+                } else {
+                    $entry.status='TIMEOUT'
+                }
+            } catch { $entry['error']='Target-specific exclusion check unavailable' }
+            $scan.exclusion_checks+=@([pscustomobject]$entry)
+        }
         $i=0
         foreach ($target in @($setup,$portable,$bundle)) {
             $i++

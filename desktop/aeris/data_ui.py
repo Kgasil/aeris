@@ -23,7 +23,7 @@ class DataWindow:
         self.window.bind('<Destroy>',self.destroyed,add='+')
         f=ttk.Frame(self.window,padding=18); f.pack(fill='both',expand=True)
         ttk.Label(f,text=self.display_title,font=('Segoe UI',21,'bold')).pack(anchor='w')
-        ttk.Label(f,text=self.description,wraplength=460).pack(anchor='w',pady=5)
+        ttk.Label(f,text=self.description,wraplength=460,style='Aeris.Muted.TLabel').pack(anchor='w',pady=5)
         ttk.Label(f,text='1. Escolha o arquivo CSV',font=('Segoe UI',11,'bold')).pack(anchor='w',pady=(6,4))
         source=ttk.Frame(f); source.pack(fill='x')
         self.choose_button=ttk.Button(source,text='Selecionar arquivo',command=self.choose); self.choose_button.pack(side='left',fill='x',expand=True)
@@ -39,7 +39,7 @@ class DataWindow:
 
         actions=ttk.Frame(f); actions.pack(fill='x',pady=6)
         self.run_button=ttk.Button(actions,text='Analisar CSV',command=self.run,style='Aeris.Primary.TButton'); self.run_button.pack(side='left',fill='x',expand=True)
-        self.cancel_button=ttk.Button(actions,text='Cancelar',command=self.cancel); self.cancel_button.pack(side='right',padx=(6,0))
+        self.cancel_button=ttk.Button(actions,text='Cancelar',command=self.cancel,style='Aeris.Stop.TButton'); self.cancel_button.pack(side='right',padx=(6,0))
         ttk.Label(f,text='3. Resultados da análise',font=('Segoe UI',11,'bold')).pack(anchor='w',pady=(8,0))
         frame=ttk.Frame(f); frame.pack(fill='both',expand=True,pady=5)
         self.report=tk.Text(frame,height=10,wrap='word',state='disabled',padx=12,pady=10,relief='flat',highlightthickness=1); self.report.pack(side='left',fill='both',expand=True)

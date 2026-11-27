@@ -41,7 +41,7 @@ try {
     $version = & $python -c 'from aeris import __version__; print(__version__)'
     if ($LASTEXITCODE -ne 0 -or $version -notmatch '^\d+\.\d+\.\d+(a|rc)\d+$') { throw 'Invalid build version' }
     $dist = Join-Path $stage 'dist'
-    Invoke-Checked $python @('-m','PyInstaller','--noconfirm','--clean','--onedir','--windowed','--noupx','--name','Aeris','--icon',(Join-Path $PSScriptRoot 'aeris.ico'),'--add-data',((Join-Path $desktop 'aeris/catalog.json') + ':aeris'),'--exclude-module','argostranslate','--distpath',$dist,'--workpath',(Join-Path $stage 'work'),'--specpath',$stage,'main.py')
+    Invoke-Checked $python @('-m','PyInstaller','--noconfirm','--clean','--onedir','--windowed','--noupx','--name','Aeris','--icon',(Join-Path $PSScriptRoot 'aeris.ico'),'--add-data',((Join-Path $desktop 'aeris/catalog.json') + ':aeris'),'--add-data',((Join-Path $PSScriptRoot 'aeris.ico') + ':aeris'),'--exclude-module','argostranslate','--distpath',$dist,'--workpath',(Join-Path $stage 'work'),'--specpath',$stage,'main.py')
     $bundle = Join-Path $dist 'Aeris'
     $internal = Join-Path $bundle '_internal'
     $osFiles = @(Get-ChildItem -LiteralPath $internal -File | Where-Object { $_.Name -match '^(api-ms-win-(core|crt)-.*|ucrtbase)\.dll$' })

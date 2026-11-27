@@ -8,7 +8,7 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 import tkinter as tk
-from aeris.experience import ExperienceHub
+from aeris.experience import ExperienceHub,NAMES
 from aeris.settings import Settings
 from aeris.permissions import COMPANION_SCREEN,COMPANION_MIC,COMPANION_CHAT,COPILOT_RUN
 from aeris.screen_context import validate_png,describe_screen,installed_models
@@ -110,6 +110,25 @@ class ExperienceTests(unittest.TestCase):
         self.assertFalse(self.h.permissions.allowed(COMPANION_MIC))
         self.assertFalse(self.h.permissions.allowed(COMPANION_SCREEN))
 
+    def test_catalog_favorites_recent_and_scope_preserve_permissions(self):
+        self.h.navigate('catalog')
+        self.h.toggle_favorite('Data')
+        self.assertIn('Data',self.h.settings.appearance.favorites)
+        self.h.catalog_scope.set('Favoritas'); self.h.refresh()
+        self.assertEqual([m.name for m in self.h.visible],['Data'])
+        self.h.open_friendly('Data'); self.root.update()
+        self.assertEqual(self.h.recent_tools[0],'Data')
+        self.assertFalse(self.h.permissions.allowed(COMPANION_MIC))
+        from aeris.permissions import DATA_READ
+        self.assertFalse(self.h.permissions.allowed(DATA_READ))
+        self.h.catalog_scope.set('Recentes'); self.h.refresh()
+        self.assertEqual([m.name for m in self.h.visible],['Data'])
+        self.h.toggle_favorite('Data')
+        self.assertNotIn('Data',self.h.settings.appearance.favorites)
+        self.h.clear_filters()
+        self.assertEqual(len(self.h.visible),50)
+        self.assertEqual(self.h.catalog_scope.get(),'Todas')
+
     def test_catalog_explains_all_existing_tools_and_advanced_controls_are_hidden(self):
         self.assertEqual(set(HELP),{m.name for m in self.h.modules})
         self.assertFalse(self.ui.advanced.winfo_ismapped())
@@ -120,6 +139,73 @@ class ExperienceTests(unittest.TestCase):
         i=next(i for i,m in enumerate(self.h.visible) if m.name=='Capture')
         self.h.listbox.selection_clear(0,'end'); self.h.listbox.selection_set(i); self.h.show_selected()
         self.assertIn('COMO USAR',self.h.example.cget('text')); self.assertIn('título',self.h.example.cget('text'))
+    def test_all_fifty_catalog_cards_show_correct_help_without_granting_access(self):
+        self.h.navigate('catalog'); self.h.clear_filters()
+        self.assertEqual(len(self.h.visible),50)
+        self.assertEqual(len(NAMES),50)
+        self.assertEqual(set(NAMES),set(HELP))
+        for i,module in enumerate(self.h.visible):
+            with self.subTest(tool=module.name):
+                self.h.listbox.selection_clear(0,'end')
+                self.h.listbox.selection_set(i); self.h.show_selected()
+                description,example=HELP[module.name]
+                self.assertTrue(description.strip()); self.assertTrue(example.strip())
+                self.assertEqual(self.h.detail_name.cget('text'),NAMES[module.name])
+                self.assertEqual(self.h.detail_desc.cget('text'),description)
+                self.assertEqual(self.h.example.cget('text'),'COMO USAR\n'+example)
+        self.assertEqual(self.h.recent_tools,[])
+        for cap in (COMPANION_SCREEN,COMPANION_MIC,COMPANION_CHAT,COPILOT_RUN):
+            self.assertFalse(self.h.permissions.allowed(cap))
+
+    def test_catalog_detail_wrap_and_keyboard_return(self):
+        from types import SimpleNamespace
+        self.h.navigate('catalog')
+        labels=(self.h.detail_name,self.h.detail_status,self.h.detail_desc,self.h.example,self.h.catalog_hint)
+        for width,expected in ((180,152),(320,292),(700,420)):
+            self.h.resize_catalog_detail(SimpleNamespace(width=width))
+            for label in labels:
+                self.assertEqual(int(label.cget('wraplength')),expected)
+        self.h.resize_catalog_detail(SimpleNamespace(width=1))
+        self.assertEqual(int(self.h.example.cget('wraplength')),420)
+        self.h.query.set('Anotações')
+        with patch.object(self.h.search,'focus_set') as focus:
+            self.assertEqual(self.h.focus_catalog_search(),'break')
+            focus.assert_called_once_with()
+        self.assertEqual(self.h.query.get(),'Anotações')
+
+    def test_responsive_catalog_filters_preserve_selection_and_query(self):
+        from types import SimpleNamespace
+        self.h.navigate('catalog')
+        self.h.goal.set('Analisar informações')
+        self.h.category.set('Business')
+        self.h.query.set('dados')
+        for width,row,column in ((400,1,1),(700,0,3),(400,1,1)):
+            with self.subTest(width=width):
+                self.h.resize_catalog_filters(SimpleNamespace(width=width))
+                self.assertEqual(int(self.h.category_box.grid_info()['row']),row)
+                self.assertEqual(int(self.h.category_box.grid_info()['column']),column)
+                self.assertEqual(self.h.goal.get(),'Analisar informações')
+                self.assertEqual(self.h.category_display.get(),'Negócios')
+                self.assertEqual(self.h.query.get(),'dados')
+        self.assertTrue(self.h.listbox.cget('xscrollcommand'))
+        with patch.object(self.h.search,'focus_set') as focus:
+            self.assertEqual(self.h.focus_catalog(),'break')
+            self.assertTrue(focus.called)
+
+    def test_catalog_detail_scroll_and_focus_reveal(self):
+        from types import SimpleNamespace
+        self.h.navigate('catalog')
+        canvas=self.h.detail_canvas
+        self.assertTrue(canvas.cget('yscrollcommand'))
+        self.assertEqual(str(canvas.cget('takefocus')),'1')
+        with patch.object(canvas,'yview_scroll') as scroll:
+            self.assertEqual(self.h.scroll_catalog_detail(1,'pages'),'break')
+            scroll.assert_called_once_with(1,'pages')
+        with patch.object(canvas,'bbox',return_value=(0,0,300,600)),patch.object(canvas,'winfo_height',return_value=200),patch.object(canvas,'canvasy',return_value=0),patch.object(canvas,'yview_moveto') as move:
+            widget=SimpleNamespace(winfo_y=lambda:500,winfo_height=lambda:30)
+            self.h.reveal_catalog_control(SimpleNamespace(widget=widget))
+            move.assert_called_once_with(330/600)
+
     def test_discover_models_excludes_remote_and_cloud(self):
         class Response:
             status=200

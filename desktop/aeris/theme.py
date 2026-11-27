@@ -1,6 +1,8 @@
 """Paletas locais e estilos compartilhados. Sem integração com o tema do sistema."""
 import tkinter as tk
 from tkinter import ttk
+from pathlib import Path
+import sys
 
 PALETTES = {
     'Claro': dict(air='#F5F7F6', soft='#E8EEEA', natural='#8FC7A3', forest='#30694F', deep='#203D30', muted='#BCCBC2', secondary='#476553', focus='#30694F', field='#FFFFFF', selected='#DCEFE3', select_text='#285640', primary='#285640', primary_hover='#397557', primary_text='#FFFFFF', sidebar='#193D30', sidebar_text='#E3F1E7', sidebar_muted='#A5D7B4', sidebar_hover='#37614E', nav_selected='#DCEFE3', nav_text='#193D30', success='#286446', info='#245D8C', warning='#805500', danger='#A52E36'),
@@ -44,11 +46,32 @@ def background_role(value):
         if color==PALETTES['Claro'][role].lower(): return role
     return LEGACY_BACKGROUNDS.get(color,'air')
 
+def set_window_icon(root):
+    """Use the existing official ICO for Windows source and packaged windows."""
+    if root.tk.call('tk', 'windowingsystem') != 'win32':
+        return False
+    icon = (Path(__file__).resolve().with_name('aeris.ico') if getattr(sys, 'frozen', False)
+            else Path(__file__).resolve().parents[2] / 'distribution' / 'aeris.ico')
+    try:
+        if not icon.is_file():
+            return False
+        root.iconbitmap(default=str(icon))
+        return True
+    except (OSError, tk.TclError):
+        return False
+
+
 def configure(root, name):
     p = PALETTES[name]
     style = ttk.Style(root)
     style.theme_use('clam')
     style.configure('.', background=p['air'], foreground=p['deep'], fieldbackground=p['field'], bordercolor=p['muted'], troughcolor=p['soft'], lightcolor=p['muted'], darkcolor=p['muted'], font=('Segoe UI', 10))
+    for scrollbar in ('Vertical.TScrollbar', 'Horizontal.TScrollbar'):
+        style.configure(scrollbar, background=p['forest'], troughcolor=p['soft'],
+                        bordercolor=p['soft'], lightcolor=p['forest'], darkcolor=p['forest'],
+                        arrowcolor=p['air'], arrowsize=13, relief='flat')
+        states=[('disabled',p['muted']),('pressed',p['primary']),('active',p['primary_hover'])]
+        style.map(scrollbar, background=states, lightcolor=states, darkcolor=states)
     style.configure('TButton', background=p['soft'], padding=(12,8), borderwidth=1, relief='flat')
     style.map('TButton', background=[('disabled', p['soft']),('active', p['selected'])], foreground=[('disabled', p['secondary'])], bordercolor=[('focus',p['focus'])], focuscolor=[('focus',p['focus'])])
     style.configure('TCheckbutton', background=p['air'])
@@ -61,6 +84,9 @@ def configure(root, name):
     style.configure('TEntry', padding=(7,5))
     style.map('TEntry',bordercolor=[('focus',p['focus'])],lightcolor=[('focus',p['focus'])],darkcolor=[('focus',p['focus'])])
     style.map('TCombobox',bordercolor=[('focus',p['focus'])],lightcolor=[('focus',p['focus'])],darkcolor=[('focus',p['focus'])])
+    # Keep focus visible on keyboard-operated controls, including catalogue filters.
+    for control in ('TRadiobutton','TCheckbutton','Experience.Goal.TRadiobutton','Treeview'):
+        style.map(control,focuscolor=[('focus',p['focus'])])
     style.configure('Aeris.Muted.TLabel',foreground=p['secondary'])
     style.configure('TCombobox', padding=(7,5))
     style.configure('TNotebook', borderwidth=0)
@@ -137,8 +163,29 @@ def apply_tree(widget, name):
             widget._aeris_bg_role = background_role(old)
         if not isinstance(widget, tk.Canvas) or getattr(widget,'_aeris_logo',False) or getattr(widget,'_aeris_scroll',False):
             widget.configure(bg=p[widget._aeris_bg_role])
+        if isinstance(widget, tk.Canvas) and getattr(widget,'_aeris_scroll',False):
+            widget.configure(highlightbackground=p['muted'],highlightcolor=p['focus'])
         if isinstance(widget, tk.Label): widget.configure(fg=p['deep'])
         if getattr(widget,'_aeris_logo',False):
             widget.itemconfigure('all', fill=p['forest'])
     for child in widget.winfo_children():
         apply_tree(child, name)
+
+
+# Conservative visual normalization: no callbacks, layout managers, values or permissions change.
+# Explicit action labels only; ambiguous operations keep their original style.
+_STOP_LABELS=frozenset(('Cancelar','Parar','Parar reprodução','Parar transcrição','Excluir','Excluir lista','Excluir tarefa','Excluir reunião','Revogar acesso','Revogar todos os acessos','Apagar registro','Limpar sessão'))
+
+
+def polish_tool_window(window):
+    """Use the shared action hierarchy without changing any tool semantics."""
+    for widget in window.winfo_children():
+        if isinstance(widget,tk.Toplevel): continue
+        if isinstance(widget,ttk.Button) and widget.cget('style') in ('','TButton') and widget.cget('text') in _STOP_LABELS:
+            widget.configure(style='Aeris.Stop.TButton')
+        if isinstance(widget,ttk.Label) and widget.cget('style') in ('','TLabel'):
+            # Existing explicit heading fonts encode intent; leave custom previews alone.
+            font=str(widget.cget('font'))
+            if font in ('{Segoe UI} 21 bold','{Segoe UI} 18 bold','Segoe UI 21 bold','Segoe UI 18 bold'):
+                widget.configure(font=TYPE['title'])
+        polish_tool_window(widget)
