@@ -49,6 +49,17 @@ class ExperienceTests(unittest.TestCase):
         self.assertFalse(self.h.permissions.allowed(COMPANION_MIC))
         self.assertFalse(self.h.permissions.allowed(COMPANION_SCREEN))
 
+    def test_meeting_steps_and_review_controls_are_accessible(self):
+        self.root.geometry('980x660'); self.h.navigate('meeting'); self.root.update()
+        self.assertEqual(len(self.ui.meeting_step_labels),3)
+        self.assertEqual(self.ui.meeting_step_labels[0].cget('style'),'Experience.CurrentStep.TLabel')
+        for control in (self.ui.meeting_start,self.ui.meeting_stop,self.ui.minutes_button,self.ui.meeting_save):
+            self.assertTrue(control.winfo_ismapped(),control.cget('text'))
+            self.assertGreaterEqual(control.winfo_height(),control.winfo_reqheight(),control.cget('text'))
+        self.ui.meeting_phase='review'; self.ui.refresh_meeting_status()
+        self.assertEqual(self.ui.meeting_step_labels[2].cget('style'),'Experience.CurrentStep.TLabel')
+        self.assertFalse(self.h.permissions.allowed(COMPANION_MIC))
+
     def test_theme_switch_persists_and_preserves_draft(self):
         self.assertEqual(self.h.settings.appearance.theme,'Escuro')
         self.ui.input.insert('1.0','Rascunho fictício')

@@ -112,6 +112,8 @@ def configure_experience(style,p):
     style.configure('Experience.ComposerMuted.TLabel',background=p['field'],foreground=p['secondary'],font=TYPE['body'])
     style.configure('Experience.Stop.TButton',foreground=p['danger'],background=p['field'],padding=(9,5),borderwidth=1)
     style.map('Experience.Stop.TButton',foreground=[('disabled',p['secondary']),('!disabled',p['danger'])],background=[('disabled',p['air']),('active',p['soft']),('!disabled',p['field'])],focuscolor=[('focus',p['focus'])])
+    style.configure('Experience.Step.TLabel',background=p['field'],foreground=p['secondary'],padding=(5,5),font=(FONT,9))
+    style.configure('Experience.CurrentStep.TLabel',background=p['selected'],foreground=p['select_text'],padding=(5,5),font=(FONT,9,'bold'))
     style.configure('Experience.Model.TLabel',background=p['field'],foreground=p['forest'],font=(FONT,10,'bold'))
     style.configure('Experience.Quiet.TButton',background=p['field'],foreground=p['deep'],padding=(9,5),borderwidth=0)
     style.map('Experience.Quiet.TButton',background=[('active',p['selected'])],focuscolor=[('focus',p['focus'])])
