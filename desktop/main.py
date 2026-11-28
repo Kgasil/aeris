@@ -8,6 +8,13 @@ def main():
             return self_test(full=True) if sys.argv[1:] == ['--self-test-full'] else self_test()
         except Exception:
             return 1
+    from aeris.terms import forget, require_acceptance
+    if sys.argv[1:] == ['--forget-terms']:
+        try:
+            forget()
+            return 0
+        except OSError:
+            return 1
     configure = sys.argv[1:] == ['--configure-ai']
     if sys.argv[1:] and not configure:
         return 2
@@ -18,8 +25,10 @@ def main():
                 from tkinter import messagebox
                 messagebox.showinfo('Aeris', 'O Aeris já está aberto. Utilize a instância existente.')
                 return 3
+            if not require_acceptance():
+                return 4
             run_hub(configure=configure)
-    except OSError:
+    except (OSError, ValueError):
         from tkinter import messagebox
         messagebox.showerror('Aeris', 'Não foi possível iniciar o aplicativo.')
         return 1

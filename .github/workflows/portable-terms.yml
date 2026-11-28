@@ -1,0 +1,24 @@
+name: Aeris portable terms focused checks
+on:
+  push:
+    branches: [development/aeris-portable-terms]
+    paths: ['desktop/aeris/terms.py','desktop/main.py','desktop/tests/test_terms.py','distribution/build.ps1','.github/workflows/portable-terms.yml']
+permissions:
+  contents: read
+jobs:
+  terms:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Local terms tests (no build)
+        working-directory: desktop
+        run: python3 -m unittest discover -s tests -p test_terms.py -v
+      - run: python3 -m compileall -q desktop
+      - name: Parse packaging script
+        shell: pwsh
+        run: |
+          $tokens=$null; $errors=$null
+          [System.Management.Automation.Language.Parser]::ParseFile((Join-Path $PWD 'distribution/build.ps1'),[ref]$tokens,[ref]$errors) | Out-Null
+          if ($errors.Count) { throw ($errors | Out-String) }
