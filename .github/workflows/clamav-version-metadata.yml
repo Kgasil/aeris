@@ -1,0 +1,30 @@
+name: ClamAV official version metadata only
+on:
+  push:
+    branches: [development/native-source-preflight]
+    paths: ['.github/workflows/clamav-version-metadata.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  metadata:
+    runs-on: windows-2022
+    timeout-minutes: 5
+    steps:
+      - name: Compare official DNS metadata with last signed version
+        shell: pwsh
+        run: |
+          $ErrorActionPreference='Stop'
+          $rows=@(Resolve-DnsName -Name current.cvd.clamav.net -Type TXT -DnsOnly -QuickTimeout -ErrorAction Stop | Where-Object {$_.Type -eq 'TXT'})
+          $values=@($rows|ForEach-Object {$_.Strings -join ''})
+          $r=[ordered]@{utc=[DateTimeOffset]::UtcNow.ToString('o');scope='DNS metadata only, not signed database or scan approval';last_verified_daily=28194;records=$values;release_approved=$false;status='INCONCLUSIVE'}
+          if ($values.Count -eq 1) {
+            $fields=$values[0].Split(':')
+            $daily=0
+            if ($fields.Count -ge 3 -and [int]::TryParse($fields[2],[ref]$daily)) {
+              $r['advertised_daily']=$daily
+              $r.status=if($daily -gt 28194){'NEW_VERSION_REQUIRES_SIGNED_PREFLIGHT'}elseif($daily -eq 28194){'UNCHANGED'}else{'OLDER_OR_INCONSISTENT'}
+            }
+          }
+          $r|ConvertTo-Json -Depth 5
+          if ($r.status -eq 'INCONCLUSIVE' -or $r.status -eq 'OLDER_OR_INCONSISTENT') { throw 'Metadata not sufficient' }
