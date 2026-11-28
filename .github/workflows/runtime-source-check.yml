@@ -1,0 +1,17 @@
+name: Aeris exact Microsoft runtime source gate checks
+on:
+  push:
+    branches: [aeris-controlled-release-handoff]
+    paths: ['validation/check_microsoft_runtime.py','validation/test_microsoft_runtime.py','validation/microsoft-source-evidence.json','.github/workflows/runtime-source-check.yml']
+permissions:
+  contents: read
+jobs:
+  source-gate:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - run: python3 validation/test_microsoft_runtime.py -v
+      - name: Parse build workflow without executing
+        run: ruby -ryaml -e 'd=YAML.load_file(".github/workflows/aeris-controlled-release-handoff.yml"); t=d["on"] || d[true]; abort unless t["push"]["paths"]==["validation/candidate-authorization.json"]; abort unless d["jobs"]["candidate-build"]["steps"].any?{|s| s["name"]=="Bind exact Microsoft runtime inventory to verified REDIST sources"}'

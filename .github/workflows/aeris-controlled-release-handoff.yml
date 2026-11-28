@@ -119,6 +119,11 @@ jobs:
           & .\distribution\assurance.ps1 -Stage $stages[0].FullName -Evidence $e
           python distribution/audit-dependencies.py (Join-Path $e 'build-dependencies.txt') (Join-Path $e 'dependency-advisories.json')
           if ($LASTEXITCODE -ne 0) { throw 'Dependency advisory found or evidence incomplete; review required' }
+      - name: Bind exact Microsoft runtime inventory to verified REDIST sources
+        shell: pwsh
+        run: |
+          python validation/check_microsoft_runtime.py validation/microsoft-source-evidence.json candidate-evidence/distributed-files.json candidate-evidence/runtime-reduction.json candidate-evidence/microsoft-source-match.json
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - name: Homologate installer on disposable hosted runner
         shell: pwsh
         run: |
@@ -162,6 +167,7 @@ jobs:
           $assets += (Join-Path $e 'SHA256SUMS.txt')
           $assets += (Join-Path $e 'artifact-inventory.json')
           $assets += (Join-Path $e 'assurance.json')
+          $assets += (Join-Path $e 'microsoft-source-match.json')
           $assets += (Join-Path $e 'clamav-assurance.json')
           $assets += (Join-Path $e 'dependency-advisories.json')
           $tag = 'aeris-desktop-1.1.0rc1-controlled-' + $env:GITHUB_RUN_ID
