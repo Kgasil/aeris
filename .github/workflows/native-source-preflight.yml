@@ -1,0 +1,91 @@
+name: K&G native source evidence and signed definitions preflight
+on:
+  push:
+    branches: [development/native-source-preflight]
+    paths: ['.github/workflows/native-source-preflight.yml','validation/redist-source-probe.ps1']
+permissions:
+  contents: read
+jobs:
+  redist:
+    runs-on: windows-2022
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065
+        with:
+          python-version: '3.14.10'
+          architecture: x64
+      - name: Compare Python DLLs with installed official REDIST
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Path source-evidence | Out-Null
+          ./validation/redist-source-probe.ps1 -Output source-evidence/redist.json
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: kgvision-redist-source-evidence
+          path: source-evidence/
+          if-no-files-found: warn
+          retention-days: 14
+  signed-definitions:
+    runs-on: windows-2022
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - name: Verify official signed ClamAV definitions before compiling
+        id: preflight
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $evidence = Join-Path $PWD 'candidate-evidence'
+          New-Item -ItemType Directory -Path $evidence -Force | Out-Null
+          $report = [ordered]@{commit=$env:GITHUB_SHA; utc=[DateTimeOffset]::UtcNow.ToString('o'); status='INCONCLUSIVE'; release_approved=$false}
+          try {
+          $tmp = Join-Path $env:RUNNER_TEMP ('aeris-preflight-' + [guid]::NewGuid().ToString('N'))
+          New-Item -ItemType Directory -Path $tmp | Out-Null
+          $zip = Join-Path $tmp 'clamav.zip'
+          Invoke-WebRequest -Uri 'https://github.com/Cisco-Talos/clamav/releases/download/clamav-1.5.5/clamav-1.5.5.win.x64.zip' -OutFile $zip -TimeoutSec 300
+          if ((Get-Item -LiteralPath $zip).Length -ne 225800047 -or (Get-FileHash -LiteralPath $zip -Algorithm SHA256).Hash.ToLowerInvariant() -cne '90169f5e551010bfbd0208b50d9b2fa8988ef396cccbd46b0cc8cae03e22a4a4') { throw 'Scanner archive mismatch' }
+          Expand-Archive -LiteralPath $zip -DestinationPath (Join-Path $tmp 'engine')
+          $fresh = @(Get-ChildItem -LiteralPath (Join-Path $tmp 'engine') -Recurse -File -Filter freshclam.exe)
+          if ($fresh.Count -ne 1) { throw 'Expected exactly one FreshClam' }
+          $db = Join-Path $tmp 'database'
+          New-Item -ItemType Directory -Path $db | Out-Null
+          $conf = Join-Path $tmp 'freshclam.conf'
+          @(('DatabaseDirectory "'+$db+'"'),'DatabaseMirror database.clamav.net','Checks 1') | Set-Content -LiteralPath $conf -Encoding ascii
+          & $fresh[0].FullName "--config-file=$conf" --stdout 2>&1 | Tee-Object -FilePath (Join-Path $evidence 'preflight-freshclam.log')
+          if ($LASTEXITCODE -ne 0) { throw 'Official update failed; no build' }
+          $daily = @(Get-ChildItem -LiteralPath $db -File | Where-Object { $_.Name -in @('daily.cvd','daily.cld') })
+          if ($daily.Count -ne 1) { throw 'Daily definitions missing or ambiguous' }
+          $sig = Join-Path $fresh[0].DirectoryName 'sigtool.exe'
+          $info = (& $sig --info $daily[0].FullName | Out-String)
+          if ($LASTEXITCODE -ne 0 -or $info -notmatch '(?m)^Verification OK\.?\s*$') { throw 'Signed database verification failed' }
+          $info | Set-Content -LiteralPath (Join-Path $evidence 'preflight-daily-info.txt') -Encoding utf8
+          $m = [regex]::Match($info,'(?m)^Build time:\s*(.+)$')
+          if (-not $m.Success) { throw 'Missing signature timestamp' }
+          Write-Host $info
+          $raw = $m.Groups[1].Value.Trim() -replace '([+-]\d{2})(\d{2})$','$1:$2'
+          $date = [DateTimeOffset]::ParseExact($raw,'dd MMM yyyy HH:mm zzz',[Globalization.CultureInfo]::InvariantCulture)
+          $age = ([DateTimeOffset]::UtcNow-$date).TotalSeconds
+          $report['definition_build_utc']=$date.ToUniversalTime().ToString('o')
+          $report['definition_age_seconds']=[math]::Round($age)
+          if ($age -lt 0 -or $age -gt 86400) { $report.status='STALE_DEFINITIONS'; throw 'Official definitions stale; no compilation or release' }
+          $report.status='FRESH_DEFINITIONS'
+          Write-Host 'Signed daily definitions fresh; normal build and complete scans still required.'
+          } catch {
+            $report['error']=$_.Exception.Message
+            throw
+          } finally {
+            $report | ConvertTo-Json -Depth 5 | Set-Content -LiteralPath (Join-Path $evidence 'preflight.json') -Encoding utf8
+          }
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: kgvision-current-signed-definitions
+          path: candidate-evidence/
+          if-no-files-found: warn
+          retention-days: 14
