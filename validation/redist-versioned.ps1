@@ -24,33 +24,7 @@ try {
   & $dark -nologo -x $layout $exe -o (Join-Path $tmp 'bundle.wxs') 2>&1 | Tee-Object -FilePath (Join-Path $e 'extract.log')
   if($LASTEXITCODE -ne 0){throw 'WiX container extraction failed'}
   $r['extracted_msi_names']=@(Get-ChildItem -LiteralPath $layout -Recurse -File -Filter '*.msi'|ForEach-Object {$_.Name})
-  $msis=@(Get-ChildItem -LiteralPath $layout -Recurse -File -Filter '*.msi'|Where-Object {$_.Name -match '^vc_runtimeMinimum_x64\.msi
-  if($msis.Count -ne 1){throw 'Exact minimum x64 MSI not found'}
-  $msi=$msis[0]
-  $mSig=Get-AuthenticodeSignature -LiteralPath $msi.FullName
-  if($mSig.Status -ne 'Valid' -or $mSig.SignerCertificate.Subject -notmatch 'O=Microsoft Corporation'){throw 'Unexpected MSI signature'}
-  $r['minimum_msi']=[ordered]@{sha256=(Get-FileHash -LiteralPath $msi.FullName -Algorithm SHA256).Hash.ToLowerInvariant();signature=[string]$mSig.Status}
-  $extract=Join-Path $tmp 'admin-layout'
-  New-Item -ItemType Directory -Path $extract | Out-Null
-  $p=Start-Process -FilePath (Join-Path $env:SystemRoot 'System32\msiexec.exe') -ArgumentList @('/a',('"'+$msi.FullName+'"'),'/qn','/norestart',('TARGETDIR="'+$extract+'"')) -PassThru
-  if(-not $p.WaitForExit(120000)){throw 'Administrative layout timeout'}
-  if($p.ExitCode -ne 0){throw "Administrative layout failed: $($p.ExitCode)"}
-  $py=Split-Path -Parent (Get-Command python.exe).Source
-  $r['rows']=@(foreach($name in @('vcruntime140.dll','vcruntime140_1.dll')){
-    $source=Join-Path $py $name
-    $sha=(Get-FileHash -LiteralPath $source -Algorithm SHA256).Hash.ToLowerInvariant()
-    $matches=@(Get-ChildItem -LiteralPath $extract -Recurse -File -Filter $name | ForEach-Object {
-      $s=Get-AuthenticodeSignature -LiteralPath $_.FullName
-      $h=(Get-FileHash -LiteralPath $_.FullName -Algorithm SHA256).Hash.ToLowerInvariant()
-      [pscustomobject]@{name=$_.Name;version=$_.VersionInfo.FileVersion;sha256=$h;signature=[string]$s.Status;exact_match=($h -ceq $sha -and $s.Status -eq 'Valid' -and $s.SignerCertificate.Subject -match 'O=Microsoft Corporation')}
-    })
-    [pscustomobject]@{name=$name;python_sha256=$sha;matches=$matches;exact_match_count=@($matches|Where-Object exact_match).Count}
-  })
-  if(@($r.rows|Where-Object {$_.exact_match_count -lt 1}).Count){throw 'Exact DLL match not established'}
-  $r.status='EXACT_SOURCE_MATCH'
-} catch {$r['error']=$_.Exception.Message;throw}
-finally {$r|ConvertTo-Json -Depth 8|Set-Content -LiteralPath (Join-Path $e 'versioned-redist.json') -Encoding utf8;Get-Content -LiteralPath (Join-Path $e 'versioned-redist.json')}
-})
+  $msis=@(Get-ChildItem -LiteralPath $layout -Recurse -File -Filter 'vc_runtimeMinimum_x64.msi')
   if($msis.Count -ne 1){throw 'Exact minimum x64 MSI not found'}
   $msi=$msis[0]
   $mSig=Get-AuthenticodeSignature -LiteralPath $msi.FullName
