@@ -2,7 +2,7 @@ name: Aeris portable terms focused checks
 on:
   push:
     branches: [development/aeris-portable-terms]
-    paths: ['desktop/aeris/terms.py','desktop/main.py','desktop/tests/test_terms.py','distribution/build.ps1','.github/workflows/portable-terms.yml']
+    paths: ['validation/candidate_build_gate.py','validation/test_candidate_build_gate.py','desktop/aeris/terms.py','desktop/main.py','desktop/tests/test_terms.py','distribution/build.ps1','.github/workflows/portable-terms.yml']
 permissions:
   contents: read
 jobs:
@@ -12,6 +12,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           persist-credentials: false
+      - run: python3 validation/test_candidate_build_gate.py -v
       - name: Local terms tests (no build)
         working-directory: desktop
         run: python3 -m unittest discover -s tests -p test_terms.py -v
