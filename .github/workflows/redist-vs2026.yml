@@ -1,0 +1,31 @@
+name: K&G REDIST source comparison — VS2026
+on:
+  push:
+    branches: [development/native-source-preflight]
+    paths: ['.github/workflows/redist-vs2026.yml']
+permissions:
+  contents: read
+jobs:
+  redist:
+    runs-on: windows-2025-vs2026
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065
+        with:
+          python-version: '3.14.10'
+          architecture: x64
+      - name: Compare Python DLLs with installed official REDIST
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Path source-evidence | Out-Null
+          ./validation/redist-source-probe.ps1 -Output source-evidence/redist.json
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: kgvision-redist-source-evidence
+          path: source-evidence/
+          if-no-files-found: warn
+          retention-days: 14
